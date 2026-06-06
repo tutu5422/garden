@@ -1,39 +1,17 @@
-import type { Metadata, Viewport } from 'next'
-import SkinProvider from '@/components/theme/SkinProvider'
-import { Toaster } from '@/components/ui/sonner'
-import ErrorCatcher from '@/components/ErrorCatcher'
-import InstallPrompt from '@/components/pwa/InstallPrompt'
-import SWRegister from '@/components/pwa/SWRegister'
-import './globals.css'
+import type { Metadata, Viewport } from "next";
+import Nav from "@/components/Nav";
+import "./globals.css";
 
-export const viewport: Viewport = {
-  themeColor: '#47709B',
-  width: 'device-width',
-  initialScale: 1,
-}
+export const metadata: Metadata = { title: "迷你兔", description: "个人数字花园", manifest: "/manifest.json", icons: { icon: "/favicon.ico" } };
+export const viewport: Viewport = { themeColor: "#f59e0b", width: "device-width", initialScale: 1, maximumScale: 1 };
 
-export const metadata: Metadata = {
-  title: { default: '秘密花园', template: '%s | 秘密花园' },
-  description: '记录兴趣爱好，整理灵感，打造个人知识花园',
-  manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: '秘密花园' },
-  icons: { icon: '/favicon.ico', apple: [{ url: '/icon-192.png', sizes: '192x192' }] },
-}
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN" className="h-full antialiased" suppressHydrationWarning>
-      <head><meta name="apple-mobile-web-app-capable" content="yes" /></head>
-      <body className="min-h-full flex flex-col font-sans" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
-        <ErrorCatcher>
-          <SkinProvider>
-            {children}
-            <Toaster position="bottom-center" richColors closeButton />
-            <InstallPrompt />
-          </SkinProvider>
-        </ErrorCatcher>
-        <SWRegister />
+    <html lang="zh-CN" suppressHydrationWarning>
+      <body className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 antialiased pb-20 md:pt-14 md:pb-0">
+        <Nav />
+        {children}
       </body>
     </html>
-  )
+  );
 }
