@@ -40,13 +40,35 @@
 }
 
 .dark {
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.25);
-  --shadow-sm: 0 2px 4px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.2);
-  --shadow-md: 0 4px 8px rgba(0,0,0,0.35), 0 8px 16px rgba(0,0,0,0.25), 0 16px 32px rgba(0,0,0,0.2);
-  --shadow-lg: 0 8px 16px rgba(0,0,0,0.4), 0 16px 32px rgba(0,0,0,0.3), 0 32px 64px rgba(0,0,0,0.2);
-  --shadow-xl: 0 16px 32px rgba(0,0,0,0.45), 0 32px 64px rgba(0,0,0,0.35), 0 48px 96px rgba(0,0,0,0.25);
-  --shadow-colored: 0 8px 32px rgba(255, 82, 119, 0.25), 0 4px 12px rgba(255, 82, 119, 0.15);
-  --shadow-gold: 0 8px 32px rgba(255, 184, 0, 0.25), 0 4px 12px rgba(255, 184, 0, 0.15);
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.35), 0 4px 8px rgba(0,0,0,0.25);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.4), 0 8px 16px rgba(0,0,0,0.3), 0 16px 32px rgba(0,0,0,0.25);
+  --shadow-lg: 0 8px 16px rgba(0,0,0,0.45), 0 16px 32px rgba(0,0,0,0.35), 0 32px 64px rgba(0,0,0,0.3);
+  --shadow-xl: 0 16px 32px rgba(0,0,0,0.5), 0 32px 64px rgba(0,0,0,0.4), 0 48px 96px rgba(0,0,0,0.35);
+  --shadow-colored: 0 8px 32px rgba(255, 82, 119, 0.35), 0 4px 12px rgba(255, 82, 119, 0.2);
+  --shadow-gold: 0 8px 32px rgba(255, 184, 0, 0.35), 0 4px 12px rgba(255, 184, 0, 0.2);
+}
+
+/* === 便当盒暗色覆盖 === */
+.dark .card {
+  box-shadow: var(--shadow-md), 0 1px 0 rgba(255,255,255,0.04) inset, 0 -1px 0 rgba(0,0,0,0.15) inset;
+}
+.dark .card:hover {
+  box-shadow: var(--shadow-xl), 0 1px 0 rgba(255,255,255,0.06) inset;
+}
+.dark .bento-1x1, .dark .bento-2x1, .dark .bento-2x2, .dark .bento-solo {
+  box-shadow: var(--shadow-md);
+}
+.dark .bento-1x1:hover, .dark .bento-2x1:hover, .dark .bento-2x2:hover, .dark .bento-solo:hover {
+  box-shadow: var(--shadow-xl);
+}
+.dark .card-bento {
+  box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 -2px 0 rgba(0,0,0,0.12) inset;
+  border-color: rgba(255,255,255,0.06);
+}
+.dark .card-bento:hover {
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset;
+  border-color: var(--skin-primary);
 }
 
 @theme inline {
@@ -85,7 +107,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
 .card {
   background: var(--skin-surface);
   border: none;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md), 0 1px 0 rgba(255,255,255,0.6) inset, 0 -1px 0 rgba(0,0,0,0.04) inset;
   transition: all 0.4s var(--ease-magazine);
   position: relative;
   overflow: hidden;
@@ -93,8 +115,57 @@ h1, h2, h3, h4, h5, h6, .display-font {
 
 .card:hover {
   transform: translateY(-6px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl), 0 1px 0 rgba(255,255,255,0.6) inset;
 }
+
+/* === 便当盒卡片 === */
+.card-bento {
+  border-radius: 1.25rem;
+  background: var(--skin-surface);
+  box-shadow: 0 2px 0 rgba(255,255,255,0.7) inset, 0 -2px 0 rgba(0,0,0,0.03) inset;
+  transition: border-color 0.4s var(--ease-magazine), box-shadow 0.4s var(--ease-magazine);
+  border: 1px solid var(--skin-border);
+  overflow: hidden;
+}
+.card-bento:hover {
+  box-shadow: 0 2px 0 rgba(255,255,255,0.6) inset;
+  border-color: var(--skin-primary);
+}
+
+/* 便当网格 */
+.bento-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  grid-auto-rows: auto;
+}
+/* 让每个格子变成 flex 容器，也是主裁剪层（防止末项渲染瑕疵） */
+.bento-1x1, .bento-2x1, .bento-2x2, .bento-solo {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.4s var(--ease-magazine), box-shadow 0.4s var(--ease-magazine);
+}
+.bento-1x1:hover, .bento-2x1:hover, .bento-2x2:hover, .bento-solo:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+@media (min-width: 640px) {
+  .bento-grid { grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+}
+@media (min-width: 1024px) {
+  .bento-grid { grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
+}
+
+/* 便当方块尺寸 */
+@media (min-width: 1024px) { .bento-2x2 { grid-column: span 2; grid-row: span 2; } }
+@media (min-width: 1024px) { .bento-2x1 { grid-column: span 2; } }
+@media (min-width: 1024px) { .bento-1x1 { grid-column: span 1; } }
+/* 单篇撑满 */
+@media (min-width: 640px) { .bento-solo { grid-column: 1 / -1; max-width: 42rem; justify-self: center; width: 100%; } }
 
 /* 色块卡片 — 纯色背景 + 白色文字 */
 .card-block {
@@ -459,6 +530,41 @@ h1, h2, h3, h4, h5, h6, .display-font {
   width: 3px; border-radius: 2px;
   background: linear-gradient(to top, var(--skin-primary), var(--skin-accent));
   animation: eq-bar 1s ease-in-out infinite;
+}
+
+/* ============================================================
+   导航栏歌词跑马灯
+   ============================================================ */
+
+.marquee-track {
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+}
+
+.marquee-text {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.marquee-lyrics {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.marquee-title {
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-family: var(--font-display);
+}
+
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
 }
 
 /* ============================================================

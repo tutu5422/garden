@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Plus, Search, Trash2, ExternalLink, BookOpen, ImageIcon, Film, Wrench, FileText, Upload, X, Layers, Pencil, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Search, Trash2, Upload, X, Layers, Pencil, BookOpen } from "lucide-react";
 
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[];
@@ -10,8 +11,15 @@ interface Note {
 
 interface Collection { id: string; title: string; }
 
-const typeIcons: Record<string, any> = { link: ExternalLink, image: ImageIcon, book: BookOpen, movie: Film, tool: Wrench, article: FileText };
-const typeLabels: Record<string, string> = { link: "链接", image: "图片", book: "书籍", movie: "影视", tool: "工具", article: "文章" };
+// 便当盒柔和色板
+const bentoPalette = [
+  { bg: '#FFF5F0', accent: '#E8836B', text: '#5C2D1E' },
+  { bg: '#F5F7FB', accent: '#5B7FBD', text: '#1E345C' },
+  { bg: '#F2FAF4', accent: '#5B9E6F', text: '#1E4A2E' },
+  { bg: '#FFFAF0', accent: '#D4A03A', text: '#5C3D1E' },
+  { bg: '#F8F4FA', accent: '#8B5B9E', text: '#3A1E4A' },
+  { bg: '#F0F7FA', accent: '#3A8B9E', text: '#1E3A4A' },
+];
 
 function compressImage(file: File, maxW: number, quality: number): Promise<{ full: string; thumb: string }> {
   return new Promise((resolve) => {
@@ -36,14 +44,35 @@ function compressImage(file: File, maxW: number, quality: number): Promise<{ ful
   });
 }
 
+/* 便当盒网格尺寸分配 — 自适应项数 */
+function getBentoClass(i: number, hasImage: boolean, total: number) {
+  // 仅 1 篇：撑满整行，居中限宽
+  if (total === 1) return 'bento-solo';
+  // 2 篇：全部 1x1
+  if (total === 2) return 'bento-1x1';
+  // 3 篇：全 1x1，保持视觉一致
+  if (total === 3) return 'bento-1x1';
+  // 4 篇：第一张有图时 2x2，其余全 1x1
+  if (total === 4) {
+    if (hasImage && i === 0) return 'bento-2x2';
+    return 'bento-1x1';
+  }
+  // ≥5 篇：节奏化布局
+  if (hasImage && i === 0) return 'bento-2x2';
+  const m = i % 5;
+  if (m === 1 && hasImage) return 'bento-2x1';
+  if (m === 3 && hasImage) return 'bento-2x1';
+  return 'bento-1x1';
+}
+
 export default function Notes() {
+  const router = useRouter();
   const [notes, setNotes] = useState<Note[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [activeCollection, setActiveCollection] = useState("all");
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", content: "", type: "article", tags: "", collectionId: "" });
+  const [form, setForm] = useState({ title: "", content: "", tags: "", collectionId: "" });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -72,22 +101,21 @@ export default function Notes() {
   const removeImage = () => { setImageFile(null); setImagePreview(null); if (fileRef.current) fileRef.current.value = ""; };
 
   const resetForm = () => {
-    setForm({ title: "", content: "", type: "article", tags: "", collectionId: "" });
-    removeImage(); setShowAdd(false); setEditingId(null);
+    setForm({ title: "", content: "", tags: "", collectionId: "" });
+    removeImage(); setShowAdd(false);
   };
 
-  const add = async () => {
+  const quickAdd = async () => {
     if (!form.title.trim()) return;
     setUploading(true);
     let image: string | undefined, imageThumb: string | undefined;
     if (imageFile) {
       try { const c = await compressImage(imageFile, 1200, 0.7); image = c.full; imageThumb = c.thumb; } catch {}
     }
-
     const col = collections.find(c => c.id === form.collectionId);
     const note: Note = {
       id: Date.now().toString(36),
-      title: form.title, content: form.content, type: form.type,
+      title: form.title, content: form.content, type: "article",
       tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
       collectionId: form.collectionId || undefined,
       collectionName: col?.title,
@@ -97,37 +125,11 @@ export default function Notes() {
     resetForm(); setUploading(false);
   };
 
-  const startEdit = (n: Note) => {
-    setEditingId(n.id);
-    setForm({ title: n.title, content: n.content, type: n.type, tags: n.tags.join(", "), collectionId: n.collectionId || "" });
-    setImagePreview(n.image || null);
-    setImageFile(null);
-  };
-  const saveEdit = async () => {
-    if (!form.title.trim()) return;
-    setUploading(true);
-    const updated = notes.map(n => {
-      if (n.id !== editingId) return n;
-      const col = collections.find(c => c.id === form.collectionId);
-      return { ...n, title: form.title, content: form.content, type: form.type,
-        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
-        collectionId: form.collectionId || undefined, collectionName: col?.title };
-    });
-    if (imageFile) {
-      try { const c = await compressImage(imageFile, 1200, 0.7);
-        const idx = updated.findIndex(n => n.id === editingId);
-        if (idx >= 0) { updated[idx].image = c.full; updated[idx].imageThumb = c.thumb; }
-      } catch {}
-    }
-    save(updated);
-    resetForm(); setUploading(false);
-  };
-
   const del = (id: string) => save(notes.filter(n => n.id !== id));
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8 page-enter">
-      {/* Header — Editorial */}
+    <div className="max-w-6xl mx-auto px-6 py-8 page-enter relative z-0">
+      {/* Header */}
       <div className="flex items-center justify-between mb-10">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -144,10 +146,10 @@ export default function Notes() {
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-[var(--skin-text-secondary)]" />
-            <input className="input-filled pl-9 w-40 sm:w-56 text-sm" placeholder="搜索..." value={search} onChange={e => setSearch(e.target.value)} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[var(--skin-text-secondary)] pointer-events-none" />
+            <input className="input-filled w-44 sm:w-64 text-sm" style={{ paddingLeft: '2.75rem' }} placeholder="搜索..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <button onClick={() => { resetForm(); setShowAdd(!showAdd); }} className="btn">
+          <button onClick={() => router.push('/notes/edit')} className="btn">
             <Plus className="size-4" />新建
           </button>
         </div>
@@ -175,25 +177,26 @@ export default function Notes() {
         })}
       </div>
 
-      {/* Create/Edit Form */}
-      {(showAdd || editingId) && (
+      {/* Quick Create Form */}
+      {showAdd && (
         <div className="card card-rounded-tr p-6 mb-8 space-y-4 animate-fade-in-scale">
           <div className="flex items-center gap-2 mb-1">
-            {editingId ? <Pencil className="size-4" style={{ color: 'var(--skin-primary)' }} /> : <Plus className="size-4" style={{ color: 'var(--skin-primary)' }} />}
-            <span className="text-xs font-extrabold tracking-wider uppercase" style={{ color: 'var(--skin-primary)' }}>{editingId ? "编辑笔记" : "新建笔记"}</span>
+            <Plus className="size-4" style={{ color: 'var(--skin-primary)' }} />
+            <span className="text-xs font-extrabold tracking-wider uppercase" style={{ color: 'var(--skin-primary)' }}>快速笔记</span>
           </div>
           <input className="input text-sm" placeholder="标题" value={form.title}
                  onChange={e => setForm({ ...form, title: e.target.value })} autoFocus />
           <textarea className="input min-h-[80px] text-sm resize-none" placeholder="内容（Markdown）"
                     value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} />
 
-          <div className="flex flex-wrap items-center gap-3">
-            <select className="input-filled text-sm w-auto" value={form.collectionId}
+          <div className="flex gap-3">
+            <select className="input-filled text-sm w-auto shrink-0" value={form.collectionId}
                     onChange={e => setForm({ ...form, collectionId: e.target.value })}>
-              <option value="">分类：未分类</option>
+              <option value="">未分类</option>
               {collections.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
-            <span className="text-[10px] text-[var(--skin-text-secondary)] font-bold tracking-wider uppercase">← 来自合集</span>
+            <input className="input-filled flex-1 text-sm" placeholder="标签，逗号分隔" value={form.tags}
+                   onChange={e => setForm({ ...form, tags: e.target.value })} />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -209,74 +212,102 @@ export default function Notes() {
               </div>
             )}
           </div>
-
-          <div className="flex gap-3">
-            <select className="input-filled text-sm w-auto" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
-              {Object.entries(typeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <input className="input-filled flex-1 text-sm" placeholder="标签，逗号分隔" value={form.tags}
-                   onChange={e => setForm({ ...form, tags: e.target.value })} />
-          </div>
           <div className="flex gap-3 justify-end">
             <button onClick={resetForm} className="btn btn-ghost btn-sm">取消</button>
-            <button onClick={editingId ? saveEdit : add} disabled={uploading} className="btn btn-sm">
-              {editingId ? <><Check className="size-3.5" />保存</> : uploading ? "处理中..." : "发布"}
+            <button onClick={quickAdd} disabled={uploading} className="btn btn-sm">
+              {uploading ? "处理中..." : "发布"}
             </button>
           </div>
         </div>
       )}
 
-      {/* Waterfall */}
+      {/* Empty */}
       {filtered.length === 0 ? (
         <div className="text-center py-24">
-          <FileText className="size-16 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
+          <BookOpen className="size-16 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
           <p className="text-sm text-[var(--skin-text-secondary)] font-bold tracking-wider">{search ? "没有找到" : "还没有笔记"}</p>
+          {!search && (
+            <button onClick={() => router.push('/notes/edit')} className="mt-4 btn">
+              <Plus className="size-4" />写第一篇
+            </button>
+          )}
         </div>
       ) : (
-        <div className="waterfall-notes" style={{ columnCount: 1, columnGap: "1rem" }}>
-          <style>{`@media(min-width:640px){.waterfall-notes{column-count:2!important}}@media(min-width:1024px){.waterfall-notes{column-count:3!important}}`}</style>
-          {filtered.map(n => {
-            const Icon = typeIcons[n.type] || FileText;
+        /* ===== 便当盒网格 ===== */
+        <div className="bento-grid">
+          {filtered.map((n, i) => {
+            const pal = bentoPalette[i % bentoPalette.length];
+            const hasImage = !!(n.imageThumb || n.image);
+            const bentoClass = getBentoClass(i, hasImage, filtered.length);
+            const isLarge = bentoClass === 'bento-2x2';
+
             return (
-              <div key={n.id} className="card card-hover card-rounded-tl group relative" style={{ breakInside: "avoid", marginBottom: "1rem" }}>
-                {n.imageThumb ? (
-                  <div className="w-full overflow-hidden" style={{ maxHeight: "200px" }}>
-                    <img src={n.imageThumb} alt={n.title} className="w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                         style={{ maxHeight: "200px" }} loading="lazy" />
-                  </div>
-                ) : (
-                  <div className="w-full flex items-center justify-center py-10" style={{ background: 'var(--skin-muted)' }}>
-                    <Icon className="size-10" style={{ color: 'var(--skin-text-secondary)', opacity: 0.3 }} />
-                  </div>
-                )}
-                <div className="p-4 space-y-3">
-                  {/* Collection badge — always visible */}
-                  <div className="flex items-center gap-1.5">
-                    <Layers className="size-3.5" style={{ color: 'var(--skin-primary)' }} />
-                    <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: n.collectionName ? 'var(--skin-primary)' : 'var(--skin-text-secondary)' }}>
-                      {n.collectionName || "未分类"}
-                    </span>
-                  </div>
-                  {/* Type badge */}
-                  <span className="tag">{typeLabels[n.type]}</span>
-                  {/* Tags */}
-                  {n.tags.length > 0 && (
-                    <div className="flex gap-1 flex-wrap">
-                      {n.tags.slice(0, 3).map(t => (
-                        <span key={t} className="tag">#{t}</span>
-                      ))}
+              <div
+                key={n.id}
+                className={`${bentoClass} group cursor-pointer`}
+                onClick={() => router.push(`/notes/${n.id}`)}
+              >
+                <div className="card-bento flex-1 min-h-0 flex flex-col">
+                  {/* 图片区 — 大卡片全宽顶图，普通卡片可选 */}
+                  {hasImage && (
+                    <div className={`overflow-hidden shrink-0 ${isLarge ? 'h-52 sm:h-64' : 'h-32 sm:h-40'}`}>
+                      <img src={n.imageThumb || n.image} alt={n.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy" />
                     </div>
                   )}
-                  <h3 className="font-extrabold text-base leading-snug line-clamp-2 group-hover:opacity-70 transition-opacity"
-                      style={{ color: 'var(--skin-text)', fontFamily: "var(--font-display)" }}>{n.title}</h3>
-                  {n.content && <p className="text-xs line-clamp-3 leading-relaxed text-[var(--skin-text-secondary)]">{n.content}</p>}
-                  <div className="flex items-center justify-between pt-3 border-t-2 border-[var(--skin-border)]">
-                    <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">{new Date(n.createdAt).toLocaleDateString("zh-CN")}</span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e) => { e.preventDefault(); startEdit(n); }}
-                              className="p-1.5 hover:text-[var(--skin-primary)] transition-colors"><Pencil className="size-3.5" /></button>
-                      <button onClick={(e) => { e.preventDefault(); del(n.id); }}
-                              className="p-1.5 hover:text-red-500 transition-colors"><Trash2 className="size-3.5" /></button>
+
+                  {/* 正文 */}
+                  <div className="p-4 sm:p-5 flex flex-col flex-1">
+                    {/* Collection badge */}
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <div className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: pal.accent }} />
+                      <span className="text-[10px] font-bold tracking-wider uppercase"
+                            style={{ color: n.collectionName ? pal.accent : 'var(--skin-text-secondary)' }}>
+                        {n.collectionName || '未分类'}
+                      </span>
+                    </div>
+
+                    {/* Title */}
+                    <h3 className={`font-extrabold leading-snug line-clamp-2 group-hover:opacity-70 transition-opacity mb-auto ${isLarge ? 'text-base sm:text-xl' : 'text-sm sm:text-base'}`}
+                        style={{ color: 'var(--skin-text)', fontFamily: 'var(--font-display)' }}>
+                      {n.title}
+                    </h3>
+
+                    {/* Preview — large cards show more */}
+                    {n.content && (
+                      <p className={`text-xs leading-relaxed text-[var(--skin-text-secondary)] mt-2 ${isLarge ? 'line-clamp-3' : 'line-clamp-2'}`}>
+                        {n.content.slice(0, isLarge ? 160 : 80)}
+                      </p>
+                    )}
+
+                    {/* Tags */}
+                    {n.tags.length > 0 && (
+                      <div className="flex gap-1 flex-wrap mt-3">
+                        {n.tags.slice(0, isLarge ? 4 : 2).map(t => (
+                          <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-md font-bold transition-colors"
+                                style={{ background: `${pal.accent}15`, color: pal.accent }}>
+                            #{t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-3 mt-3 border-t-2 border-[var(--skin-border)]">
+                      <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
+                        {new Date(n.createdAt).toLocaleDateString('zh-CN')}
+                      </span>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={(e) => { e.stopPropagation(); router.push(`/notes/edit?id=${n.id}`); }}
+                          className="p-1.5 rounded-lg hover:bg-[var(--skin-muted)] transition-colors text-[var(--skin-text-secondary)] hover:text-[var(--skin-primary)]">
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); del(n.id); }}
+                          className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-[var(--skin-text-secondary)] hover:text-red-500">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

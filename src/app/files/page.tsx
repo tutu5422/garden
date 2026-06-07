@@ -139,7 +139,7 @@ export default function Files() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 page-enter">
+    <div className="max-w-6xl mx-auto px-6 py-8 page-enter">
       {/* Header — Editorial */}
       <div className="flex items-center justify-between mb-10">
         <div>
@@ -161,25 +161,31 @@ export default function Files() {
         </label>
       </div>
 
-      {/* Search + Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-[var(--skin-text-secondary)]" />
-          <input className="input-filled pl-9 w-full text-sm" placeholder="搜索文件..." value={search} onChange={e => setSearch(e.target.value)} />
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[var(--skin-text-secondary)] pointer-events-none" />
+        <input className="input-filled w-full text-sm" style={{ paddingLeft: '2.75rem' }} placeholder="搜索文件..." value={search} onChange={e => setSearch(e.target.value)} />
           {search && (
             <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--skin-text-secondary)]">
               <X className="size-3.5" />
             </button>
           )}
+      </div>
+
+      {/* Category Filter — dedicated row with more space */}
+      <div className="mb-8 p-4 rounded-xl" style={{ background: 'var(--skin-muted)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[10px] tracking-[0.2em] uppercase font-bold text-[var(--skin-text-secondary)] font-mono">分类筛选</span>
+          <div className="rule-thin flex-1" style={{ background: 'var(--skin-border)' }} />
         </div>
-        <div className="flex gap-2 flex-wrap items-center">
+        <div className="flex gap-2 flex-wrap">
           {catCounts.filter(c => c.count > 0 || c.key === "all").map(c => (
             <button key={c.key} onClick={() => setActiveCat(c.key)}
               className={activeCat === c.key ? "tag tag-active" : "tag"}>
               {c.label} {c.count > 0 && <span className="ml-1 opacity-70">{c.count}</span>}
             </button>
           ))}
-          <button onClick={() => setShowCatManager(!showCatManager)} className="tag">
+          <button onClick={() => setShowCatManager(!showCatManager)} className="tag" style={{ borderStyle: 'dashed' }}>
             + 管理分类
           </button>
         </div>

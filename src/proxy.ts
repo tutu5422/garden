@@ -4,8 +4,9 @@ import type { NextRequest } from "next/server";
 const PASS = process.env.SITE_PASSWORD || "123";
 const COOKIE = "minitu_auth";
 const RL = new Map<string, number[]>();
+const isDev = process.env.NODE_ENV === "development";
 
-export default function proxy(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const ip = req.headers.get("x-forwarded-for") || "x";
 
@@ -14,8 +15,23 @@ export default function proxy(req: NextRequest) {
   }
 
   if (pathname === "/api/login" && req.method === "POST") {
+    // Validate password from request body
+    try {
+      const body = await req.json();
+      if (body.password !== PASS) {
+        return NextResponse.json({ ok: false, error: "密码错误" }, { status: 401 });
+      }
+    } catch {
+      return NextResponse.json({ ok: false, error: "请求无效" }, { status: 400 });
+    }
     const r = NextResponse.json({ ok: true });
-    r.cookies.set(COOKIE, PASS, { httpOnly: true, secure: true, sameSite: "strict", maxAge: 2592000, path: "/" });
+    r.cookies.set(COOKIE, PASS, {
+      httpOnly: true,
+      secure: !isDev,
+      sameSite: "lax",
+      maxAge: 2592000,
+      path: "/",
+    });
     return r;
   }
 

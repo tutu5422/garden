@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Plus, Layers, Sparkles } from 'lucide-react'
 import { getLocalCollections, createLocalCollection, deleteLocalCollection, type LocalCollection } from '@/lib/db/local-store'
 import CollectionCard from '@/components/collections/CollectionCard'
@@ -9,13 +8,36 @@ import { toast } from 'sonner'
 
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<LocalCollection[]>([])
+  const [noteCounts, setNoteCounts] = useState<Record<string, number>>({})
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
   const [desc, setDesc] = useState('')
 
-  useEffect(() => { setCollections(getLocalCollections()) }, [])
+  useEffect(() => {
+    const cols = getLocalCollections()
+    setCollections(cols)
+    try {
+      const notes: any[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
+      const counts: Record<string, number> = {}
+      cols.forEach(c => {
+        counts[c.id] = notes.filter((n: any) => n.collectionId === c.id).length
+      })
+      setNoteCounts(counts)
+    } catch {}
+  }, [])
 
-  const refresh = () => setCollections(getLocalCollections())
+  const refresh = () => {
+    const cols = getLocalCollections()
+    setCollections(cols)
+    try {
+      const notes: any[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
+      const counts: Record<string, number> = {}
+      cols.forEach(c => {
+        counts[c.id] = notes.filter((n: any) => n.collectionId === c.id).length
+      })
+      setNoteCounts(counts)
+    } catch {}
+  }
 
   const handleCreate = () => {
     if (!title.trim()) { toast.error('请输入合集名称'); return }
@@ -87,35 +109,22 @@ export default function CollectionsPage() {
           <button onClick={() => setAdding(true)} className="btn">新建合集</button>
         </div>
       ) : (
-        <div
-          className="waterfall-collections"
-          style={{ columnCount: 1, columnGap: '1rem' }}
-        >
-          <style>{`
-            @media (min-width: 640px) { .waterfall-collections { column-count: 2 !important; } }
-            @media (min-width: 1024px) { .waterfall-collections { column-count: 3 !important; } }
-          `}</style>
+        <div className="magazine-grid-3uneven">
           {collections.map(col => (
-            <div key={col.id} className="relative group/col" style={{ breakInside: 'avoid', marginBottom: '1rem' }}>
-              <CollectionCard collection={col} noteCount={col.resourceIds.length} />
+            <div key={col.id} className="relative group/col">
               <button
                 onClick={() => handleDelete(col.id, col.title)}
-                className="absolute top-3 right-3 p-2 rounded-lg opacity-0 group-hover/col:opacity-100 hover:bg-red-500 hover:text-white transition-all text-xs z-10 bg-[var(--skin-surface)] border-2 border-[var(--skin-border)]"
+                className="absolute top-3 right-3 p-2 rounded-lg opacity-0 group-hover/col:opacity-100 bg-red-500/80 hover:bg-red-500 text-white transition-all text-xs z-10 backdrop-blur-sm"
               >
-                <TrashIcon />
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                </svg>
               </button>
+              <CollectionCard collection={col} noteCount={noteCounts[col.id] || 0} />
             </div>
           ))}
         </div>
       )}
     </div>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-    </svg>
   )
 }

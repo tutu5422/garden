@@ -1,11 +1,19 @@
+'use client'
+
 import Link from 'next/link'
-import { Layers, BookOpen, FolderOpen } from 'lucide-react'
+import { ArrowUpRight, Layers, BookOpen } from 'lucide-react'
 import type { LocalCollection } from '@/lib/db/local-store'
 
-const gradients = [
-  '#6C3CE1', '#B8860B', '#0D7A3E', '#DC2626',
-  '#00E5FF', '#FFD700', '#A3FF00', '#FF6B35',
-  '#8B5CF6', '#FF4444', '#00FF41',
+// 编辑狂想 8 色块系统
+const editorialColors = [
+  { bg: 'linear-gradient(135deg, #8B1A2B, #BE185D)', shadow: '#8B1A2B' },   // burgundy → crimson
+  { bg: 'linear-gradient(135deg, #D4971A, #B8860B)', shadow: '#D4971A' },    // gold
+  { bg: 'linear-gradient(135deg, #0D7B6B, #09856B)', shadow: '#0D7B6B' },    // teal
+  { bg: 'linear-gradient(135deg, #5B2D8E, #7B3FAF)', shadow: '#5B2D8E' },   // plum
+  { bg: 'linear-gradient(135deg, #1B4F8A, #2969B5)', shadow: '#1B4F8A' },   // sapphire
+  { bg: 'linear-gradient(135deg, #BE185D, #E8315B)', shadow: '#BE185D' },   // crimson → primary
+  { bg: 'linear-gradient(135deg, #2D3748, #4A5568)', shadow: '#2D3748' },   // slate
+  { bg: 'linear-gradient(135deg, #1A1D23, #2D3748)', shadow: '#1A1D23' },   // dark
 ]
 
 function hashCode(s: string): number {
@@ -15,76 +23,74 @@ function hashCode(s: string): number {
 }
 
 export default function CollectionCard({ collection, noteCount }: { collection: LocalCollection; noteCount: number }) {
-  const accent = gradients[hashCode(collection.title) % gradients.length]
+  const palette = editorialColors[hashCode(collection.title) % editorialColors.length]
 
   return (
     <Link
       href={`/collections/${collection.id}`}
-      className="group block animate-fade-in-up"
+      className="group block"
     >
       <article
-        className="relative overflow-hidden transition-all duration-200"
+        className="block-gloss relative overflow-hidden rounded-2xl p-6 sm:p-8 flex flex-col justify-between cursor-pointer min-h-[200px] transition-all duration-400 hover:shadow-xl"
         style={{
-          backgroundColor: 'var(--skin-surface)',
-          border: '2px solid var(--skin-border)',
-          borderRadius: '1rem 0.25rem 0.25rem 0.25rem',
+          background: palette.bg,
+          boxShadow: `0 4px 12px ${palette.shadow}33`,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-6px)';
+          e.currentTarget.style.boxShadow = `0 16px 48px ${palette.shadow}44`;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = `0 4px 12px ${palette.shadow}33`;
         }}
       >
-        {/* Banner */}
-        <div className="relative h-40 overflow-hidden" style={{ background: accent }}>
-          {/* Decorative circles */}
-          <div
-            className="absolute -top-10 -right-10 w-36 h-36 rounded-full opacity-20 group-hover:scale-110 transition-transform duration-300"
-            style={{ background: 'rgba(255,255,255,0.3)' }}
-          />
-          <div
-            className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full opacity-15 group-hover:scale-125 transition-transform duration-300"
-            style={{ background: 'rgba(255,255,255,0.3)' }}
-          />
-          {/* Icon */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2">
-              <Layers className="size-12 text-white/60 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-              <span className="text-white/40 text-[10px] font-extrabold tracking-[0.2em] uppercase">
-                COLLECTION
-              </span>
-            </div>
-          </div>
-          {/* Note count badge */}
-          <div className="absolute top-3 right-3">
-            <span
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold text-white"
-              style={{
-                background: 'rgba(0,0,0,0.2)',
-                border: '1px solid rgba(255,255,255,0.15)',
-              }}
-            >
-              <BookOpen className="size-3.5" />
-              {noteCount}
+        {/* Decorative circle */}
+        <div
+          className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 group-hover:scale-110 transition-transform duration-500"
+          style={{ background: 'rgba(255,255,255,0.4)' }}
+        />
+        <div
+          className="absolute -bottom-4 -left-4 w-24 h-24 rounded-full opacity-8 group-hover:scale-125 transition-transform duration-500"
+          style={{ background: 'rgba(255,255,255,0.3)' }}
+        />
+
+        <div className="relative z-10 flex-1">
+          <div className="flex items-center gap-2 mb-4">
+            <Layers className="size-4 text-white/60" />
+            <span className="text-[10px] tracking-[0.25em] uppercase font-bold text-white/50 font-mono">
+              COLLECTION
             </span>
           </div>
-        </div>
-
-        {/* Info */}
-        <div className="p-5 space-y-3">
           <h3
-            className="font-extrabold text-base leading-snug line-clamp-1 group-hover:opacity-70 transition-opacity"
-            style={{ color: 'var(--skin-text)', fontFamily: 'var(--font-display)' }}
+            className="text-xl sm:text-2xl font-extrabold tracking-tight text-white mb-2 line-clamp-2"
+            style={{ fontFamily: 'var(--font-display)', textShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
           >
             {collection.title}
           </h3>
           {collection.description ? (
-            <p className="text-xs leading-relaxed line-clamp-2" style={{ color: 'var(--skin-text-secondary)' }}>
+            <p className="text-xs sm:text-sm text-white/70 line-clamp-2 leading-relaxed">
               {collection.description}
             </p>
           ) : (
-            <p className="text-xs italic opacity-40">暂无描述</p>
+            <p className="text-xs italic text-white/35">暂无描述</p>
           )}
-          {/* Bottom line */}
-          <div className="flex items-center gap-2 pt-2 border-t-2 border-[var(--skin-border)]">
-            <div className="h-0.5 flex-1" style={{ background: 'var(--skin-primary)' }} />
-            <FolderOpen className="size-3.5 text-[var(--skin-text-secondary)] opacity-40" />
+        </div>
+
+        <div className="relative z-10 flex items-end justify-between mt-5 pt-4 border-t border-white/15">
+          <div className="flex items-center gap-2">
+            <BookOpen className="size-3.5 text-white/60" />
+            <span className="text-3xl font-extrabold tracking-tight text-white/90"
+                  style={{ fontFamily: 'var(--font-display)' }}>
+              {noteCount}
+            </span>
+            <span className="text-[10px] tracking-[0.15em] uppercase font-bold text-white/50 font-mono">
+              篇笔记
+            </span>
           </div>
+          <span className="inline-flex items-center gap-1 text-xs font-bold tracking-widest uppercase text-white/60 group-hover:text-white/90 transition-all duration-300 group-hover:translate-x-1">
+            浏览 <ArrowUpRight className="size-3.5" />
+          </span>
         </div>
       </article>
     </Link>

@@ -46,11 +46,12 @@ export default function SearchBar() {
       <Button
         variant="outline"
         size="sm"
-        className="hidden sm:flex items-center gap-2 text-muted-foreground w-40 lg:w-56"
+        className="hidden sm:inline-flex items-center gap-2 text-muted-foreground w-9 h-9 p-0 lg:w-52 lg:h-auto lg:px-3 lg:py-1.5"
         onClick={() => setOpen(true)}
+        aria-label="搜索"
       >
-        <Search className="size-4" />
-        <span className="hidden lg:inline text-xs">搜索资源...</span>
+        <Search className="size-4 shrink-0" />
+        <span className="hidden lg:inline text-xs truncate">搜索资源...</span>
         <kbd className="ml-auto hidden lg:inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
           Ctrl+K
         </kbd>

@@ -28,12 +28,17 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const r = await fetch('/api/login', { method: 'POST' })
+      const r = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: gatePwd }),
+      })
       if (r.ok) {
         toast.success('欢迎回来 🐰')
         router.push('/')
       } else {
-        setError('验证失败，请重试')
+        const data = await r.json().catch(() => ({ error: '验证失败' }))
+        setError(data.error || '验证失败，请重试')
       }
     } catch {
       setError('网络错误')

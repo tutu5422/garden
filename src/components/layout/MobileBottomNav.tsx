@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { label: '笔记', href: '/notes', icon: Library },
-  { label: '时间', href: '/timeline', icon: Calendar },
   { label: '合集', href: '/collections', icon: Layers },
+  { label: '时间线', href: '/timeline', icon: Calendar },
   { label: '文件', href: '/files', icon: FileText },
 ]
 

@@ -1,48 +1,134 @@
-"use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Library, Calendar, Layers, FileText } from "lucide-react";
+"use client"
 
-const nav = [
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Library, Calendar, Layers, FileText } from "lucide-react"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import LyricsMarquee from "@/components/music/LyricsMarquee"
+
+const navItems = [
   { href: "/notes", icon: Library, label: "笔记" },
-  { href: "/timeline", icon: Calendar, label: "时间" },
   { href: "/collections", icon: Layers, label: "合集" },
+  { href: "/timeline", icon: Calendar, label: "时间线" },
   { href: "/files", icon: FileText, label: "文件" },
-];
+]
 
-const richPaths = ["/login", "/signup", "/callback", "/resources", "/categories", "/tags", "/search", "/profile", "/visitors", "/collections", "/timeline"];
+const richPaths = [
+  "/login", "/signup", "/callback",
+  "/resources", "/categories", "/tags", "/search",
+  "/profile", "/visitors",
+]
 
 export default function Nav() {
-  const path = usePathname();
-  if (richPaths.some(p => path === p || path.startsWith(p + "/"))) return null;
+  const path = usePathname()
+
+  // On rich pages, MainLayout provides the full Navbar + MobileBottomNav
+  if (richPaths.some(p => path === p || path.startsWith(p + "/"))) return null
+
+  const isActive = (href: string) =>
+    path === href || (href !== "/" && path.startsWith(href))
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:top-0 md:bottom-auto border-t-2 md:border-t-0 md:border-b-2 border-[var(--skin-border)]"
-         style={{ backgroundColor: 'var(--skin-surface)' }}>
-      <div className="max-w-5xl mx-auto flex items-center justify-around md:justify-start md:gap-1 md:px-4 py-2">
-        <Link href="/" className="hidden md:flex items-center gap-2 mr-4 group">
-          <span className="text-lg font-extrabold tracking-wider" style={{ fontFamily: "var(--font-display)", color: "var(--skin-primary)" }}>
-            迷你兔
-          </span>
-        </Link>
-        {nav.map((n) => {
-          const active = path === n.href || (n.href !== "/" && path.startsWith(n.href));
-          return (
-            <Link key={n.href} href={n.href}
-              className={`flex flex-col md:flex-row items-center gap-0.5 md:gap-1.5 px-3 py-1.5 text-xs md:text-sm transition-all duration-200 font-bold tracking-wider ${
-                active ? "" : "text-[var(--skin-text-secondary)] hover:text-[var(--skin-text)]"
-              }`}
-              style={active ? {
-                color: 'var(--skin-primary)',
-                borderBottom: '2px solid var(--skin-primary)',
-                marginBottom: '-2px',
-              } : {}}>
-              <n.icon className="size-5 md:size-4" />
-              <span>{n.label}</span>
+    <>
+      {/* Desktop / Tablet Top Nav — sticky, matches Navbar.tsx positioning */}
+      <header
+        className="hidden md:block sticky top-0 z-50 w-full border-b-2 border-[var(--skin-border)]"
+        style={{ backgroundColor: "var(--skin-surface)" }}
+      >
+        <div className="mx-auto flex h-14 max-w-6xl items-center px-4">
+          <div className="flex items-center flex-1 min-w-0">
+            <Link href="/" className="flex items-center gap-2 shrink-0 group">
+              <span
+                className="inline-flex items-center justify-center size-8 rounded-lg text-sm font-black select-none"
+                style={{ background: 'var(--skin-primary)', color: '#fff' }}
+              >
+                MT
+              </span>
+              <span
+                className="text-xl font-extrabold tracking-wider select-none"
+                style={{
+                  color: "var(--skin-primary)",
+                  fontFamily: "var(--font-display)",
+                }}
+              >
+                迷你兔
+              </span>
             </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
+
+            <nav className="flex items-center gap-1 shrink-0">
+              {navItems.map((item) => {
+                const active = isActive(item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      buttonVariants({
+                        variant: active ? "secondary" : "ghost",
+                        size: "sm",
+                      }),
+                      "gap-2 transition-all duration-200 font-bold tracking-wider",
+                      active ? "" : "hover:bg-[var(--skin-muted)]"
+                    )}
+                    style={
+                      active
+                        ? {
+                            color: "var(--skin-primary)",
+                            borderBottom: "2px solid var(--skin-primary)",
+                            borderRadius: "0",
+                            background: "transparent",
+                          }
+                        : {}
+                    }
+                  >
+                    <item.icon className="size-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+
+            <LyricsMarquee />
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Bottom Nav — matches MobileBottomNav.tsx positioning */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t-2 border-[var(--skin-border)]"
+        style={{ backgroundColor: "var(--skin-surface)" }}
+      >
+        <div className="flex items-center justify-around h-14">
+          {navItems.map((item) => {
+            const active = isActive(item.href)
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-1 text-xs font-bold tracking-wider transition-all duration-200",
+                  active
+                    ? ""
+                    : "text-[var(--skin-text-secondary)] hover:text-[var(--skin-text)]"
+                )}
+                style={
+                  active
+                    ? {
+                        color: "var(--skin-primary)",
+                        borderTop: "2px solid var(--skin-primary)",
+                        marginTop: "-2px",
+                      }
+                    : {}
+                }
+              >
+                <item.icon className="size-5 transition-transform duration-200" />
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
+        </div>
+      </nav>
+    </>
+  )
 }

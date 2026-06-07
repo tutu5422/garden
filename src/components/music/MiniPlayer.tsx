@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useMusic, type Track, type LoopMode } from '@/lib/music/MusicContext'
+import { searchAndCacheLyrics, parseFilename } from '@/lib/music/lyrics-store'
 
 const loopIcons: Record<LoopMode, React.ReactNode> = {
   none: <Repeat className="size-3.5 opacity-30" />,
@@ -38,11 +39,33 @@ export default function MiniPlayer() {
     if (file.size > 20 * 1024 * 1024) { toast.error('文件不能超过 20MB'); return }
     setUploading(true)
     try {
+      const rawName = file.name.replace(/\.[^.]+$/, '')
+      const parsed = parseFilename(rawName)
       const reader = new FileReader()
       const dataUrl = await new Promise<string>((resolve, reject) => { reader.onload = () => resolve(reader.result as string); reader.onerror = reject; reader.readAsDataURL(file) })
-      const track: Track = { id: Date.now().toString(), title: file.name.replace(/\.[^.]+$/, ''), url: dataUrl }
+      const track: Track = {
+        id: Date.now().toString(),
+        title: parsed.title,
+        artist: parsed.artist,
+        url: dataUrl,
+      }
       addTrack(track)
-      toast.success(`已添加: ${track.title}`)
+      toast.success(`已添加: ${track.title}${track.artist ? ` — ${track.artist}` : ''}`)
+
+      // 后台搜索歌词
+      searchAndCacheLyrics(track.id, track.title, track.artist).then(result => {
+        if (result) {
+          toast.success(`📝 已找到「${track.title}」的歌词`, {
+            description: '播放时将自动显示',
+            duration: 3000,
+          })
+        } else {
+          toast.info(`未找到「${track.title}」的歌词`, {
+            description: '播放时将显示歌曲信息',
+            duration: 3000,
+          })
+        }
+      })
     } catch { toast.error('文件读取失败') }
     finally { setUploading(false); if (fileInputRef.current) fileInputRef.current.value = '' }
   }, [addTrack])

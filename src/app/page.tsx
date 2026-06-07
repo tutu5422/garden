@@ -33,9 +33,6 @@ interface TimelineMemo { id: string; content: string; createdAt: string; source:
 export default function Home() {
   const [greeting, setGreeting] = useState("");
   const [dateStr, setDateStr] = useState("");
-  const [issueNum, setIssueNum] = useState("");
-  const [issueYear, setIssueYear] = useState("");
-
   const [stats, setStats] = useState({ notes: 0, collections: 0, files: 0, timeline: 0 });
   const [featuredNote, setFeaturedNote] = useState<NoteItem | null>(null);
   const [recentMemos, setRecentMemos] = useState<TimelineMemo[]>([]);
@@ -48,11 +45,6 @@ export default function Home() {
 
     const now = new Date();
     setDateStr(now.toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" }));
-    setIssueYear(now.getFullYear().toString());
-
-    const start = new Date(now.getFullYear(), 0, 1);
-    const week = Math.ceil(((now.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
-    setIssueNum(`NO.${String(week).padStart(2, "0")}`);
 
     try {
       const notes: NoteItem[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
@@ -122,18 +114,10 @@ export default function Home() {
                 minitu.online · 私人数字花园
               </p>
             </div>
-            <div className="flex items-center gap-4 sm:gap-6">
-              <span className="text-[10px] tracking-[0.2em] font-bold font-mono px-3 py-1 border border-[var(--skin-border)] text-[var(--skin-text-secondary)]">
-                {issueNum}
-              </span>
-              <span className="text-[10px] tracking-[0.2em] font-bold font-mono px-3 py-1 border border-[var(--skin-border)] text-[var(--skin-text-secondary)]">
-                {issueYear} · 周刊
-              </span>
-              <Link href="/settings"
-                className="flex items-center gap-1 text-[10px] tracking-[0.15em] uppercase font-bold text-[var(--skin-text-secondary)] hover:text-[var(--skin-primary)] transition-colors">
-                <Settings className="size-3" /> 设置
-              </Link>
-            </div>
+            <Link href="/settings"
+              className="flex items-center gap-1 text-[10px] tracking-[0.15em] uppercase font-bold text-[var(--skin-text-secondary)] hover:text-[var(--skin-primary)] transition-colors">
+              <Settings className="size-3" /> 设置
+            </Link>
           </div>
 
           <h1 className="editorial-hero mb-4 sm:mb-6" style={{ color: "var(--skin-text)" }}>
@@ -460,7 +444,7 @@ export default function Home() {
         <footer className="pt-10 pb-12 text-center">
           <div className="rule-fade mb-8" />
           <p className="text-[10px] tracking-[0.2em] uppercase font-bold text-[var(--skin-text-secondary)] opacity-30 font-mono">
-            迷你兔 · 仅限主人访问 · minitu.online · {issueYear} 周刊
+            迷你兔 · 仅限主人访问 · minitu.online
           </p>
         </footer>
       </div>

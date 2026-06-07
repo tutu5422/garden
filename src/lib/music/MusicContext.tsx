@@ -9,6 +9,8 @@ import { saveBlob, getBlob, deleteBlob } from '@/lib/db/idb-store'
 export interface Track {
   id: string
   title: string
+  artist?: string
+  album?: string
   url: string // runtime URL (Object URL or IndexedDB data URL)
 }
 
@@ -58,8 +60,8 @@ function readMeta(): Track[] {
 function writeMeta(tracks: Track[]) {
   if (typeof window === 'undefined') return
   try {
-    // 只存元数据（id, title），不存 url
-    const meta = tracks.map(t => ({ id: t.id, title: t.title }))
+    // 只存元数据（id, title, artist, album），不存 url
+    const meta = tracks.map(t => ({ id: t.id, title: t.title, artist: t.artist, album: t.album }))
     localStorage.setItem(STORAGE_KEY, JSON.stringify(meta))
   } catch { toast.error('存储空间不足') }
 }
@@ -85,7 +87,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       for (const m of meta) {
         const url = await getBlob(m.id)
         if (url) {
-          tracks.push({ id: m.id, title: m.title, url })
+          tracks.push({ id: m.id, title: m.title, artist: m.artist, album: m.album, url })
         }
       }
       // 清理已失效的元数据
