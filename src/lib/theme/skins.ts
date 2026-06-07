@@ -1,5 +1,5 @@
-// 迷你兔 · 丝绒金 — 单主题 / 深浅双模 / 系统跟随
-// Velvet & Gold — a single luxurious palette with light/dark/system modes
+// 迷你兔 · 编辑狂想 — Editorial Rave · 时尚杂志美学
+// 大胆色块 · 几何切割 · 光影统一 · 细节丰富
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -21,38 +21,38 @@ export interface ThemeDefinition {
   dark: ThemeColors
 }
 
-// ========== 丝绒金 · 唯一主题 ==========
+// ========== 编辑狂想 · 唯一主题 ==========
 
-const VELVET_GOLD: ThemeDefinition = {
-  name: '丝绒金',
-  emoji: '🪶',
+const EDITORIAL_RAVE: ThemeDefinition = {
+  name: '编辑狂想',
+  emoji: '📰',
   light: {
-    primary:       '#7B2D3B',   // 深酒红 — 主力按钮、强调色
-    background:    '#FBF9F6',   // 暖象牙白 — 页面底色
-    surface:       '#FFFFFF',   // 纯白 — 卡片底色
-    muted:         '#F3EFE8',   // 暖浅灰 — 次要区域
-    border:        '#E6E0D6',   // 暖灰边框 — 柔和分割
-    accent:        '#C4A44A',   // 古董金 — 点缀、高亮
-    text:          '#1C1719',   // 深暖黑 — 主文字
-    textSecondary: '#8A7E78',   // 暖褐灰 — 辅助文字
+    primary:       '#E8315B',   // 杂志玫红 — 主力色
+    background:    '#F6F3EF',   // 暖灰白 — 页面底
+    surface:       '#FFFFFF',   // 纯白卡片
+    muted:         '#F0EBE3',   // 暖灰
+    border:        '#E0D9CE',   // 暖边框
+    accent:        '#FFB800',   // 电光金 — 强调点缀
+    text:          '#12100E',   // 极黑 — 主文字
+    textSecondary: '#7A7268',   // 暖灰褐 — 辅文字
   },
   dark: {
-    primary:       '#D4A853',   // 暖金 — 主力按钮、强调色
-    background:    '#0D0B0E',   // 丝绒黑 — 页面底色
-    surface:       '#19161C',   // 深茄紫 — 卡片底色
-    muted:         '#1F1B22',   // 暗紫灰 — 次要区域
-    border:        '#2E2830',   // 暗紫边框
-    accent:        '#C41E3A',   // 烈绯红 — 点缀、警示
-    text:          '#EDE8E0',   // 暖奶油 — 主文字
-    textSecondary: '#9A9298',   // 薰衣草灰 — 辅助文字
+    primary:       '#FF5277',   // 亮玫红 — 主力色
+    background:    '#0E0C0A',   // 深黑暖底
+    surface:       '#1C1815',   // 深棕卡片
+    muted:         '#24201A',   // 暗暖灰
+    border:        '#322C24',   // 暗金边
+    accent:        '#FFB800',   // 电光金
+    text:          '#F5F0E8',   // 暖白
+    textSecondary: '#9A9084',   // 灰褐
   },
 }
 
 // ========== 导出 ==========
 
-export const THEME = VELVET_GOLD
+export const THEME = EDITORIAL_RAVE
 
-// ========== localStorage 存储 ==========
+// ========== localStorage ==========
 
 export function getStoredMode(): ThemeMode {
   if (typeof window === 'undefined') return 'system'
@@ -71,21 +71,17 @@ export function getSystemPrefersDark(): boolean {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
 
-// 根据 mode 解析实际是否 dark
 export function resolveDark(mode: ThemeMode): boolean {
   if (mode === 'light') return false
   if (mode === 'dark') return true
   return getSystemPrefersDark()
 }
 
-// ========== 应用主题到 DOM ==========
-
 export function applyTheme(dark: boolean) {
   if (typeof document === 'undefined') return
   const palette = dark ? THEME.dark : THEME.light
   const root = document.documentElement
 
-  // 切换 Tailwind dark class
   root.classList.toggle('dark', dark)
 
   const vars: Record<string, string> = {
@@ -102,7 +98,6 @@ export function applyTheme(dark: boolean) {
     '--skin-text':           palette.text,
     '--skin-text-secondary': palette.textSecondary,
 
-    // shadcn/ui 兼容
     '--background':          palette.background,
     '--foreground':          palette.text,
     '--card':                palette.surface,

@@ -5,7 +5,7 @@ import Nav from "@/components/Nav";
 import "./globals.css";
 
 export const metadata: Metadata = { title: "迷你兔", description: "个人数字花园", manifest: "/manifest.json", icons: { icon: "/favicon.ico" } };
-export const viewport: Viewport = { themeColor: "#7B2D3B", width: "device-width", initialScale: 1, maximumScale: 1 };
+export const viewport: Viewport = { themeColor: "#E8315B", width: "device-width", initialScale: 1, maximumScale: 1 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
