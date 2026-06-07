@@ -37,7 +37,8 @@ export default function Nav() {
         style={{ backgroundColor: "var(--skin-surface)" }}
       >
         <div className="mx-auto flex h-14 max-w-6xl items-center px-4">
-          <div className="flex items-center flex-1 min-w-0">
+          {/* Left: Logo + Nav */}
+          <div className="flex items-center shrink-0">
             <Link href="/" className="flex items-center gap-2 shrink-0 group">
               <span
                 className="inline-flex items-center justify-center size-8 rounded-lg text-sm font-black select-none"
@@ -88,9 +89,10 @@ export default function Nav() {
                 )
               })}
             </nav>
-
-            <LyricsMarquee />
           </div>
+
+          {/* LyricsMarquee — right side, fills remaining space */}
+          <LyricsMarquee />
         </div>
       </header>
 

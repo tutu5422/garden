@@ -34,8 +34,8 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b-2 border-[var(--skin-border)]" style={{ backgroundColor: 'var(--skin-surface)' }}>
       <div className="mx-auto flex h-14 max-w-6xl items-center px-4">
-        {/* Left group: Logo + Nav + LyricsMarquee */}
-        <div className="flex items-center flex-1 min-w-0">
+        {/* Left: Logo + Nav */}
+        <div className="flex items-center shrink-0">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
             <span
@@ -80,10 +80,10 @@ export default function Navbar() {
               )
             })}
           </nav>
-
-          {/* Lyrics Marquee — fills blank space when music is playing */}
-          <LyricsMarquee />
         </div>
+
+        {/* Lyrics Marquee — right side, fills remaining space */}
+        <LyricsMarquee />
 
         {/* Right Section */}
         <div className="flex items-center gap-2 shrink-0">

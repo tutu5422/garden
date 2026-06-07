@@ -24,6 +24,8 @@ interface MusicContextType {
   muted: boolean
   loopMode: LoopMode
   currentTrack: Track | null
+  currentTime: number
+  duration: number
   play: (index?: number) => void
   pause: () => void
   togglePlay: () => void
@@ -75,6 +77,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [volume, setVolumeState] = useState(0.6)
   const [muted, setMutedState] = useState(false)
   const [loopMode, setLoopMode] = useState<LoopMode>('all')
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
   const [ready, setReady] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const shuffleOrderRef = useRef<number[]>([])
@@ -100,7 +104,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     loadTracks()
   }, [])
 
-  // 初始化 Audio
+  // 初始化 Audio + 时间追踪
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio()
@@ -108,6 +112,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       audioRef.current.addEventListener('error', () => {
         toast.error('无法播放此音频')
         setPlaying(false)
+      })
+      audioRef.current.addEventListener('timeupdate', () => {
+        setCurrentTime(audioRef.current?.currentTime || 0)
+      })
+      audioRef.current.addEventListener('durationchange', () => {
+        setDuration(audioRef.current?.duration || 0)
+      })
+      audioRef.current.addEventListener('loadedmetadata', () => {
+        setDuration(audioRef.current?.duration || 0)
       })
     }
     return () => { audioRef.current?.pause() }
@@ -243,6 +256,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   return (
     <MusicContext.Provider value={{
       playlist, currentIndex, playing, volume, muted, loopMode, currentTrack,
+      currentTime, duration,
       play, pause, togglePlay, next, prev, setVolume, setMuted, cycleLoopMode,
       addTrack, addTracks, removeTrack, clearPlaylist,
     }}>
