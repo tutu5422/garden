@@ -82,8 +82,11 @@ export default function Navbar() {
           </nav>
         </div>
 
-        {/* Lyrics Marquee — right side, fills remaining space */}
-        <LyricsMarquee />
+        {/* Spacer */}
+        <div className="hidden md:block flex-1" />
+
+        {/* Lyrics Marquee — 右侧 */}
+        <LyricsMarquee className="flex-1 max-w-xs" />
 
         {/* Right Section */}
         <div className="flex items-center gap-2 shrink-0">
