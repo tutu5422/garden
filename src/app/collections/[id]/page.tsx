@@ -2,8 +2,8 @@
 
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Plus, X, Layers, FileText, ExternalLink, BookOpen, ImageIcon, Film, Wrench } from 'lucide-react'
-import { getLocalCollections, type LocalCollection } from '@/lib/db/local-store'
+import { ChevronLeft, Plus, X, Layers, FileText, ExternalLink, BookOpen, ImageIcon, Film, Wrench, Pencil, Check } from 'lucide-react'
+import { getLocalCollections, updateLocalCollection, type LocalCollection } from '@/lib/db/local-store'
 import { toast } from 'sonner'
 
 interface GardenNote {
@@ -21,6 +21,9 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
   const [collectionNotes, setCollectionNotes] = useState<GardenNote[]>([])
   const [allNotes, setAllNotes] = useState<GardenNote[]>([])
   const [showAdd, setShowAdd] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDesc, setEditDesc] = useState('')
 
   const loadData = () => {
     const cols = getLocalCollections()
@@ -36,6 +39,36 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
   }
 
   useEffect(() => { loadData() }, [id])
+
+  const startEdit = () => {
+    setEditTitle(collection?.title || '')
+    setEditDesc(collection?.description || '')
+    setEditing(true)
+  }
+
+  const saveEdit = () => {
+    if (!editTitle.trim()) { toast.error('合集名称不能为空'); return }
+    updateLocalCollection(id, { title: editTitle.trim(), description: editDesc.trim() })
+    // 同步更新所有相关笔记的 collectionName
+    try {
+      let notes: GardenNote[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
+      notes = notes.map(n =>
+        n.collectionId === id ? { ...n, collectionName: editTitle.trim() } : n
+      )
+      localStorage.setItem('minitu_notes', JSON.stringify(notes))
+      // 同步 garden_collections
+      const cols = JSON.parse(localStorage.getItem('garden_collections') || '[]')
+      const updated = cols.map((c: any) =>
+        c.id === id ? { ...c, title: editTitle.trim() } : c
+      )
+      localStorage.setItem('garden_collections', JSON.stringify(updated))
+    } catch {}
+    toast.success('合集已更新')
+    setEditing(false)
+    loadData()
+  }
+
+  const cancelEdit = () => setEditing(false)
 
   const addToCollection = (noteId: string, title: string) => {
     let notes: GardenNote[] = []
@@ -82,9 +115,41 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
             <span className="section-number">CD</span>
             <div className="rule-thin w-8" style={{ background: 'var(--skin-border)' }} />
           </div>
-          <h1 className="editorial-section-title" style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-text)' }}>{collection.title}</h1>
-          {collection.description && (
-            <p className="text-sm text-[var(--skin-text-secondary)] mt-2">{collection.description}</p>
+          {editing ? (
+            <div className="space-y-3 max-w-md animate-fade-in-scale">
+              <input
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                className="input text-2xl font-extrabold"
+                style={{ fontFamily: 'var(--font-display)' }}
+                placeholder="合集名称"
+                autoFocus
+              />
+              <input
+                value={editDesc}
+                onChange={e => setEditDesc(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                className="input text-sm"
+                placeholder="简短描述（可选）"
+              />
+              <div className="flex gap-2">
+                <button onClick={saveEdit} className="btn btn-sm"><Check className="size-3.5" />保存</button>
+                <button onClick={cancelEdit} className="btn btn-ghost btn-sm">取消</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <h1 className="editorial-section-title" style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-text)' }}>{collection.title}</h1>
+                <button onClick={startEdit} className="p-1.5 hover:text-[var(--skin-primary)] hover:bg-[var(--skin-muted)] rounded transition-all" title="编辑合集">
+                  <Pencil className="size-4" style={{ color: 'var(--skin-text-secondary)' }} />
+                </button>
+              </div>
+              {collection.description && (
+                <p className="text-sm text-[var(--skin-text-secondary)] mt-2">{collection.description}</p>
+              )}
+            </>
           )}
           <div className="flex items-center gap-3 mt-2">
             <span className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-primary)' }}>{collectionNotes.length}</span>

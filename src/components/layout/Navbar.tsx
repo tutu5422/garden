@@ -11,13 +11,9 @@ import {
   Calendar,
   FileText,
   Menu,
-  PlusCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { mainNavItems } from '@/lib/constants/navigation'
-import SearchBar from '@/components/shared/SearchBar'
-import SkinToggle from '@/components/theme/SkinToggle'
-import UserMenu from '@/components/layout/UserMenu'
 import LyricsMarquee from '@/components/music/LyricsMarquee'
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -82,33 +78,13 @@ export default function Navbar() {
           </nav>
         </div>
 
-        {/* Spacer */}
-        <div className="hidden md:block flex-1" />
+        {/* Lyrics area — fills space, right-aligned */}
+        <div className="hidden md:flex flex-1 justify-end items-center min-w-0">
+          <LyricsMarquee className="max-w-[320px]" />
+        </div>
 
-        {/* Lyrics Marquee — 右侧 */}
-        <LyricsMarquee className="flex-1 max-w-xs" />
-
-        {/* Right Section */}
-        <div className="flex items-center gap-2 shrink-0">
-          <SearchBar />
-
-          <Link
-            href="/notes"
-            className={cn(
-              buttonVariants({ variant: 'outline', size: 'sm' }),
-              'hidden sm:inline-flex gap-2 font-bold'
-            )}
-            style={{ borderWidth: '2px' }}
-          >
-            <PlusCircle className="size-4" />
-            <span>写笔记</span>
-          </Link>
-
-          <SkinToggle />
-
-          <UserMenu />
-
-          {/* Mobile Menu */}
+        {/* Mobile Menu */}
+        <div className="flex items-center shrink-0">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'md:hidden hover:bg-[var(--skin-muted)]')}>
               <Menu className="size-5" />
@@ -134,24 +110,6 @@ export default function Navbar() {
                     {item.label}
                   </Link>
                 ))}
-                <hr className="my-2 border-[var(--skin-border)]" style={{ borderWidth: '2px' }} />
-                <Link
-                  href="/notes"
-                  className={cn(buttonVariants({ variant: 'outline' }), 'justify-start gap-3 animate-fade-in-up font-bold')}
-                  style={{ borderWidth: '2px' }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <PlusCircle className="size-5" />
-                  写笔记
-                </Link>
-                <Link
-                  href="/profile"
-                  className={cn(buttonVariants({ variant: 'ghost' }), 'justify-start gap-3 animate-fade-in-up font-bold')}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <span className="text-base w-5 text-center">👤</span>
-                  个人中心
-                </Link>
               </nav>
             </SheetContent>
           </Sheet>

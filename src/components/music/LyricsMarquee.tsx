@@ -124,8 +124,8 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
 
   if ((!playlist || playlist.length === 0) && !displayText) {
     return (
-      <div className={rootCls}>
-        <span className="text-xs whitespace-nowrap font-medium select-none"
+      <div className={cn(rootCls, 'justify-end')}>
+        <span className="text-xs whitespace-nowrap font-medium select-none text-right"
               style={{ color: 'var(--skin-text-secondary)', opacity: 0.35 }}>
           🎵 上传音乐，播放时歌词将在此滚动
         </span>
@@ -135,9 +135,9 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
 
   if (!displayText || !playing) {
     return (
-      <div className={rootCls}>
+      <div className={cn(rootCls, 'justify-end')}>
         {playlist && playlist.length > 0 && (
-          <span className="text-xs whitespace-nowrap font-medium select-none"
+          <span className="text-xs whitespace-nowrap font-medium select-none text-right"
                 style={{ color: 'var(--skin-text-secondary)', opacity: 0.25 }}>
             {playlist.length} 首歌曲就绪 · 点击右下角播放
           </span>
@@ -151,16 +151,16 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
     const cur = lrcLines[currentLineIdx >= 0 ? currentLineIdx : 0]
     const next = currentLineIdx >= 0 && currentLineIdx + 1 < lrcLines.length ? lrcLines[currentLineIdx + 1] : null
     return (
-      <div className={rootCls}>
-        <div className="flex flex-col justify-center w-full overflow-hidden">
+      <div className={cn(rootCls, 'justify-end')}>
+        <div className="flex flex-col justify-center w-full overflow-hidden items-end">
           {cur && (
-            <span className="text-sm font-bold whitespace-nowrap truncate transition-all duration-300"
+            <span className="text-sm font-bold whitespace-nowrap truncate transition-all duration-300 text-right"
                   style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-primary)', letterSpacing: '0.03em' }}>
               {cur.text}
             </span>
           )}
           {next && (
-            <span className="text-[11px] whitespace-nowrap truncate mt-0.5 transition-all duration-300"
+            <span className="text-[11px] whitespace-nowrap truncate mt-0.5 transition-all duration-300 text-right"
                   style={{ color: 'var(--skin-text-secondary)', opacity: 0.35 }}>
               {next.text}
             </span>
@@ -177,12 +177,12 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
 
   // 跑马灯模式
   return (
-    <div className={cn(rootCls, 'overflow-hidden relative group/marquee')}>
+    <div className={cn(rootCls, 'overflow-hidden relative group/marquee justify-end')}>
       <div className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
            style={{ background: 'linear-gradient(to right, var(--skin-surface), transparent)' }} />
       <div className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
            style={{ background: 'linear-gradient(to left, var(--skin-surface), transparent)' }} />
-      <div className="marquee-track w-full">
+      <div className="marquee-track w-full text-right">
         <span ref={textRef}
               className={`marquee-text leading-none ${hasLyrics ? 'marquee-lyrics' : 'marquee-title'}`}
               style={{

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, File, Trash2, Download, FileText, Music, Image, Archive, Film, Search, X, ChevronDown } from "lucide-react";
 import { useMusic, type Track } from "@/lib/music/MusicContext";
 import { saveBlob, getBlob, deleteBlob } from "@/lib/db/idb-store";
@@ -43,13 +43,18 @@ function formatBytes(bytes: number): string {
 }
 
 export default function Files() {
-  const [files, setFiles] = useState<MyFile[]>(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
-  });
+  const [files, setFiles] = useState<MyFile[]>([]);
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
   const [editingCat, setEditingCat] = useState<string | null>(null);
-  const [customCats, setCustomCats] = useState<string[]>(() => loadCats());
+  const [customCats, setCustomCats] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
+    setCustomCats(loadCats());
+    setLoaded(true);
+  }, []);
   const [newCatName, setNewCatName] = useState("");
   const [showCatManager, setShowCatManager] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -220,7 +225,11 @@ export default function Files() {
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {!loaded ? (
+        <div className="text-center py-24">
+          <div className="size-10 mx-auto mb-4 rounded-full border-[3px] border-[var(--skin-border)] border-t-[var(--skin-primary)] animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-24">
           <File className="size-16 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
           <p className="text-sm text-[var(--skin-text-secondary)] font-bold tracking-wider">{search ? "没有匹配" : "还没有文件"}</p>

@@ -14,17 +14,13 @@ const navItems = [
   { href: "/files", icon: FileText, label: "文件" },
 ]
 
-const richPaths = [
-  "/login", "/signup", "/callback",
-  "/resources", "/categories", "/tags", "/search",
-  "/profile", "/visitors",
-]
+const authPaths = ["/login", "/signup", "/callback"]
 
 export default function Nav() {
   const path = usePathname()
 
-  // On rich pages, MainLayout provides the full Navbar + MobileBottomNav
-  if (richPaths.some(p => path === p || path.startsWith(p + "/"))) return null
+  // Auth pages have their own layout, no main navbar
+  if (authPaths.some(p => path === p || path.startsWith(p + "/"))) return null
 
   const isActive = (href: string) =>
     path === href || (href !== "/" && path.startsWith(href))
@@ -47,7 +43,7 @@ export default function Nav() {
                 MT
               </span>
               <span
-                className="text-xl font-extrabold tracking-wider select-none"
+                className="hidden sm:inline text-xl font-extrabold tracking-wider select-none"
                 style={{
                   color: "var(--skin-primary)",
                   fontFamily: "var(--font-display)",
@@ -91,8 +87,10 @@ export default function Nav() {
             </nav>
           </div>
 
-          {/* LyricsMarquee — right side, fills remaining space */}
-          <LyricsMarquee />
+          {/* Lyrics area — fills space, right-aligned */}
+          <div className="flex-1 flex justify-end items-center min-w-0">
+            <LyricsMarquee className="max-w-[320px]" />
+          </div>
         </div>
       </header>
 

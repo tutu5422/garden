@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Trash2, Upload, X, Layers, Pencil, BookOpen } from "lucide-react";
+import { Plus, Search, Trash2, Upload, X, Layers, Pencil, BookOpen, Check, Edit3 } from "lucide-react";
 
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[];
@@ -77,6 +77,9 @@ export default function Notes() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
+  const [editCollectionName, setEditCollectionName] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try { setNotes(JSON.parse(localStorage.getItem("minitu_notes") || "[]")); } catch {}
@@ -84,6 +87,32 @@ export default function Notes() {
   }, []);
 
   const save = (n: Note[]) => { setNotes(n); localStorage.setItem("minitu_notes", JSON.stringify(n)); };
+
+  const startRename = (col: Collection) => {
+    setEditingCollectionId(col.id);
+    setEditCollectionName(col.title);
+    setTimeout(() => renameInputRef.current?.focus(), 50);
+  };
+
+  const saveRename = () => {
+    if (!editingCollectionId || !editCollectionName.trim()) {
+      setEditingCollectionId(null);
+      return;
+    }
+    const updated = collections.map(c =>
+      c.id === editingCollectionId ? { ...c, title: editCollectionName.trim() } : c
+    );
+    setCollections(updated);
+    localStorage.setItem("garden_collections", JSON.stringify(updated));
+    // 同步更新所有相关笔记的 collectionName
+    const updatedNotes = notes.map(n =>
+      n.collectionId === editingCollectionId ? { ...n, collectionName: editCollectionName.trim() } : n
+    );
+    save(updatedNotes);
+    setEditingCollectionId(null);
+  };
+
+  const cancelRename = () => { setEditingCollectionId(null); };
 
   const filtered = notes.filter(n => {
     if (activeCollection === "uncategorized" && n.collectionId) return false;
@@ -167,12 +196,36 @@ export default function Notes() {
         </button>
         {collections.map(col => {
           const count = notes.filter(n => n.collectionId === col.id).length;
-          if (count === 0) return null;
-          return (
-            <button key={col.id} onClick={() => setActiveCollection(col.id)}
-              className={activeCollection === col.id ? "tag tag-active" : "tag"}>
-              {col.title} <span className="ml-1 opacity-70">{count}</span>
-            </button>
+          if (count === 0 && editingCollectionId !== col.id) return null;
+          const isEditing = editingCollectionId === col.id;
+          return isEditing ? (
+            <span key={col.id} className="inline-flex items-center gap-1">
+              <input
+                ref={renameInputRef}
+                value={editCollectionName}
+                onChange={e => setEditCollectionName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") saveRename(); if (e.key === "Escape") cancelRename(); }}
+                onBlur={saveRename}
+                className="text-[11px] font-bold px-2 py-1 rounded-full border-2 border-[var(--skin-primary)] bg-[var(--skin-surface)] outline-none"
+                style={{ color: 'var(--skin-text)', width: `${Math.max(60, editCollectionName.length * 14)}px`, minWidth: '60px' }}
+              />
+              <button onClick={saveRename} className="p-0.5 hover:text-green-500 transition-colors"><Check className="size-3" /></button>
+              <button onClick={cancelRename} className="p-0.5 hover:text-red-500 transition-colors"><X className="size-3" /></button>
+            </span>
+          ) : (
+            <span key={col.id} className="inline-flex items-center gap-0.5 group/rename">
+              <button onClick={() => setActiveCollection(col.id)}
+                className={activeCollection === col.id ? "tag tag-active" : "tag"}>
+                {col.title} <span className="ml-1 opacity-70">{count}</span>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); startRename(col); }}
+                className="p-0.5 opacity-0 group-hover/rename:opacity-100 hover:text-[var(--skin-primary)] transition-all cursor-pointer shrink-0"
+                title="重命名合集"
+              >
+                <Edit3 className="size-3" />
+              </button>
+            </span>
           );
         })}
       </div>

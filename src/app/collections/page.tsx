@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Layers, Sparkles } from 'lucide-react'
-import { getLocalCollections, createLocalCollection, deleteLocalCollection, type LocalCollection } from '@/lib/db/local-store'
+import { getLocalCollections, createLocalCollection, deleteLocalCollection, updateLocalCollection, type LocalCollection } from '@/lib/db/local-store'
 import CollectionCard from '@/components/collections/CollectionCard'
 import { toast } from 'sonner'
 
@@ -12,6 +12,10 @@ export default function CollectionsPage() {
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
   const [desc, setDesc] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     const cols = getLocalCollections()
@@ -48,10 +52,40 @@ export default function CollectionsPage() {
     refresh()
   }
 
-  const handleDelete = (id: string, name: string) => {
-    deleteLocalCollection(id)
-    toast.success(`"${name}" 已删除`)
+  const handleDelete = () => {
+    if (!confirmDelete) return
+    deleteLocalCollection(confirmDelete.id)
+    toast.success(`"${confirmDelete.name}" 已删除`)
+    setConfirmDelete(null)
     refresh()
+  }
+
+  const startEdit = (col: LocalCollection) => {
+    setEditingId(col.id)
+    setEditTitle(col.title)
+    setEditDesc(col.description || '')
+  }
+
+  const saveEdit = () => {
+    if (!editingId || !editTitle.trim()) {
+      toast.error('合集名称不能为空')
+      return
+    }
+    updateLocalCollection(editingId, { title: editTitle.trim(), description: editDesc.trim() })
+    try {
+      const notes: any[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
+      const updated = notes.map((n: any) => n.collectionId === editingId ? { ...n, collectionName: editTitle.trim() } : n)
+      localStorage.setItem('minitu_notes', JSON.stringify(updated))
+    } catch {}
+    toast.success('合集已更新')
+    setEditingId(null)
+    refresh()
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditTitle('')
+    setEditDesc('')
   }
 
   return (
@@ -112,15 +146,69 @@ export default function CollectionsPage() {
         <div className="magazine-grid-3uneven">
           {collections.map(col => (
             <div key={col.id} className="relative group/col">
-              <button
-                onClick={() => handleDelete(col.id, col.title)}
-                className="absolute top-3 right-3 p-2 rounded-lg opacity-0 group-hover/col:opacity-100 bg-red-500/80 hover:bg-red-500 text-white transition-all text-xs z-10 backdrop-blur-sm"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                </svg>
-              </button>
-              <CollectionCard collection={col} noteCount={noteCounts[col.id] || 0} />
+              {editingId === col.id ? (
+                /* Edit Form */
+                <div className="card card-rounded-tr p-6 min-h-[200px] space-y-4 animate-fade-in-scale flex flex-col justify-center">
+                  <input
+                    value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="合集名称" className="input text-sm" autoFocus
+                    onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                  />
+                  <input
+                    value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
+                    placeholder="简短描述（可选）" className="input text-sm"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={cancelEdit} className="btn btn-ghost btn-sm">取消</button>
+                    <button onClick={saveEdit} className="btn btn-sm">保存</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Action buttons — visible on hover */}
+                  <div className="absolute top-3 right-3 flex gap-1.5 z-10">
+                    {/* Edit */}
+                    <button
+                      onClick={(e) => { e.preventDefault(); startEdit(col) }}
+                      className="p-2 rounded-lg opacity-0 group-hover/col:opacity-100 bg-white/20 hover:bg-white/35 text-white backdrop-blur-sm transition-all text-xs"
+                      title="编辑合集"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                      </svg>
+                    </button>
+
+                    {/* Delete / Confirm */}
+                    {confirmDelete?.id === col.id ? (
+                      <>
+                        <button
+                          onClick={handleDelete}
+                          className="p-2 rounded-lg bg-red-500 text-white backdrop-blur-sm transition-all text-[10px] font-bold whitespace-nowrap"
+                        >
+                          确认
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(null)}
+                          className="p-2 rounded-lg bg-white/20 hover:bg-white/35 text-white backdrop-blur-sm transition-all text-[10px] font-bold"
+                        >
+                          取消
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.preventDefault(); setConfirmDelete({ id: col.id, name: col.title }) }}
+                        className="p-2 rounded-lg opacity-0 group-hover/col:opacity-100 bg-red-500/80 hover:bg-red-500 text-white backdrop-blur-sm transition-all text-xs"
+                        title="删除合集"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  <CollectionCard collection={col} noteCount={noteCounts[col.id] || 0} />
+                </>
+              )}
             </div>
           ))}
         </div>

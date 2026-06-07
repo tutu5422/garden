@@ -27,6 +27,7 @@ export default function ResourcesContent() {
   const [resources, setResources] = useState<Resource[]>(initial)
   const [count, setCount] = useState(initial.length)
   const [loading, setLoading] = useState(isSupabaseReady())
+  const [today, setToday] = useState('')
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
@@ -60,11 +61,14 @@ export default function ResourcesContent() {
     return () => { window.removeEventListener('focus', refresh); window.removeEventListener('storage', refresh) }
   }, [])
 
+  // 日期在客户端初始化，避免 SSR hydration 不一致
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }))
+  }, [])
+
   const catOptions = getLocalCategories().map(c => ({ name: c.name, slug: c.slug }))
   const colOptions = getLocalCollections().map(c => ({ name: c.title, slug: c.title }))
   const tagOptions = getLocalTags().map(t => ({ name: t.name, slug: t.slug }))
-
-  const today = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">

@@ -68,6 +68,19 @@ function buildSlots(entries: (NoteItem | TimelineMemo)[]): TimeSlot[] {
   return slots;
 }
 
+// === 交错合并 memo/note（按精确时间排序） ===
+type MergedItem =
+  | { kind: 'memo'; time: string; memo: TimelineMemo }
+  | { kind: 'note'; time: string; note: NoteItem };
+
+function mergeSlotItems(slot: TimeSlot): MergedItem[] {
+  const items: MergedItem[] = [
+    ...slot.memos.map(m => ({ kind: 'memo' as const, time: m.createdAt, memo: m })),
+    ...slot.notes.map(n => ({ kind: 'note' as const, time: n.createdAt, note: n })),
+  ];
+  return items.sort((a, b) => b.time.localeCompare(a.time));
+}
+
 export default function TimelinePage() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,7 +219,9 @@ export default function TimelinePage() {
                style={{ background: `linear-gradient(to bottom, var(--skin-primary), var(--skin-accent), transparent 95%)` }} />
 
           <div className="space-y-4">
-            {slots.map((slot, idx) => (
+            {slots.map((slot, idx) => {
+              const items = mergeSlotItems(slot);
+              return (
               <div key={slot.fullTime + idx} className="relative">
                 {/* Time label */}
                 <div className="flex items-center justify-center mb-3">
@@ -223,99 +238,97 @@ export default function TimelinePage() {
                   </span>
                 </div>
 
-                {/* Two columns: left = memo, right = note */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                  {/* LEFT — Memos */}
-                  <div className="md:pr-6 md:text-right">
-                    {slot.memos.length > 0 ? (
-                      <div className="space-y-3">
-                        {slot.memos.map((memo, mi) => (
-                          <div key={memo.id} className="card rounded-xl p-5 group relative md:ml-0 ml-0"
-                               style={{ borderLeft: `3px solid ${C.plum}` }}>
-                            {/* Memo dot on desktop — only first item */}
-                            {mi === 0 && (
-                              <div className="hidden md:block absolute -right-[calc(1rem+4px)] top-5 size-2 rounded-full"
-                                   style={{ background: C.plum, boxShadow: `0 0 8px ${C.plum}66` }} />
-                            )}
-                            <p className="text-sm leading-relaxed font-medium" style={{ color: 'var(--skin-text)' }}>
-                              {memo.content}
-                            </p>
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-[var(--skin-border)] md:flex-row-reverse">
-                              <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
-                                {new Date(memo.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                              <button onClick={() => delMemo(memo.id)}
-                                      className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
-                                <Trash2 className="size-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      /* 留白 */
-                      <div className="hidden md:block" style={{ minHeight: '60px' }} />
-                    )}
+                {/* 交错双轨：每行只占一侧，对侧留空 */}
+                {items.length === 0 ? (
+                  <div className="hidden md:grid grid-cols-2 gap-8">
+                    <div style={{ minHeight: '60px' }} />
+                    <div style={{ minHeight: '60px' }} />
                   </div>
-
-                  {/* RIGHT — Notes */}
-                  <div className="md:pl-6">
-                    {slot.notes.length > 0 ? (
-                      <div className="space-y-3">
-                        {slot.notes.map((note, ni) => (
-                          <Link key={note.id} href={`/notes/edit?id=${note.id}`}
-                             className="card rounded-xl p-5 group relative block hover:shadow-md transition-all duration-300"
-                             style={{ borderLeft: `3px solid ${C.teal}` }}>
-                            {/* Note dot on desktop — only first item */}
-                            {ni === 0 && slot.memos.length === 0 && (
-                              <div className="hidden md:block absolute -left-[calc(1rem+4px)] top-5 size-2 rounded-full"
-                                   style={{ background: C.teal, boxShadow: `0 0 8px ${C.teal}66` }} />
-                            )}
-                            <div className="flex items-center gap-2 mb-2">
-                              <Clock className="size-3" style={{ color: C.teal }} />
-                              <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: C.teal }}>
-                                笔记
-                              </span>
-                              {note.collectionName && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold"
-                                      style={{ background: `${C.teal}15`, color: C.teal }}>
-                                  {note.collectionName}
-                                </span>
-                              )}
-                            </div>
-                            <h4 className="text-sm font-extrabold line-clamp-1 mb-1"
-                                style={{ color: 'var(--skin-text)', fontFamily: 'var(--font-display)' }}>
-                              {note.title}
-                            </h4>
-                            {note.content && (
-                              <p className="text-xs text-[var(--skin-text-secondary)] line-clamp-2 leading-relaxed">
-                                {note.content.slice(0, 80)}
-                              </p>
-                            )}
-                            {note.tags?.length > 0 && (
-                              <div className="flex gap-1 flex-wrap mt-2">
-                                {note.tags.slice(0, 3).map(t => (
-                                  <span key={t} className="text-[10px] text-[var(--skin-text-secondary)] font-bold">#{t}</span>
-                                ))}
+                ) : (
+                  <div className="space-y-3">
+                    {items.map((item) => (
+                      <div key={item.kind === 'memo' ? item.memo.id : item.note.id}
+                           className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                        {item.kind === 'memo' ? (
+                          <>
+                            {/* 备忘 — 左侧 */}
+                            <div className="md:pr-6 md:text-right">
+                              <div className="card rounded-xl p-5 group relative"
+                                   style={{ borderLeft: `3px solid ${C.plum}` }}>
+                                <div className="hidden md:block absolute -right-[calc(1rem+4px)] top-5 size-2 rounded-full"
+                                     style={{ background: C.plum, boxShadow: `0 0 8px ${C.plum}66` }} />
+                                <p className="text-sm leading-relaxed font-medium" style={{ color: 'var(--skin-text)' }}>
+                                  {item.memo.content}
+                                </p>
+                                <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-[var(--skin-border)] md:flex-row-reverse">
+                                  <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
+                                    {new Date(item.memo.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                  <button onClick={() => delMemo(item.memo.id)}
+                                          className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
+                                    <Trash2 className="size-3.5" />
+                                  </button>
+                                </div>
                               </div>
-                            )}
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-[var(--skin-border)]">
-                              <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
-                                {new Date(note.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                              <Pencil className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: C.teal }} />
                             </div>
-                          </Link>
-                        ))}
+                            {/* 右侧留空 */}
+                            <div className="hidden md:block" style={{ minHeight: '60px' }} />
+                          </>
+                        ) : (
+                          <>
+                            {/* 左侧留空 */}
+                            <div className="hidden md:block" style={{ minHeight: '60px' }} />
+                            {/* 笔记 — 右侧 */}
+                            <div className="md:pl-6">
+                              <Link href={`/notes/edit?id=${item.note.id}`}
+                                 className="card rounded-xl p-5 group relative block hover:shadow-md transition-all duration-300"
+                                 style={{ borderLeft: `3px solid ${C.teal}` }}>
+                                <div className="hidden md:block absolute -left-[calc(1rem+4px)] top-5 size-2 rounded-full"
+                                     style={{ background: C.teal, boxShadow: `0 0 8px ${C.teal}66` }} />
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Clock className="size-3" style={{ color: C.teal }} />
+                                  <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: C.teal }}>
+                                    笔记
+                                  </span>
+                                  {item.note.collectionName && (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded font-bold"
+                                          style={{ background: `${C.teal}15`, color: C.teal }}>
+                                      {item.note.collectionName}
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="text-sm font-extrabold line-clamp-1 mb-1"
+                                    style={{ color: 'var(--skin-text)', fontFamily: 'var(--font-display)' }}>
+                                  {item.note.title}
+                                </h4>
+                                {item.note.content && (
+                                  <p className="text-xs text-[var(--skin-text-secondary)] line-clamp-2 leading-relaxed">
+                                    {item.note.content.slice(0, 80)}
+                                  </p>
+                                )}
+                                {item.note.tags?.length > 0 && (
+                                  <div className="flex gap-1 flex-wrap mt-2">
+                                    {item.note.tags.slice(0, 3).map(t => (
+                                      <span key={t} className="text-[10px] text-[var(--skin-text-secondary)] font-bold">#{t}</span>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-[var(--skin-border)]">
+                                  <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
+                                    {new Date(item.note.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
+                                  </span>
+                                  <Pencil className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: C.teal }} />
+                                </div>
+                              </Link>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    ) : (
-                      /* 留白 */
-                      <div className="hidden md:block" style={{ minHeight: '60px' }} />
-                    )}
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}
