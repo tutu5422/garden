@@ -3,12 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Plus, Layers, Sparkles } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
-import { getLocalCollections, createLocalCollection, deleteLocalCollection, getLocalResources, type LocalCollection } from '@/lib/db/local-store'
+import { getLocalCollections, createLocalCollection, deleteLocalCollection, type LocalCollection } from '@/lib/db/local-store'
 import CollectionCard from '@/components/collections/CollectionCard'
-import EmptyState from '@/components/shared/EmptyState'
 import { toast } from 'sonner'
 
 export default function CollectionsPage() {
@@ -36,131 +32,86 @@ export default function CollectionsPage() {
     refresh()
   }
 
-  const today = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
+    <div className="mx-auto max-w-6xl px-6 py-8 page-enter">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div
-            className="flex items-center justify-center size-10 rounded-xl"
-            style={{
-              background: 'linear-gradient(135deg, var(--skin-primary), color-mix(in srgb, var(--skin-primary) 50%, var(--skin-background)))',
-              boxShadow: '0 2px 12px rgba(71,112,155,0.15)',
-            }}
-          >
-            <Layers className="size-5 text-white" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{today}</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {collections.length === 0 ? '创建合集来归类你的笔记' : `${collections.length} 个合集`}
-            </p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
+            合集
+          </h1>
+          <div className="flex items-center gap-3 mt-2">
+            <span className="stat-number text-2xl" style={{ color: 'var(--skin-primary)' }}>{collections.length}</span>
+            <span className="text-xs tracking-widest uppercase text-[var(--skin-text-secondary)] font-bold">
+              {collections.length === 0 ? '创建合集来归类你的笔记' : '个合集'}
+            </span>
           </div>
         </div>
-        <button
-          onClick={() => setAdding(!adding)}
-          className={cn(buttonVariants({ size: 'sm' }), 'gap-1.5 rounded-full')}
-        >
+        <button onClick={() => setAdding(!adding)} className="btn">
           <Plus className="size-4" /> 新建
         </button>
       </div>
 
-      {/* 新建表单 */}
+      {/* Create Form */}
       {adding && (
-        <div
-          className="rounded-2xl p-5 mb-6 space-y-3 animate-fade-in"
-          style={{
-            background: 'rgba(254, 255, 255, 0.5)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            border: '1px solid rgba(175, 200, 218, 0.35)',
-            boxShadow: '0 2px 12px rgba(71, 112, 155, 0.06)',
-          }}
-        >
+        <div className="card card-rounded-tr p-6 mb-8 space-y-4 animate-fade-in-scale">
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="size-4" style={{ color: 'var(--skin-primary)' }} />
-            <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>新建合集</span>
+            <span className="text-xs font-extrabold tracking-wider uppercase" style={{ color: 'var(--skin-primary)' }}>新建合集</span>
           </div>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="合集名称"
-            className="h-10 text-sm"
-            autoFocus
+          <input
+            value={title} onChange={(e) => setTitle(e.target.value)}
+            placeholder="合集名称" className="input text-sm" autoFocus
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            style={{
-              background: 'rgba(255,255,255,0.5)',
-              border: '1px solid rgba(175, 200, 218, 0.3)',
-            }}
           />
-          <Input
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            placeholder="简短描述（可选）"
-            className="h-10 text-sm"
-            style={{
-              background: 'rgba(255,255,255,0.5)',
-              border: '1px solid rgba(175, 200, 218, 0.3)',
-            }}
+          <input
+            value={desc} onChange={(e) => setDesc(e.target.value)}
+            placeholder="简短描述（可选）" className="input text-sm"
           />
-          <div className="flex gap-2 justify-end">
+          <div className="flex gap-3 justify-end">
             <button onClick={() => { setAdding(false); setTitle(''); setDesc('') }}
-              className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}>
-              取消
-            </button>
-            <button onClick={handleCreate}
-              className={cn(buttonVariants({ size: 'sm' }), 'rounded-full')}>
-              创建合集
-            </button>
+              className="btn btn-ghost btn-sm">取消</button>
+            <button onClick={handleCreate} className="btn btn-sm">创建合集</button>
           </div>
         </div>
       )}
 
       {collections.length === 0 ? (
-        <EmptyState
-          title="还没有合集"
-          description="将笔记按主题整理成合集，构建你的知识花园"
-          actionLabel="新建合集"
-          onAction={() => setAdding(true)}
-          icon={<Layers className="size-16" />}
-        />
+        <div className="text-center py-24">
+          <Layers className="size-16 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
+          <p className="text-sm text-[var(--skin-text-secondary)] font-bold tracking-wider mb-4">还没有合集</p>
+          <button onClick={() => setAdding(true)} className="btn">新建合集</button>
+        </div>
       ) : (
         <div
           className="waterfall-collections"
-          style={{
-            columnCount: 1,
-            columnGap: '0.75rem',
-          }}
+          style={{ columnCount: 1, columnGap: '1rem' }}
         >
           <style>{`
-            @media (min-width: 640px) {
-              .waterfall-collections { column-count: 2 !important; }
-            }
-            @media (min-width: 1024px) {
-              .waterfall-collections { column-count: 3 !important; }
-            }
+            @media (min-width: 640px) { .waterfall-collections { column-count: 2 !important; } }
+            @media (min-width: 1024px) { .waterfall-collections { column-count: 3 !important; } }
           `}</style>
           {collections.map(col => (
-            <div key={col.id} className="relative group/col" style={{ breakInside: 'avoid', marginBottom: '0.75rem' }}>
+            <div key={col.id} className="relative group/col" style={{ breakInside: 'avoid', marginBottom: '1rem' }}>
               <CollectionCard collection={col} noteCount={col.resourceIds.length} />
               <button
                 onClick={() => handleDelete(col.id, col.title)}
-                className="absolute top-2 right-2 p-1.5 rounded-full opacity-0 group-hover/col:opacity-100 hover:text-red-500 transition-all text-xs z-10"
-                style={{
-                  background: 'rgba(255,255,255,0.7)',
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(175,200,218,0.3)',
-                }}
+                className="absolute top-3 right-3 p-2 rounded-lg opacity-0 group-hover/col:opacity-100 hover:bg-red-500 hover:text-white transition-all text-xs z-10 bg-[var(--skin-surface)] border-2 border-[var(--skin-border)]"
               >
-                🗑️
+                <TrashIcon />
               </button>
             </div>
           ))}
         </div>
       )}
     </div>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+    </svg>
   )
 }

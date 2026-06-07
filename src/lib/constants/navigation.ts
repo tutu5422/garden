@@ -1,17 +1,17 @@
 import type { NavItem } from '@/lib/types'
 
 export const mainNavItems: NavItem[] = [
-  { label: '笔记', href: '/resources', icon: 'Library' },
-  { label: '合集', href: '/collections', icon: 'Layers' },
+  { label: '笔记', href: '/notes', icon: 'Library' },
   { label: '时间线', href: '/timeline', icon: 'Calendar' },
-  { label: '分类', href: '/categories', icon: 'FolderOpen' },
-  { label: '标签', href: '/tags', icon: 'Tag' },
+  { label: '合集', href: '/collections', icon: 'Layers' },
+  { label: '文件', href: '/files', icon: 'FileText' },
 ]
 
 export const mobileNavItems: NavItem[] = [
-  { label: '笔记', href: '/resources', icon: 'Library' },
+  { label: '笔记', href: '/notes', icon: 'Library' },
   { label: '时间线', href: '/timeline', icon: 'Calendar' },
-  { label: '更多', href: '#', icon: 'Menu' },
+  { label: '合集', href: '/collections', icon: 'Layers' },
+  { label: '文件', href: '/files', icon: 'FileText' },
 ]
 
 export const RESOURCE_TYPE_LABELS: Record<string, string> = {

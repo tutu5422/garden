@@ -2,133 +2,153 @@
 
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Plus, X, Layers } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { getLocalCollections, getResourcesForCollection, addResourceToCollection, removeResourceFromCollection, getLocalResources, type LocalCollection } from '@/lib/db/local-store'
-import type { Resource } from '@/lib/types'
-import ResourceGrid from '@/components/resources/ResourceGrid'
-import EmptyState from '@/components/shared/EmptyState'
+import { ChevronLeft, Plus, X, Layers, FileText, ExternalLink, BookOpen, ImageIcon, Film, Wrench } from 'lucide-react'
+import { getLocalCollections, type LocalCollection } from '@/lib/db/local-store'
 import { toast } from 'sonner'
+
+interface GardenNote {
+  id: string; title: string; content: string; type: string; tags: string[]
+  collectionId?: string; collectionName?: string
+  createdAt: string; image?: string; imageThumb?: string
+}
+
+const typeIcons: Record<string, any> = { link: ExternalLink, image: ImageIcon, book: BookOpen, movie: Film, tool: Wrench, article: FileText }
+const typeLabels: Record<string, string> = { link: "链接", image: "图片", book: "书籍", movie: "影视", tool: "工具", article: "文章" }
 
 export default function CollectionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [collection, setCollection] = useState<LocalCollection | null>(null)
-  const [notes, setNotes] = useState<Resource[]>([])
-  const [allResources, setAllResources] = useState<Resource[]>([])
+  const [collectionNotes, setCollectionNotes] = useState<GardenNote[]>([])
+  const [allNotes, setAllNotes] = useState<GardenNote[]>([])
   const [showAdd, setShowAdd] = useState(false)
 
-  useEffect(() => {
+  const loadData = () => {
     const cols = getLocalCollections()
     const col = cols.find(c => c.id === id) || null
     setCollection(col)
-    if (col) {
-      setNotes(getResourcesForCollection(id))
-      // 不在当前合集里的笔记
-      setAllResources(getLocalResources().filter(r => !col.resourceIds.includes(r.id)))
-    }
-  }, [id])
 
-  const refresh = () => {
-    const col = getLocalCollections().find(c => c.id === id) || null
-    setCollection(col)
-    if (col) {
-      setNotes(getResourcesForCollection(id))
-      setAllResources(getLocalResources().filter(r => !col.resourceIds.includes(r.id)))
-    }
+    let notes: GardenNote[] = []
+    try { notes = JSON.parse(localStorage.getItem('minitu_notes') || '[]') } catch {}
+
+    const mine = notes.filter(n => n.collectionId === id)
+    setCollectionNotes(mine)
+    setAllNotes(notes.filter(n => n.collectionId !== id))
+  }
+
+  useEffect(() => { loadData() }, [id])
+
+  const addToCollection = (noteId: string, title: string) => {
+    let notes: GardenNote[] = []
+    try { notes = JSON.parse(localStorage.getItem('minitu_notes') || '[]') } catch {}
+    const col = getLocalCollections().find(c => c.id === id)
+    const updated = notes.map(n =>
+      n.id === noteId ? { ...n, collectionId: id, collectionName: col?.title } : n
+    )
+    localStorage.setItem('minitu_notes', JSON.stringify(updated))
+    toast.success(`已添加: ${title}`)
+    loadData()
+  }
+
+  const removeFromCollection = (noteId: string, title: string) => {
+    let notes: GardenNote[] = []
+    try { notes = JSON.parse(localStorage.getItem('minitu_notes') || '[]') } catch {}
+    const updated = notes.map(n =>
+      n.id === noteId ? { ...n, collectionId: undefined, collectionName: undefined } : n
+    )
+    localStorage.setItem('minitu_notes', JSON.stringify(updated))
+    toast.success(`已移出: ${title}`)
+    loadData()
   }
 
   if (!collection) {
     return (
-      <div className="text-center py-20">
-        <span className="text-5xl block mb-4">📚</span>
-        <h1 className="text-xl font-bold mb-2">合集未找到</h1>
-        <Link href="/collections" className="text-sm text-[var(--skin-primary)] hover:underline">返回合集列表</Link>
+      <div className="text-center py-24">
+        <span className="text-6xl block mb-4">📚</span>
+        <h1 className="text-2xl font-extrabold mb-2" style={{ fontFamily: "var(--font-display)" }}>合集未找到</h1>
+        <Link href="/collections" className="text-sm text-[var(--skin-primary)] hover:underline font-bold tracking-wider">返回合集列表</Link>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6">
-      <Link href="/collections" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+    <div className="mx-auto max-w-4xl px-6 py-8 page-enter">
+      <Link href="/collections" className="inline-flex items-center gap-1.5 text-sm font-bold text-[var(--skin-text-secondary)] hover:text-[var(--skin-primary)] mb-8 transition-colors tracking-wider">
         <ChevronLeft className="size-4" /> 合集列表
       </Link>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>{collection.title}</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-text)' }}>{collection.title}</h1>
           {collection.description && (
-            <p className="text-sm text-muted-foreground mt-1">{collection.description}</p>
+            <p className="text-sm text-[var(--skin-text-secondary)] mt-2">{collection.description}</p>
           )}
-          <p className="text-xs text-muted-foreground mt-1">{notes.length} 篇笔记</p>
+          <div className="flex items-center gap-3 mt-2">
+            <span className="stat-number text-2xl" style={{ color: 'var(--skin-primary)' }}>{collectionNotes.length}</span>
+            <span className="text-xs tracking-widest uppercase text-[var(--skin-text-secondary)] font-bold">篇笔记</span>
+          </div>
         </div>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className={cn(buttonVariants({ size: 'sm' }), 'gap-1')}
-        >
+        <button onClick={() => setShowAdd(!showAdd)} className="btn">
           <Plus className="size-4" /> 添加笔记
         </button>
       </div>
 
-      {/* 添加笔记面板 */}
-      {showAdd && allResources.length > 0 && (
-        <div className="glass rounded-xl p-4 mb-6 animate-fade-in space-y-2 max-h-64 overflow-y-auto">
-          <p className="text-xs text-muted-foreground mb-2">点击笔记添加到合集</p>
-          {allResources.map(r => (
-            <button
-              key={r.id}
-              onClick={() => {
-                addResourceToCollection(id, r.id)
-                toast.success(`已添加: ${r.title}`)
-                refresh()
-              }}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/30 transition-colors text-sm flex items-center gap-2"
-            >
-              <Plus className="size-3.5 text-[var(--skin-primary)] shrink-0" />
-              <span className="truncate">{r.title || '无标题'}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {showAdd && allResources.length === 0 && (
-        <div className="glass rounded-xl p-4 mb-6 text-center text-sm text-muted-foreground">
-          所有笔记都已在此合集中
+      {/* Add Notes Panel */}
+      {showAdd && (
+        <div className="card card-rounded-tr p-5 mb-8 animate-fade-in-scale">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-extrabold tracking-wider uppercase" style={{ color: 'var(--skin-text)' }}>
+              点击笔记添加到「{collection.title}」
+            </span>
+            <button onClick={() => setShowAdd(false)} className="text-[var(--skin-text-secondary)] hover:text-[var(--skin-text)]"><X className="size-4" /></button>
+          </div>
+          {allNotes.length === 0 ? (
+            <p className="text-xs text-[var(--skin-text-secondary)] text-center py-6">所有笔记都已在此合集中</p>
+          ) : (
+            <div className="space-y-1 max-h-72 overflow-y-auto">
+              {allNotes.map(n => (
+                <button key={n.id} onClick={() => addToCollection(n.id, n.title)}
+                  className="w-full text-left px-4 py-3 hover:bg-[var(--skin-muted)] transition-colors text-sm flex items-center gap-3 border-b-2 border-[var(--skin-border)] last:border-b-0">
+                  <Plus className="size-4 text-[var(--skin-primary)] shrink-0" />
+                  <span className="truncate font-medium">{n.title || '无标题'}</span>
+                  <span className="tag shrink-0 ml-auto">{typeLabels[n.type]}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* 合集内的笔记 */}
-      {notes.length === 0 ? (
-        <EmptyState
-          title="合集中还没有笔记"
-          description="点击上方按钮添加笔记"
-          icon={<Layers className="size-16" />}
-          actionLabel=""
-          actionHref=""
-        />
+      {/* Notes in Collection */}
+      {collectionNotes.length === 0 ? (
+        <div className="text-center py-24">
+          <Layers className="size-16 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
+          <p className="text-sm text-[var(--skin-text-secondary)] font-bold tracking-wider mb-4">合集中还没有笔记</p>
+          <button onClick={() => setShowAdd(true)} className="btn">添加笔记</button>
+        </div>
       ) : (
         <div className="space-y-3">
-          {notes.map(note => (
-            <div key={note.id} className="glass rounded-xl p-4 flex items-center gap-3 group">
-              <Link href={`/resources/${note.id}`} className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate hover:text-[var(--skin-primary)] transition-colors">
-                  {note.title || '无标题'}
-                </p>
-                {note.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{note.description}</p>
-                )}
-              </Link>
-              <button
-                onClick={() => {
-                  removeResourceFromCollection(id, note.id)
-                  toast.success('已移出合集')
-                  refresh()
-                }}
-                className="p-1.5 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all shrink-0"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          ))}
+          {collectionNotes.map(n => {
+            const Icon = typeIcons[n.type] || FileText
+            return (
+              <div key={n.id} className="card rounded-lg flex items-center gap-4 px-5 py-4 group">
+                <div className="size-10 rounded flex items-center justify-center shrink-0" style={{ background: 'var(--skin-muted)' }}>
+                  <Icon className="size-5" style={{ color: 'var(--skin-primary)' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--skin-text)' }}>{n.title || '无标题'}</p>
+                  <p className="text-[11px] text-[var(--skin-text-secondary)] mt-1 flex items-center gap-2">
+                    <span className="tag">{typeLabels[n.type]}</span>
+                    <span className="font-mono">{n.createdAt ? new Date(n.createdAt).toLocaleDateString('zh-CN') : '—'}</span>
+                    {n.content && <span className="opacity-60 truncate">— {n.content.slice(0, 40)}</span>}
+                  </p>
+                </div>
+                <button onClick={() => removeFromCollection(n.id, n.title)}
+                  className="p-2 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all shrink-0">
+                  <X className="size-4" />
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

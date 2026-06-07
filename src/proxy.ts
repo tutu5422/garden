@@ -1,16 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PASS = process.env.SITE_PASSWORD || "minitu2026";
+const PASS = process.env.SITE_PASSWORD || "123";
 const COOKIE = "minitu_auth";
 const RL = new Map<string, number[]>();
 
-export function middleware(req: NextRequest) {
+export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const ip = req.headers.get("x-forwarded-for") || "x";
 
   if (pathname.startsWith("/_next") || pathname.startsWith("/favicon")) {
     return NextResponse.next();
+  }
+
+  if (pathname === "/api/login" && req.method === "POST") {
+    const r = NextResponse.json({ ok: true });
+    r.cookies.set(COOKIE, PASS, { httpOnly: true, secure: true, sameSite: "strict", maxAge: 2592000, path: "/" });
+    return r;
   }
 
   if (pathname.startsWith("/api/")) {
@@ -21,12 +27,6 @@ export function middleware(req: NextRequest) {
     recent.push(now);
     RL.set(ip, recent);
     return NextResponse.next();
-  }
-
-  if (pathname === "/api/login" && req.method === "POST") {
-    const r = NextResponse.json({ ok: true });
-    r.cookies.set(COOKIE, PASS, { httpOnly: true, secure: true, sameSite: "strict", maxAge: 2592000, path: "/" });
-    return r;
   }
 
   if (req.cookies.get(COOKIE)?.value === PASS) {

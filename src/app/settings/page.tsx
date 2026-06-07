@@ -1,35 +1,114 @@
 "use client";
-import { useState } from "react";
-import { Settings, Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon, Monitor, Palette, Info } from "lucide-react";
+import { useTheme } from "@/components/theme/SkinProvider";
+import type { ThemeMode } from "@/lib/theme/skins";
+
+const modeOptions: { mode: ThemeMode; label: string; icon: typeof Sun; desc: string }[] = [
+  { mode: "light", label: "浅色", icon: Sun, desc: "明亮优雅" },
+  { mode: "dark", label: "深色", icon: Moon, desc: "丝绒暗夜" },
+  { mode: "system", label: "跟随系统", icon: Monitor, desc: "自动切换" },
+];
 
 export default function SettingsPage() {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window !== "undefined") return localStorage.getItem("minitu_theme") || "system";
-    return "system";
-  });
-
-  const apply = (t: string) => {
-    setTheme(t);
-    localStorage.setItem("minitu_theme", t);
-    const root = document.documentElement;
-    if (t === "dark" || (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)) root.classList.add("dark");
-    else root.classList.remove("dark");
-  };
+  const { mode, dark, setMode } = useTheme();
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 animate-in fade-in duration-500">
-      <h1 className="text-2xl font-bold flex items-center gap-2 mb-6"><Settings className="w-6 h-6 text-zinc-500" />设置</h1>
-      <div className="space-y-4">
-        <div className="p-4 rounded-xl bg-white dark:bg-zinc-800/60 border">
-          <h2 className="font-medium mb-3">外观</h2>
-          <div className="flex gap-2">
-            {[{ k: "light", icon: Sun, label: "浅色" }, { k: "dark", icon: Moon, label: "深色" }, { k: "system", icon: Monitor, label: "跟随系统" }].map(({ k, icon: Icon, label }) => (
-              <button key={k} onClick={() => apply(k)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm transition-all ${theme === k ? "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-medium" : "bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400"}`}><Icon className="w-4 h-4" />{label}</button>
-            ))}
+    <div className="max-w-4xl mx-auto px-6 py-8 page-enter">
+      <h1 className="section-title">设置</h1>
+
+      <div className="space-y-6">
+        {/* 外观模式 */}
+        <div className="card card-rounded-tr p-6 sm:p-8">
+          <div className="flex items-center gap-2 mb-6">
+            <Palette className="size-5" style={{ color: 'var(--skin-accent)' }} />
+            <h2 className="font-extrabold text-base tracking-wider"
+                style={{ color: 'var(--skin-text)', fontFamily: "var(--font-display)" }}>
+              外观模式
+            </h2>
+          </div>
+
+          {/* 当前状态指示 */}
+          <div className="flex items-center gap-3 mb-6 p-4 rounded-xl"
+               style={{ background: 'var(--skin-muted)' }}>
+            <div className="size-10 rounded-xl flex items-center justify-center"
+                 style={{ background: dark ? 'var(--skin-primary)' : 'var(--skin-accent)', color: '#fff' }}>
+              {dark ? <Moon className="size-5" /> : <Sun className="size-5" />}
+            </div>
+            <div>
+              <p className="text-sm font-bold" style={{ color: 'var(--skin-text)' }}>
+                {dark ? '深色模式' : '浅色模式'}
+              </p>
+              <p className="text-xs" style={{ color: 'var(--skin-text-secondary)' }}>
+                {mode === 'system' ? '由系统偏好决定' : mode === 'dark' ? '丝绒暗夜风格' : '明亮优雅风格'}
+              </p>
+            </div>
+          </div>
+
+          {/* 三选一模式切换 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {modeOptions.map(opt => {
+              const isActive = mode === opt.mode;
+              return (
+                <button
+                  key={opt.mode}
+                  onClick={() => setMode(opt.mode)}
+                  className="relative p-4 rounded-xl text-left transition-all duration-300 group"
+                  style={{
+                    background: isActive ? 'var(--skin-primary)' : 'var(--skin-muted)',
+                    color: isActive ? '#fff' : 'var(--skin-text)',
+                    boxShadow: isActive ? 'var(--shadow-primary)' : 'none',
+                    border: isActive ? '2px solid var(--skin-primary)' : '2px solid transparent',
+                  }}>
+                  <opt.icon className={`size-5 mb-3 transition-transform duration-300 ${isActive ? '' : 'group-hover:scale-110'}`}
+                            style={{ color: isActive ? '#fff' : 'var(--skin-primary)' }} />
+                  <p className="text-sm font-extrabold tracking-wider">{opt.label}</p>
+                  <p className="text-xs mt-1 opacity-70">{opt.desc}</p>
+                  {isActive && (
+                    <div className="absolute top-3 right-3 size-5 rounded-full bg-white/20 flex items-center justify-center">
+                      <div className="size-2.5 rounded-full bg-white" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 丝绒金主题标识 */}
+          <div className="mt-6 p-4 rounded-xl flex items-center gap-3"
+               style={{
+                 background: 'linear-gradient(135deg, rgba(var(--skin-accent-rgb), 0.08), rgba(var(--skin-primary-rgb), 0.06))',
+                 border: '1px solid rgba(var(--skin-accent-rgb), 0.15)',
+               }}>
+            <span className="text-3xl">🪶</span>
+            <div>
+              <p className="text-sm font-extrabold tracking-wider" style={{ color: 'var(--skin-text)' }}>丝绒金</p>
+              <p className="text-xs" style={{ color: 'var(--skin-text-secondary)' }}>
+                酒红 × 古董金 · 独立深/浅双模
+              </p>
+            </div>
           </div>
         </div>
-        <div className="p-4 rounded-xl bg-white dark:bg-zinc-800/60 border">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">🐰 迷你兔 v2.0 · 运行在浏览器本地存储 · 数据仅在你的设备上</p>
+
+        {/* 关于 */}
+        <div className="card card-rounded-br p-6 sm:p-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Info className="size-5" style={{ color: 'var(--skin-accent)' }} />
+            <h2 className="font-extrabold text-base tracking-wider"
+                style={{ color: 'var(--skin-text)', fontFamily: "var(--font-display)" }}>
+              关于
+            </h2>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs leading-relaxed font-medium" style={{ color: 'var(--skin-text-secondary)' }}>
+              🐰 迷你兔 v2.2 · 个人数字花园
+            </p>
+            <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--skin-text-secondary)', opacity: 0.7 }}>
+              数据存储在浏览器本地 · 仅限主人访问 · minitu.online
+            </p>
+            <p className="text-[10px] leading-relaxed font-mono mt-2" style={{ color: 'var(--skin-text-secondary)', opacity: 0.5 }}>
+              丝绒金 Velvet Gold — 酒红 × 古董金 · 立体奢华质感
+            </p>
+          </div>
         </div>
       </div>
     </div>

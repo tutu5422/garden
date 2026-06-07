@@ -1,42 +1,83 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { SKINS, applySkin, getStoredSkinIndex, type SkinColors } from '@/lib/theme/skins'
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { THEME, applyTheme, getStoredMode, setStoredMode, resolveDark, type ThemeMode } from '@/lib/theme/skins'
 
-type SkinContextType = {
-  skinIndex: number
-  skin: { name: string; emoji: string; colors: SkinColors }
-  nextSkin: () => void
+type ThemeContextType = {
+  mode: ThemeMode       // 'light' | 'dark' | 'system'
+  dark: boolean         // resolved actual dark state
+  setMode: (m: ThemeMode) => void
+  toggleMode: () => void  // cycle: light → dark → system → light
 }
 
-const SkinContext = createContext<SkinContextType>({
-  skinIndex: 0,
-  skin: SKINS[0],
-  nextSkin: () => {},
+const ThemeContext = createContext<ThemeContextType>({
+  mode: 'system',
+  dark: false,
+  setMode: () => {},
+  toggleMode: () => {},
 })
 
-export function useSkin() {
-  return useContext(SkinContext)
+export function useTheme() {
+  return useContext(ThemeContext)
 }
 
-export default function SkinProvider({ children }: { children: ReactNode }) {
-  const [skinIndex, setSkinIndex] = useState(0)
+// legacy alias for existing code that uses useSkin
+export function useSkin() {
+  return useContext(ThemeContext)
+}
 
+export default function ThemeProvider({ children }: { children: ReactNode }) {
+  const [mode, setModeState] = useState<ThemeMode>('system')
+  const [dark, setDark] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // 初始化 + 监听系统偏好变化
   useEffect(() => {
-    const idx = getStoredSkinIndex()
-    setSkinIndex(idx)
-    applySkin(idx)
+    const stored = getStoredMode()
+    setModeState(stored)
+    const resolved = resolveDark(stored)
+    setDark(resolved)
+    applyTheme(resolved)
+    setMounted(true)
+
+    // 监听系统配色变化（仅在 system 模式时需要）
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const listener = () => {
+      if (getStoredMode() === 'system') {
+        const sysDark = mq.matches
+        setDark(sysDark)
+        applyTheme(sysDark)
+      }
+    }
+    mq.addEventListener('change', listener)
+    return () => mq.removeEventListener('change', listener)
   }, [])
 
-  const nextSkin = () => {
-    const next = (skinIndex + 1) % SKINS.length
-    setSkinIndex(next)
-    applySkin(next)
+  const setMode = useCallback((m: ThemeMode) => {
+    setModeState(m)
+    setStoredMode(m)
+    const resolved = resolveDark(m)
+    setDark(resolved)
+    applyTheme(resolved)
+  }, [])
+
+  const toggleMode = useCallback(() => {
+    const next: ThemeMode = mode === 'light' ? 'dark' : mode === 'dark' ? 'system' : 'light'
+    setMode(next)
+  }, [mode, setMode])
+
+  // 防止 hydration mismatch
+  if (!mounted) {
+    return (
+      <ThemeContext.Provider value={{ mode: 'system', dark: false, setMode, toggleMode }}>
+        {children}
+      </ThemeContext.Provider>
+    )
   }
 
   return (
-    <SkinContext.Provider value={{ skinIndex, skin: SKINS[skinIndex], nextSkin }}>
+    <ThemeContext.Provider value={{ mode, dark, setMode, toggleMode }}>
       {children}
-    </SkinContext.Provider>
+    </ThemeContext.Provider>
   )
 }
