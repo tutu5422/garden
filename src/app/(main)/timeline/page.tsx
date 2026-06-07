@@ -105,15 +105,19 @@ export default function TimelinePage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 page-enter">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      {/* Header — Editorial */}
+      <div className="flex items-center justify-between mb-10">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="section-number">TL</span>
+            <div className="rule-thin w-8" style={{ background: 'var(--skin-border)' }} />
+          </div>
+          <h1 className="editorial-section-title" style={{ color: 'var(--skin-text)' }}>
             时间线
           </h1>
           <div className="flex items-center gap-3 mt-2">
-            <span className="stat-number text-2xl" style={{ color: 'var(--skin-primary)' }}>{entries.length}</span>
-            <span className="text-xs tracking-widest uppercase text-[var(--skin-text-secondary)] font-bold">条记录</span>
+            <span className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-primary)' }}>{entries.length}</span>
+            <span className="text-xs tracking-[0.15em] uppercase text-[var(--skin-text-secondary)] font-bold">条记录</span>
           </div>
         </div>
         <button onClick={() => { setShowForm(!showForm); setTimeout(() => inputRef.current?.focus(), 100); }}
@@ -148,16 +152,16 @@ export default function TimelinePage() {
         <div className="space-y-8">
           {[1, 2, 3].map(i => (
             <div key={i} className="space-y-4 animate-pulse">
-              <div className="h-6 w-20 rounded" style={{ background: 'var(--skin-muted)' }} />
-              <div className="h-24 rounded-lg" style={{ background: 'var(--skin-muted)' }} />
+              <div className="h-5 w-16 rounded" style={{ background: 'var(--skin-muted)' }} />
+              <div className="h-20 rounded-xl" style={{ background: 'var(--skin-muted)' }} />
             </div>
           ))}
         </div>
       ) : groups.length === 0 ? (
         <div className="text-center py-24">
-          <Calendar className="size-16 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
-          <p className="text-sm text-[var(--skin-text-secondary)] font-bold tracking-wider">还没有任何记录</p>
-          <Link href="/notes" className="inline-block mt-4 text-sm font-extrabold tracking-wider hover:underline" style={{ color: 'var(--skin-primary)' }}>
+          <Calendar className="size-12 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
+          <p className="text-sm font-medium text-[var(--skin-text-secondary)]">还没有任何记录</p>
+          <Link href="/notes" className="inline-block mt-4 text-xs font-bold tracking-wider uppercase hover:underline" style={{ color: 'var(--skin-primary)' }}>
             去写笔记 →
           </Link>
         </div>
@@ -173,12 +177,12 @@ export default function TimelinePage() {
                 {/* Date Header */}
                 <div className="flex items-center gap-4 mb-4 pl-5">
                   <div className="relative flex items-center justify-center">
-                    <div className="size-3.5 rounded-full z-10 border-2" style={{ backgroundColor: 'var(--skin-primary)', borderColor: 'var(--skin-bg)' }} />
+                    <div className="size-3 rounded-full z-10" style={{ backgroundColor: 'var(--skin-primary)', boxShadow: 'var(--shadow-colored)' }} />
                   </div>
-                  <span className="text-xl font-extrabold" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
+                  <span className="text-xl font-extrabold tracking-wide" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
                     {group.label}
                   </span>
-                  <span className="text-xs text-[var(--skin-text-secondary)] font-mono">{group.entries.length} 条</span>
+                  <span className="text-[10px] text-[var(--skin-text-secondary)] font-mono tracking-wider uppercase">{group.entries.length} 条</span>
                 </div>
 
                 {/* Entries */}

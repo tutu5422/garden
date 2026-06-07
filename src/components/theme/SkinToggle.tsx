@@ -4,12 +4,11 @@ import { useTheme } from './SkinProvider'
 import { Sun, Moon, Monitor } from 'lucide-react'
 
 export default function SkinToggle() {
-  const { mode, dark, toggleMode } = useTheme()
+  const theme = useTheme()
+  if (!theme) return null
 
-  const modeIcon = mode === 'light' ? Sun : mode === 'dark' ? Moon : Monitor
-  const ModeIcon = modeIcon
-
-  const tooltip = mode === 'light' ? '浅色模式' : mode === 'dark' ? '深色模式' : '跟随系统'
+  const { mode, dark, toggleMode } = theme
+  const modeLabel = mode === 'light' ? '浅色模式' : mode === 'dark' ? '深色模式' : '跟随系统'
 
   return (
     <div className="flex items-center gap-0.5">
@@ -26,10 +25,12 @@ export default function SkinToggle() {
       <button
         onClick={toggleMode}
         className="relative inline-flex items-center justify-center size-8 rounded-lg hover:bg-[var(--skin-muted)] transition-all duration-300 hover:scale-110 active:scale-95"
-        title={`${tooltip} — 点击切换`}
-        aria-label={`外观模式: ${tooltip}`}
+        title={`${modeLabel} — 点击切换`}
+        aria-label={`外观模式: ${modeLabel}`}
       >
-        <ModeIcon className="size-4" style={{ color: 'var(--skin-text-secondary)' }} />
+        {mode === 'light' ? <Sun className="size-4" style={{ color: 'var(--skin-text-secondary)' }} /> :
+         mode === 'dark' ? <Moon className="size-4" style={{ color: 'var(--skin-text-secondary)' }} /> :
+         <Monitor className="size-4" style={{ color: 'var(--skin-text-secondary)' }} />}
       </button>
     </div>
   )

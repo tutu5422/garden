@@ -10,7 +10,7 @@ const nav = [
   { href: "/files", icon: FileText, label: "文件" },
 ];
 
-const richPaths = ["/login", "/signup", "/callback", "/resources", "/categories", "/tags", "/search", "/profile", "/visitors"];
+const richPaths = ["/login", "/signup", "/callback", "/resources", "/categories", "/tags", "/search", "/profile", "/visitors", "/collections", "/timeline"];
 
 export default function Nav() {
   const path = usePathname();

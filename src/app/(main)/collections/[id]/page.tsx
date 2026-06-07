@@ -76,15 +76,19 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
         <ChevronLeft className="size-4" /> 合集列表
       </Link>
 
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-10">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-text)' }}>{collection.title}</h1>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="section-number">CD</span>
+            <div className="rule-thin w-8" style={{ background: 'var(--skin-border)' }} />
+          </div>
+          <h1 className="editorial-section-title" style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-text)' }}>{collection.title}</h1>
           {collection.description && (
             <p className="text-sm text-[var(--skin-text-secondary)] mt-2">{collection.description}</p>
           )}
           <div className="flex items-center gap-3 mt-2">
-            <span className="stat-number text-2xl" style={{ color: 'var(--skin-primary)' }}>{collectionNotes.length}</span>
-            <span className="text-xs tracking-widest uppercase text-[var(--skin-text-secondary)] font-bold">篇笔记</span>
+            <span className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-primary)' }}>{collectionNotes.length}</span>
+            <span className="text-xs tracking-[0.15em] uppercase text-[var(--skin-text-secondary)] font-bold">篇笔记</span>
           </div>
         </div>
         <button onClick={() => setShowAdd(!showAdd)} className="btn">

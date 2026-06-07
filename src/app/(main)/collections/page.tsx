@@ -34,15 +34,19 @@ export default function CollectionsPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8 page-enter">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      {/* Header — Editorial */}
+      <div className="flex items-center justify-between mb-10">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="section-number">CL</span>
+            <div className="rule-thin w-8" style={{ background: 'var(--skin-border)' }} />
+          </div>
+          <h1 className="editorial-section-title" style={{ color: 'var(--skin-text)' }}>
             合集
           </h1>
           <div className="flex items-center gap-3 mt-2">
-            <span className="stat-number text-2xl" style={{ color: 'var(--skin-primary)' }}>{collections.length}</span>
-            <span className="text-xs tracking-widest uppercase text-[var(--skin-text-secondary)] font-bold">
+            <span className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-primary)' }}>{collections.length}</span>
+            <span className="text-xs tracking-[0.15em] uppercase text-[var(--skin-text-secondary)] font-bold">
               {collections.length === 0 ? '创建合集来归类你的笔记' : '个合集'}
             </span>
           </div>
@@ -78,8 +82,8 @@ export default function CollectionsPage() {
 
       {collections.length === 0 ? (
         <div className="text-center py-24">
-          <Layers className="size-16 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
-          <p className="text-sm text-[var(--skin-text-secondary)] font-bold tracking-wider mb-4">还没有合集</p>
+          <Layers className="size-12 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
+          <p className="text-sm font-medium text-[var(--skin-text-secondary)] mb-4">还没有合集</p>
           <button onClick={() => setAdding(true)} className="btn">新建合集</button>
         </div>
       ) : (

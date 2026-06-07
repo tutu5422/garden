@@ -140,15 +140,19 @@ export default function Files() {
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 page-enter">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      {/* Header — Editorial */}
+      <div className="flex items-center justify-between mb-10">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="section-number">FL</span>
+            <div className="rule-thin w-8" style={{ background: 'var(--skin-border)' }} />
+          </div>
+          <h1 className="editorial-section-title" style={{ color: 'var(--skin-text)' }}>
             文件
           </h1>
           <div className="flex items-center gap-3 mt-2">
-            <span className="stat-number text-2xl" style={{ color: 'var(--skin-primary)' }}>{files.length}</span>
-            <span className="text-xs tracking-widest uppercase text-[var(--skin-text-secondary)] font-bold">个文件</span>
+            <span className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-primary)' }}>{files.length}</span>
+            <span className="text-xs tracking-[0.15em] uppercase text-[var(--skin-text-secondary)] font-bold">个文件</span>
           </div>
         </div>
         <label className="btn cursor-pointer">

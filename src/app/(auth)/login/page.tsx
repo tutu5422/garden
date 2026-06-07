@@ -4,10 +4,6 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Lock, LogIn, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -27,7 +23,6 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/resources'
 
-  // 密码门登录
   const handleGateLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -47,22 +42,17 @@ export default function LoginPage() {
     }
   }
 
-  // Supabase 登录
   const handleSupabaseLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!isSupabaseReady()) {
       toast.info('数据库尚未配置。\n\n当前可正常浏览页面，高级功能需要连接 Supabase。')
       return
     }
-
     setError('')
     setLoading(true)
-
     try {
       const supabase = createClient()
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
-
       if (authError) {
         setError(authError.message === 'Invalid login credentials' ? '邮箱或密码错误' : '登录失败，请重试')
       } else {
@@ -78,122 +68,101 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-sm space-y-4">
-      {/* Logo */}
-      <div className="text-center mb-6">
-        <span className="text-5xl">🐰</span>
-        <h1 className="mt-3 text-2xl font-bold text-zinc-800 dark:text-white">迷你兔</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">个人数字花园</p>
+    <div className="w-full max-w-sm space-y-5 page-enter">
+      {/* Logo — Editorial */}
+      <div className="text-center mb-3">
+        <span className="section-number">LG</span>
+        <h1 className="editorial-hero-sub mt-3 mb-1" style={{ color: 'var(--skin-text)' }}>
+          迷你兔
+        </h1>
+        <p className="text-xs tracking-[0.15em] uppercase font-bold text-[var(--skin-text-secondary)]">
+          个人数字花园 · 仅限主人访问
+        </p>
+        <div className="rule-thin mt-5 mb-2 mx-auto w-16" style={{ background: 'var(--skin-primary)' }} />
       </div>
 
       {/* Tab switcher */}
-      <div className="flex rounded-xl bg-zinc-100 dark:bg-zinc-800/60 p-1">
+      <div className="flex rounded-xl p-1 gap-1" style={{ background: 'var(--skin-muted)' }}>
         <button
           onClick={() => { setTab('gate'); setError('') }}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
-            tab === 'gate'
-              ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-white'
-              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-          }`}
-        >
-          <Lock className="w-3.5 h-3.5" /> 访问密码
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold tracking-wider uppercase transition-all"
+          style={tab === 'gate' ? {
+            background: 'var(--skin-primary)', color: '#fff',
+            boxShadow: 'var(--shadow-colored)',
+          } : {
+            background: 'transparent', color: 'var(--skin-text-secondary)',
+          }}>
+          <Lock className="size-3.5" /> 访问密码
         </button>
         {isSupabaseReady() && (
           <button
             onClick={() => { setTab('supabase'); setError('') }}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === 'supabase'
-                ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-800 dark:text-white'
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            <Mail className="w-3.5 h-3.5" /> 账号登录
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold tracking-wider uppercase transition-all"
+            style={tab === 'supabase' ? {
+              background: 'var(--skin-primary)', color: '#fff',
+              boxShadow: 'var(--shadow-colored)',
+            } : {
+              background: 'transparent', color: 'var(--skin-text-secondary)',
+            }}>
+            <Mail className="size-3.5" /> 账号登录
           </button>
         )}
       </div>
 
       {/* Password Gate Form */}
       {tab === 'gate' && (
-        <Card className="animate-scale-in">
-          <CardHeader className="text-center">
-            <CardTitle className="text-lg">输入访问密码</CardTitle>
-            <CardDescription>此网站仅限主人访问</CardDescription>
-          </CardHeader>
-          <form onSubmit={handleGateLogin}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="gate-pwd">密码</Label>
-                <Input
-                  id="gate-pwd"
-                  type="password"
-                  placeholder="输入访问密码"
-                  value={gatePwd}
-                  onChange={(e) => setGatePwd(e.target.value)}
-                  autoFocus
-                  className="glass border-white/30 dark:border-white/10"
-                />
-              </div>
-              {error && (
-                <p className="text-red-500 text-xs text-center">{error}</p>
-              )}
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full rounded-full" disabled={loading || !gatePwd}>
-                <LogIn className="w-4 h-4 mr-1.5" />
-                {loading ? '验证中...' : '进入花园'}
-              </Button>
-            </CardFooter>
+        <div className="card card-rounded-tr p-6 animate-fade-in-scale" style={{ background: 'var(--skin-surface)', border: '2px solid var(--skin-border)' }}>
+          <div className="text-center mb-5">
+            <span className="text-xs font-extrabold tracking-wider uppercase" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
+              输入访问密码
+            </span>
+            <p className="text-[10px] text-[var(--skin-text-secondary)] mt-1">此网站仅限主人访问</p>
+          </div>
+          <form onSubmit={handleGateLogin} className="space-y-4">
+            <input
+              type="password" placeholder="输入访问密码" value={gatePwd}
+              onChange={(e) => setGatePwd(e.target.value)} autoFocus
+              className="input-filled w-full text-sm" />
+            {error && <p className="text-xs text-center" style={{ color: 'var(--skin-accent)' }}>{error}</p>}
+            <button type="submit" className="btn w-full justify-center" disabled={loading || !gatePwd}>
+              <LogIn className="size-4" />
+              {loading ? '验证中...' : '进入花园'}
+            </button>
           </form>
-        </Card>
+        </div>
       )}
 
       {/* Supabase Login Form */}
       {tab === 'supabase' && (
-        <Card className="animate-scale-in">
-          <CardHeader className="text-center">
-            <CardTitle className="text-lg">账号登录</CardTitle>
-            <CardDescription>登录你的秘密花园</CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSupabaseLogin}>
-            <CardContent className="space-y-4">
-              {!isSupabaseReady() && (
-                <div className="glass rounded-lg p-3 text-sm text-muted-foreground text-center">
-                  ⚠️ 数据库未连接，登录功能暂不可用
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="email">邮箱</Label>
-                <Input
-                  id="email" type="email" placeholder="your@email.com"
-                  value={email} onChange={(e) => setEmail(e.target.value)}
-                  required autoComplete="email"
-                  className="glass border-white/30 dark:border-white/10"
-                />
+        <div className="card card-rounded-tr p-6 animate-fade-in-scale" style={{ background: 'var(--skin-surface)', border: '2px solid var(--skin-border)' }}>
+          <div className="text-center mb-5">
+            <span className="text-xs font-extrabold tracking-wider uppercase" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
+              账号登录
+            </span>
+            <p className="text-[10px] text-[var(--skin-text-secondary)] mt-1">登录你的秘密花园</p>
+          </div>
+          <form onSubmit={handleSupabaseLogin} className="space-y-4">
+            {!isSupabaseReady() && (
+              <div className="rounded-lg p-3 text-[10px] text-center" style={{ background: 'var(--skin-muted)', color: 'var(--skin-text-secondary)' }}>
+                ⚠️ 数据库未连接，登录功能暂不可用
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">密码</Label>
-                <Input
-                  id="password" type="password" placeholder="••••••••"
-                  value={password} onChange={(e) => setPassword(e.target.value)}
-                  required autoComplete="current-password" minLength={6}
-                  className="glass border-white/30 dark:border-white/10"
-                />
-              </div>
-              {error && (
-                <p className="text-red-500 text-xs text-center">{error}</p>
-              )}
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3">
-              <Button type="submit" className="w-full rounded-full" disabled={loading}>
-                {loading ? '登录中...' : '登录'}
-              </Button>
-              <p className="text-sm text-muted-foreground">
-                还没有账号？{' '}
-                <Link href="/signup" className="text-primary hover:underline">立即注册</Link>
-              </p>
-            </CardFooter>
+            )}
+            <input type="email" placeholder="your@email.com" value={email}
+              onChange={(e) => setEmail(e.target.value)} required autoComplete="email"
+              className="input-filled w-full text-sm" />
+            <input type="password" placeholder="••••••••" value={password}
+              onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" minLength={6}
+              className="input-filled w-full text-sm" />
+            {error && <p className="text-xs text-center" style={{ color: 'var(--skin-accent)' }}>{error}</p>}
+            <button type="submit" className="btn w-full justify-center" disabled={loading}>
+              {loading ? '登录中...' : '登录'}
+            </button>
+            <p className="text-[10px] text-center text-[var(--skin-text-secondary)]">
+              还没有账号？{' '}
+              <Link href="/signup" className="font-bold hover:underline" style={{ color: 'var(--skin-primary)' }}>立即注册</Link>
+            </p>
           </form>
-        </Card>
+        </div>
       )}
     </div>
   )

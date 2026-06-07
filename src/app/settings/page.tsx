@@ -5,7 +5,7 @@ import type { ThemeMode } from "@/lib/theme/skins";
 
 const modeOptions: { mode: ThemeMode; label: string; icon: typeof Sun; desc: string }[] = [
   { mode: "light", label: "浅色", icon: Sun, desc: "明亮优雅" },
-  { mode: "dark", label: "深色", icon: Moon, desc: "丝绒暗夜" },
+  { mode: "dark", label: "深色", icon: Moon, desc: "暗夜杂志" },
   { mode: "system", label: "跟随系统", icon: Monitor, desc: "自动切换" },
 ];
 
@@ -27,7 +27,6 @@ export default function SettingsPage() {
             </h2>
           </div>
 
-          {/* 当前状态指示 */}
           <div className="flex items-center gap-3 mb-6 p-4 rounded-xl"
                style={{ background: 'var(--skin-muted)' }}>
             <div className="size-10 rounded-xl flex items-center justify-center"
@@ -39,12 +38,11 @@ export default function SettingsPage() {
                 {dark ? '深色模式' : '浅色模式'}
               </p>
               <p className="text-xs" style={{ color: 'var(--skin-text-secondary)' }}>
-                {mode === 'system' ? '由系统偏好决定' : mode === 'dark' ? '丝绒暗夜风格' : '明亮优雅风格'}
+                {mode === 'system' ? '由系统偏好决定' : mode === 'dark' ? '暗夜杂志风格' : '明亮优雅风格'}
               </p>
             </div>
           </div>
 
-          {/* 三选一模式切换 */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {modeOptions.map(opt => {
               const isActive = mode === opt.mode;
@@ -56,7 +54,7 @@ export default function SettingsPage() {
                   style={{
                     background: isActive ? 'var(--skin-primary)' : 'var(--skin-muted)',
                     color: isActive ? '#fff' : 'var(--skin-text)',
-                    boxShadow: isActive ? 'var(--shadow-primary)' : 'none',
+                    boxShadow: isActive ? 'var(--shadow-colored)' : 'none',
                     border: isActive ? '2px solid var(--skin-primary)' : '2px solid transparent',
                   }}>
                   <opt.icon className={`size-5 mb-3 transition-transform duration-300 ${isActive ? '' : 'group-hover:scale-110'}`}
@@ -73,23 +71,21 @@ export default function SettingsPage() {
             })}
           </div>
 
-          {/* 丝绒金主题标识 */}
           <div className="mt-6 p-4 rounded-xl flex items-center gap-3"
                style={{
                  background: 'linear-gradient(135deg, rgba(var(--skin-accent-rgb), 0.08), rgba(var(--skin-primary-rgb), 0.06))',
                  border: '1px solid rgba(var(--skin-accent-rgb), 0.15)',
                }}>
-            <span className="text-3xl">🪶</span>
+            <span className="text-3xl">📰</span>
             <div>
-              <p className="text-sm font-extrabold tracking-wider" style={{ color: 'var(--skin-text)' }}>丝绒金</p>
+              <p className="text-sm font-extrabold tracking-wider" style={{ color: 'var(--skin-text)' }}>编辑狂想</p>
               <p className="text-xs" style={{ color: 'var(--skin-text-secondary)' }}>
-                酒红 × 古董金 · 独立深/浅双模
+                杂志玫红 × 电光金 · 独立深/浅双模
               </p>
             </div>
           </div>
         </div>
 
-        {/* 关于 */}
         <div className="card card-rounded-br p-6 sm:p-8">
           <div className="flex items-center gap-2 mb-4">
             <Info className="size-5" style={{ color: 'var(--skin-accent)' }} />
@@ -100,13 +96,13 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-2">
             <p className="text-xs leading-relaxed font-medium" style={{ color: 'var(--skin-text-secondary)' }}>
-              🐰 迷你兔 v2.2 · 个人数字花园
+              🐰 迷你兔 v2.3 · 个人数字花园
             </p>
             <p className="text-[10px] leading-relaxed font-medium" style={{ color: 'var(--skin-text-secondary)', opacity: 0.7 }}>
               数据存储在浏览器本地 · 仅限主人访问 · minitu.online
             </p>
             <p className="text-[10px] leading-relaxed font-mono mt-2" style={{ color: 'var(--skin-text-secondary)', opacity: 0.5 }}>
-              丝绒金 Velvet Gold — 酒红 × 古董金 · 立体奢华质感
+              编辑狂想 Editorial Rave — 杂志玫红 × 电光金 · 时尚杂志美学
             </p>
           </div>
         </div>
