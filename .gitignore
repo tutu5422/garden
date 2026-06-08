@@ -1,3 +1,5 @@
 echo .vercel/
 node_modules/
 .next/
+.vercel
+.env*

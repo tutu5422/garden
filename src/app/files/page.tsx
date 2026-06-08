@@ -2,11 +2,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, File, Trash2, Download, FileText, Music, Image, Archive, Film, Search, X, ChevronDown } from "lucide-react";
 import { useMusic, type Track } from "@/lib/music/MusicContext";
-import { saveBlob, getBlob, deleteBlob } from "@/lib/db/idb-store";
 
 interface MyFile {
   id: string; name: string; size: string; sizeBytes: number;
   type: string; category: string; createdAt: string;
+  storagePath?: string; // Supabase storage path, null = local/legacy
 }
 
 const STORAGE_KEY = "minitu_files";
@@ -70,24 +70,39 @@ export default function Files() {
 
     for (const f of Array.from(fl)) {
       const ext = f.name.split(".").pop()?.toLowerCase() || "";
-      const id = Date.now().toString(36) + Math.random().toString(36);
-      const dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(f);
-      });
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-      await saveBlob(id, dataUrl);
+      // Upload to Supabase via API
+      const formData = new FormData();
+      formData.append("file", f);
+      formData.append("id", id);
+
+      let publicUrl = "";
+      let storagePath = "";
+      try {
+        const res = await fetch("/api/files/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          publicUrl = data.publicUrl || "";
+          storagePath = data.storagePath || "";
+        }
+      } catch (err) {
+        console.error("Upload failed:", err);
+      }
 
       const myFile: MyFile = {
         id, name: f.name, size: formatBytes(f.size), sizeBytes: f.size,
         type: extType[ext] || ext.toUpperCase(), category: "",
         createdAt: new Date().toISOString(),
+        storagePath: storagePath || undefined,
       };
       newFiles.push(myFile);
 
-      if (audioExts.includes(ext)) {
-        audioTracks.push({ id: myFile.id, title: f.name.replace(/\.[^.]+$/, ""), url: dataUrl });
+      if (audioExts.includes(ext) && publicUrl) {
+        audioTracks.push({ id: myFile.id, title: f.name.replace(/\.[^.]+$/, ""), url: publicUrl });
       }
     }
 
@@ -97,6 +112,17 @@ export default function Files() {
   };
 
   const handleDownload = async (f: MyFile) => {
+    if (f.storagePath) {
+      // Supabase file: use public URL
+      const a = document.createElement("a");
+      a.href = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/files/${f.storagePath}`;
+      a.download = f.name;
+      a.target = "_blank";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      return;
+    }
+    // Legacy IndexedDB file
+    const { getBlob } = await import("@/lib/db/idb-store");
     const dataUrl = await getBlob(f.id);
     if (!dataUrl) return;
     const a = document.createElement("a");
@@ -104,9 +130,24 @@ export default function Files() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
-  const del = async (id: string) => {
-    await deleteBlob(id);
-    save(files.filter(f => f.id !== id));
+  const del = async (f: MyFile) => {
+    if (f.storagePath) {
+      // Delete from Supabase
+      try {
+        await fetch("/api/files/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storagePath: f.storagePath }),
+        });
+      } catch (err) {
+        console.error("Delete from Supabase failed:", err);
+      }
+    } else {
+      // Legacy IndexedDB file
+      const { deleteBlob } = await import("@/lib/db/idb-store");
+      await deleteBlob(f.id);
+    }
+    save(files.filter(x => x.id !== f.id));
   };
 
   const changeCategory = (id: string, newCat: string) => {
@@ -283,7 +324,7 @@ export default function Files() {
                         className="p-2 hover:text-[var(--skin-primary)] transition-colors">
                   <Download className="size-4" />
                 </button>
-                <button onClick={() => del(f.id)}
+                <button onClick={() => del(f)}
                         className="p-2 hover:text-red-500 transition-colors">
                   <Trash2 className="size-4" />
                 </button>

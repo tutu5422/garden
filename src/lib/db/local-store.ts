@@ -36,7 +36,19 @@ function write<T>(key: string, data: T) {
 }
 
 function uid(): string {
-  return 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)
+  return crypto.randomUUID?.() || 'u-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+// Fire-and-forget sync to Supabase (non-blocking)
+async function syncToCloud(table: string, action: string, data: any) {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table, action, data }),
+    });
+  } catch { /* silent */ }
 }
 
 // ========== 分类 ==========
@@ -280,6 +292,7 @@ export function createLocalResource(data: {
 
   resources.push(resource)
   write(RESOURCES_KEY, resources)
+  syncToCloud('resources', 'upsert', resource)
   return resource
 }
 
@@ -315,11 +328,13 @@ export function updateLocalResource(id: string, data: {
   } as Resource
 
   write(RESOURCES_KEY, resources)
+  syncToCloud('resources', 'upsert', resources[idx])
 }
 
 export function deleteLocalResource(id: string) {
   const resources = getLocalResources().filter(r => r.id !== id)
   write(RESOURCES_KEY, resources)
+  syncToCloud('resources', 'delete', { id })
 }
 
 export function deleteLocalResources(ids: string[]) {
@@ -327,6 +342,7 @@ export function deleteLocalResources(ids: string[]) {
   const idSet = new Set(ids)
   const resources = getLocalResources().filter(r => !idSet.has(r.id))
   write(RESOURCES_KEY, resources)
+  ids.forEach(id => syncToCloud('resources', 'delete', { id }))
 }
 
 // ========== 精选合集 ==========
@@ -358,6 +374,7 @@ export function createLocalCollection(title: string, description: string): Local
   }
   cols.push(col)
   write(COLLECTIONS_KEY, cols)
+  syncToCloud('collections', 'upsert', col)
   return col
 }
 
@@ -368,10 +385,12 @@ export function updateLocalCollection(id: string, data: Partial<Pick<LocalCollec
   if (data.title) cols[idx].title = data.title
   if (data.description !== undefined) cols[idx].description = data.description
   write(COLLECTIONS_KEY, cols)
+  syncToCloud('collections', 'upsert', cols[idx])
 }
 
 export function deleteLocalCollection(id: string) {
   write(COLLECTIONS_KEY, getLocalCollections().filter(c => c.id !== id))
+  syncToCloud('collections', 'delete', { id })
 }
 
 export function addResourceToCollection(collectionId: string, resourceId: string) {
@@ -380,6 +399,7 @@ export function addResourceToCollection(collectionId: string, resourceId: string
   if (!col || col.resourceIds.includes(resourceId)) return
   col.resourceIds.push(resourceId)
   write(COLLECTIONS_KEY, cols)
+  syncToCloud('collections', 'upsert', col)
 }
 
 export function removeResourceFromCollection(collectionId: string, resourceId: string) {
@@ -388,6 +408,7 @@ export function removeResourceFromCollection(collectionId: string, resourceId: s
   if (!col) return
   col.resourceIds = col.resourceIds.filter(id => id !== resourceId)
   write(COLLECTIONS_KEY, cols)
+  syncToCloud('collections', 'upsert', col)
 }
 
 export function getResourcesForCollection(collectionId: string): Resource[] {

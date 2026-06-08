@@ -125,6 +125,90 @@ export async function getResourcesHybrid(params: {
   }
 }
 
+// ========== 精选合集混合读取 ==========
+
+export interface CloudCollection {
+  id: string
+  title: string
+  description: string
+  coverImage: string
+  resourceIds: string[]
+  createdAt: string
+  updatedAt?: string
+}
+
+/**
+ * 从 Supabase 拉取合集并合并到本地 localStorage。
+ * 云端数据（updated_at 更新者）优先，本地独有数据保留。
+ * 应在应用初始化时调用一次。
+ */
+export async function syncCollectionsFromCloud(): Promise<void> {
+  const { getLocalCollections } = await import('@/lib/db/local-store')
+  const localCols = getLocalCollections()
+
+  if (isLocal()) return
+
+  try {
+    const supabase = createClient()
+
+    const LOCAL_USER_ID = 'f7db8ccd-a627-4946-a4c2-1e3f24aaaab7'
+    const { data: cloudCols } = await supabase
+      .from('collections')
+      .select('*')
+      .eq('user_id', LOCAL_USER_ID)
+      .order('updated_at', { ascending: false })
+
+    if (!cloudCols?.length) return
+
+    // Fetch resource associations
+    const collectionIds = cloudCols.map((c: any) => c.id)
+    const { data: junctions } = await supabase
+      .from('collection_resources')
+      .select('collection_id, resource_id')
+      .in('collection_id', collectionIds)
+
+    const resourceMap = new Map<string, string[]>()
+    if (junctions) {
+      for (const j of junctions as any[]) {
+        const list = resourceMap.get(j.collection_id) || []
+        list.push(j.resource_id)
+        resourceMap.set(j.collection_id, list)
+      }
+    }
+
+    // Merge: cloud wins on newer updated_at
+    const merged = new Map<string, any>()
+    for (const c of localCols) merged.set(c.id, { ...c })
+    for (const c of cloudCols as any[]) {
+      const existing = merged.get(c.id)
+      if (!existing || !(existing as any).updatedAt || new Date(c.updated_at) > new Date((existing as any).updatedAt || 0)) {
+        merged.set(c.id, {
+          id: c.id,
+          title: c.title,
+          description: c.description || '',
+          coverImage: c.cover_image_url || '',
+          resourceIds: resourceMap.get(c.id) || [],
+          createdAt: c.created_at,
+          updatedAt: c.updated_at,
+        })
+      }
+    }
+
+    // Write back to localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const mergedList = Array.from(merged.values()).map(c => ({
+          id: c.id, title: c.title, description: c.description,
+          coverImage: c.coverImage, resourceIds: c.resourceIds, createdAt: c.createdAt,
+        }))
+        localStorage.setItem('garden_collections', JSON.stringify(mergedList))
+      } catch {}
+    }
+  } catch {
+    // silent — local data still available
+  }
+}
+
 // 批量删除 — 返回失败的 ID 列表
 export async function deleteResourcesHybrid(ids: string[]): Promise<string[]> {
   if (ids.length === 0) return []

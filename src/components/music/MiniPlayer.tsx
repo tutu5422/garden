@@ -44,13 +44,22 @@ export default function MiniPlayer() {
     try {
       const rawName = file.name.replace(/\.[^.]+$/, '')
       const parsed = parseFilename(rawName)
-      const reader = new FileReader()
-      const dataUrl = await new Promise<string>((resolve, reject) => { reader.onload = () => resolve(reader.result as string); reader.onerror = reject; reader.readAsDataURL(file) })
+      const trackId = Date.now().toString()
+
+      // Upload audio file to Supabase Storage for cross-device sync
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('id', trackId)
+      const res = await fetch('/api/music/upload', { method: 'POST', body: formData })
+      const json = await res.json()
+      if (!json.ok) throw new Error(json.error || '上传失败')
+
       const track: Track = {
-        id: Date.now().toString(),
+        id: trackId,
         title: parsed.title,
         artist: parsed.artist,
-        url: dataUrl,
+        url: json.publicUrl,
+        storagePath: json.storagePath,
       }
       addTrack(track)
       toast.success(`已添加: ${track.title}${track.artist ? ` — ${track.artist}` : ''}`)
@@ -69,7 +78,7 @@ export default function MiniPlayer() {
           })
         }
       })
-    } catch { toast.error('文件读取失败') }
+    } catch (err: any) { toast.error(err.message || '上传失败') }
     finally { setUploading(false); if (fileInputRef.current) fileInputRef.current.value = '' }
   }, [addTrack])
 
