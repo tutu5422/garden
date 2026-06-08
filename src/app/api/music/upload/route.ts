@@ -9,8 +9,9 @@ function isAuth(req: NextRequest): boolean {
 
 async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: string): Promise<boolean> {
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!serviceKey || !baseUrl) return false;
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  if (!serviceKey || !rawUrl) return false;
+  const baseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
   const url = `${baseUrl}/storage/v1/object/files/${path}`;
   const res = await fetch(url, {

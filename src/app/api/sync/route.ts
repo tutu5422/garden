@@ -4,8 +4,14 @@ const PASS = process.env.SITE_PASSWORD || '123';
 const COOKIE = 'minitu_auth';
 const LOCAL_USER_ID = process.env.SUPABASE_LOCAL_USER_ID || '';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+// Ensure protocol prefix — critical: Vercel may set URL without https://
+const SUPABASE_URL = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+
+// Music playlist resource ID — deterministic UUID v5 derived from LOCAL_USER_ID
+// Pre-computed: crypto.createHash('md5').update('garden-music-' + LOCAL_USER_ID).digest('hex') → UUID
+const MUSIC_PLAYLIST_ID = '254e932e-ac70-4320-8944-92107bcc4eb1';
 
 // Valid resource_type enum values in the Supabase schema
 const VALID_TYPES = new Set(['article', 'book', 'link', 'image', 'tool']);
@@ -19,7 +25,7 @@ function mapResourceType(type: string): string | null {
   return null; // store in metadata instead
 }
 
-async function supabaseFetch(path: string, options: RequestInit): Promise<boolean> {
+async function supabaseFetch(path: string, options: RequestInit): Promise<{ ok: boolean; status: number }> {
   const url = `${SUPABASE_URL}/rest/v1/${path}`;
   const res = await fetch(url, {
     ...options,
@@ -34,9 +40,29 @@ async function supabaseFetch(path: string, options: RequestInit): Promise<boolea
   if (!res.ok) {
     const err = await res.text().catch(() => '');
     console.error(`Supabase ${path}:`, res.status, err.substring(0, 200));
-    return false;
+    return { ok: false, status: res.status };
   }
-  return true;
+  return { ok: true, status: res.status };
+}
+
+// POST-first upsert: POST to create, PATCH on duplicate conflict
+async function supabaseUpsert(table: string, data: Record<string, any>): Promise<boolean> {
+  const id = data.id;
+  // Try POST first (create)
+  const postResult = await supabaseFetch(table, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (postResult.ok) return true;
+  // If conflict (duplicate id), update via PATCH
+  if (postResult.status === 409) {
+    const patchResult = await supabaseFetch(`${table}?id=eq.${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return patchResult.ok;
+  }
+  return false;
 }
 
 export async function POST(req: NextRequest) {
@@ -77,21 +103,11 @@ export async function POST(req: NextRequest) {
           created_at: resource.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const ok = await supabaseFetch(`resources?id=eq.${resource.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(supabaseData),
-          headers: { 'Prefer': 'resolution=merge-duplicates' },
-        });
-        if (!ok) {
-          const ok2 = await supabaseFetch('resources', {
-            method: 'POST',
-            body: JSON.stringify(supabaseData),
-          });
-          if (!ok2) return NextResponse.json({ error: '同步资源失败' }, { status: 500 });
-        }
+        const ok = await supabaseUpsert('resources', supabaseData);
+        if (!ok) return NextResponse.json({ error: '同步资源失败' }, { status: 500 });
       } else if (table === 'music_playlist') {
-        // Store playlist as a resource row with sentinel ID
-        const playlistId = `${LOCAL_USER_ID}_music`;
+        // Store playlist as a resource row — use deterministic UUID derived from user_id
+        const playlistId = MUSIC_PLAYLIST_ID;
         const supabaseData = {
           id: playlistId,
           title: '__music_playlist__',
@@ -103,17 +119,8 @@ export async function POST(req: NextRequest) {
           created_at: data.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const ok = await supabaseFetch(`resources?id=eq.${playlistId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(supabaseData),
-          headers: { 'Prefer': 'resolution=merge-duplicates' },
-        });
-        if (!ok) {
-          await supabaseFetch('resources', {
-            method: 'POST',
-            body: JSON.stringify(supabaseData),
-          });
-        }
+        const ok2 = await supabaseUpsert('resources', supabaseData);
+        if (!ok2) return NextResponse.json({ error: '同步播放列表失败' }, { status: 500 });
       } else if (table === 'collections') {
         const col = data;
         const supabaseData = {
@@ -128,18 +135,8 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         };
         // Upsert collection
-        const ok = await supabaseFetch(`collections?id=eq.${col.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(supabaseData),
-          headers: { 'Prefer': 'resolution=merge-duplicates' },
-        });
-        if (!ok) {
-          const ok2 = await supabaseFetch('collections', {
-            method: 'POST',
-            body: JSON.stringify(supabaseData),
-          });
-          if (!ok2) return NextResponse.json({ error: '同步合集失败' }, { status: 500 });
-        }
+        const ok = await supabaseUpsert('collections', supabaseData);
+        if (!ok) return NextResponse.json({ error: '同步合集失败' }, { status: 500 });
         // Sync resource associations via junction table
         const resourceIds: string[] = col.resourceIds || [];
         // Delete old associations
@@ -158,13 +155,13 @@ export async function POST(req: NextRequest) {
       }
     } else if (action === 'delete') {
       if (table === 'resources') {
-        const ok = await supabaseFetch(`resources?id=eq.${data.id}`, { method: 'DELETE' });
-        if (!ok) return NextResponse.json({ error: '删除资源失败' }, { status: 500 });
+        const result = await supabaseFetch(`resources?id=eq.${data.id}`, { method: 'DELETE' });
+        if (!result.ok) return NextResponse.json({ error: '删除资源失败' }, { status: 500 });
       } else if (table === 'collections') {
         // Delete junction table entries first
         await supabaseFetch(`collection_resources?collection_id=eq.${data.id}`, { method: 'DELETE' });
-        const ok = await supabaseFetch(`collections?id=eq.${data.id}`, { method: 'DELETE' });
-        if (!ok) return NextResponse.json({ error: '删除合集失败' }, { status: 500 });
+        const result = await supabaseFetch(`collections?id=eq.${data.id}`, { method: 'DELETE' });
+        if (!result.ok) return NextResponse.json({ error: '删除合集失败' }, { status: 500 });
       }
     }
 

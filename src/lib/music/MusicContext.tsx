@@ -97,13 +97,15 @@ function syncPlaylistToCloud(tracks: Track[]) {
 
 // 从 Supabase 拉取云端播放列表
 async function loadPlaylistFromCloud(): Promise<Track[]> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  const localUserId = 'f7db8ccd-a627-4946-a4c2-1e3f24aaaab7'
-  if (!supabaseUrl || !supabaseKey) return []
+  if (!rawUrl || !supabaseKey) return []
+  const supabaseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`
+
+  // Deterministic UUID matching the sync API route
+  const playlistId = '254e932e-ac70-4320-8944-92107bcc4eb1'
 
   try {
-    const playlistId = `${localUserId}_music`
     const res = await fetch(
       `${supabaseUrl}/rest/v1/resources?id=eq.${playlistId}&select=metadata`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }

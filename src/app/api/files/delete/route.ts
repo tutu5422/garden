@@ -16,10 +16,11 @@ export async function POST(req: NextRequest) {
     }
 
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;
-    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!serviceKey || !baseUrl) {
+    const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    if (!serviceKey || !rawUrl) {
       return NextResponse.json({ error: '服务端配置缺失' }, { status: 500 });
     }
+    const baseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
     const url = `${baseUrl}/storage/v1/object/files/${storagePath}`;
     const res = await fetch(url, {
