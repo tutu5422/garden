@@ -48,13 +48,11 @@ async function supabaseFetch(path: string, options: RequestInit): Promise<{ ok: 
 // POST-first upsert: POST to create, PATCH on duplicate conflict
 async function supabaseUpsert(table: string, data: Record<string, any>): Promise<{ ok: boolean; error?: string }> {
   const id = data.id;
-  // Try POST first (create)
   const postResult = await supabaseFetch(table, {
     method: 'POST',
     body: JSON.stringify(data),
   });
   if (postResult.ok) return { ok: true };
-  // If conflict (duplicate id), update via PATCH
   if (postResult.status === 409) {
     const patchResult = await supabaseFetch(`${table}?id=eq.${id}`, {
       method: 'PATCH',
@@ -63,6 +61,134 @@ async function supabaseUpsert(table: string, data: Record<string, any>): Promise
     return { ok: patchResult.ok, error: patchResult.error };
   }
   return { ok: false, error: postResult.error || `POST returned ${postResult.status}` };
+}
+
+// GET: Pull all cloud data for the user (uses service key, bypasses RLS)
+export async function GET(req: NextRequest) {
+  if (!isAuth(req)) {
+    return NextResponse.json({ error: '未登录' }, { status: 401 });
+  }
+  if (!SERVICE_KEY || !SUPABASE_URL || !LOCAL_USER_ID) {
+    return NextResponse.json({ error: '服务端配置缺失' }, { status: 500 });
+  }
+
+  try {
+    // Pull music playlist (stored as a resource)
+    const musicUrl = `${SUPABASE_URL}/rest/v1/resources?id=eq.${MUSIC_PLAYLIST_ID}&select=metadata`;
+    const musicRes = await fetch(musicUrl, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+    });
+    let musicPlaylist: any[] = [];
+    if (musicRes.ok) {
+      const musicData = await musicRes.json();
+      if (musicData?.[0]?.metadata?.tracks) {
+        musicPlaylist = musicData[0].metadata.tracks;
+      }
+    }
+
+    // Pull notes (resources with is_note metadata)
+    const notesUrl = `${SUPABASE_URL}/rest/v1/resources?select=*&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=200`;
+    const notesRes = await fetch(notesUrl, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+    });
+    const notes = notesRes.ok ? await notesRes.json() : [];
+
+    // Pull non-note resources
+    const resUrl = `${SUPABASE_URL}/rest/v1/resources?select=*&or=(metadata->>is_note.is.null,metadata->>is_note.eq.false)&order=updated_at.desc&limit=200`;
+    const resRes = await fetch(resUrl, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+    });
+    const resources = resRes.ok ? await resRes.json() : [];
+
+    // Pull files (resources with is_file metadata)
+    const filesUrl = `${SUPABASE_URL}/rest/v1/resources?select=*&metadata->>is_file=eq.true&order=updated_at.desc&limit=200`;
+    const filesRes = await fetch(filesUrl, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+    });
+    const cloudFiles = filesRes.ok ? await filesRes.json() : [];
+
+    // Pull collections with their resource associations
+    const colUrl = `${SUPABASE_URL}/rest/v1/collections?select=*&user_id=eq.${LOCAL_USER_ID}&order=updated_at.desc`;
+    const colRes = await fetch(colUrl, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+    });
+    const collections = colRes.ok ? await colRes.json() : [];
+
+    // Pull collection_resources junctions
+    let junctions: any[] = [];
+    if (collections.length > 0) {
+      const colIds = collections.map((c: any) => c.id);
+      const juncUrl = `${SUPABASE_URL}/rest/v1/collection_resources?select=collection_id,resource_id&collection_id=in.(${colIds.join(',')})`;
+      const juncRes = await fetch(juncUrl, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      });
+      if (juncRes.ok) junctions = await juncRes.json();
+    }
+
+    // Map resource IDs to collections
+    const resourceMap: Record<string, string[]> = {};
+    for (const j of junctions) {
+      if (!resourceMap[j.collection_id]) resourceMap[j.collection_id] = [];
+      resourceMap[j.collection_id].push(j.resource_id);
+    }
+
+    const response = NextResponse.json({
+      musicPlaylist: musicPlaylist || [],
+      notes: (notes || []).map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        content: r.metadata?.content || '',
+        type: r.metadata?.type || 'article',
+        tags: r.metadata?.tags || [],
+        collectionId: r.metadata?.collectionId || undefined,
+        collectionName: r.metadata?.collectionName || undefined,
+        createdAt: r.created_at,
+        image: r.metadata?.image || undefined,
+        imageThumb: r.metadata?.imageThumb || undefined,
+      })),
+      resources: (resources || []).map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        resource_type: r.metadata?.actual_resource_type || r.resource_type,
+        url: r.url,
+        cover_image_url: r.cover_image_url,
+        author: r.author,
+        rating: r.rating,
+        status: r.status,
+        category_id: r.category_id,
+        resource_tags: (r.metadata?.tags || []).map((name: string) => ({ tag: { name } })),
+        metadata: r.metadata || {},
+        pinned: r.pinned,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      })),
+      files: (cloudFiles || []).map((r: any) => ({
+        id: r.id,
+        name: r.title || '',
+        size: r.metadata?.fileSize || '0 B',
+        sizeBytes: r.metadata?.fileSizeBytes || 0,
+        type: r.metadata?.fileType || '',
+        category: r.metadata?.fileCategory || '',
+        createdAt: r.created_at,
+        storagePath: r.metadata?.storagePath || '',
+      })),
+      collections: (collections || []).map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        description: c.description,
+        coverImage: c.cover_image_url || '',
+        resourceIds: resourceMap[c.id] || [],
+        createdAt: c.created_at,
+        updatedAt: c.updated_at,
+      })),
+    });
+    response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
+    return response;
+  } catch (e: any) {
+    console.error('Sync GET error:', e);
+    return NextResponse.json({ error: e.message || '获取数据失败' }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -146,7 +272,7 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         };
         const { ok: noteOk, error: noteErr } = await supabaseUpsert('resources', supabaseData);
-        if (!noteOk) return NextResponse.json({ error: '同步笔记失败', detail: noteErr }, { status: 500 });
+        if (!noteOk) return NextResponse.json({ error: '同步笔记失败', detail: noteErr, debug_data_keys: Object.keys(supabaseData) }, { status: 500 });
       } else if (table === 'collections') {
         const col = data;
         const supabaseData = {
@@ -178,6 +304,29 @@ export async function POST(req: NextRequest) {
             body: JSON.stringify(rows),
           });
         }
+      } else if (table === 'files') {
+        // Store file metadata as a resource row
+        const file = data;
+        const supabaseData = {
+          id: file.id,
+          title: file.name || '',
+          description: null,
+          resource_type: 'tool',
+          user_id: LOCAL_USER_ID,
+          status: 'active',
+          metadata: {
+            is_file: true,
+            fileSize: file.size || '0 B',
+            fileSizeBytes: file.sizeBytes || 0,
+            fileType: file.type || '',
+            fileCategory: file.category || '',
+            storagePath: file.storagePath || '',
+          },
+          created_at: file.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const { ok: fileOk, error: fileErr } = await supabaseUpsert('resources', supabaseData);
+        if (!fileOk) return NextResponse.json({ error: '同步文件失败', detail: fileErr }, { status: 500 });
       }
     } else if (action === 'delete') {
       if (table === 'resources' || table === 'notes') {
@@ -188,6 +337,9 @@ export async function POST(req: NextRequest) {
         await supabaseFetch(`collection_resources?collection_id=eq.${data.id}`, { method: 'DELETE' });
         const result = await supabaseFetch(`collections?id=eq.${data.id}`, { method: 'DELETE' });
         if (!result.ok) return NextResponse.json({ error: '删除合集失败', detail: result.error }, { status: 500 });
+      } else if (table === 'files') {
+        const result = await supabaseFetch(`resources?id=eq.${data.id}`, { method: 'DELETE' });
+        if (!result.ok) return NextResponse.json({ error: '删除文件失败', detail: result.error }, { status: 500 });
       }
     }
 

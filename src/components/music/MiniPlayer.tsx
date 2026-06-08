@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useRef, useCallback, type ChangeEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, type ChangeEvent } from 'react'
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
-  Music, ListMusic, ChevronUp, Upload, Trash2, Repeat, Repeat1, Shuffle
+  Music, ListMusic, ChevronUp, Upload, Trash2, Repeat, Repeat1, Shuffle,
+  CheckSquare, Square, Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useMusic, type Track, type LoopMode } from '@/lib/music/MusicContext'
 import { searchAndCacheLyrics, setLyrics, deleteLyrics, parseFilename } from '@/lib/music/lyrics-store'
+
+const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
 
 const loopIcons: Record<LoopMode, React.ReactNode> = {
   none: <Repeat className="size-3.5 opacity-30" />,
@@ -21,6 +24,55 @@ const loopLabels: Record<LoopMode, string> = {
   none: '关闭循环', all: '列表循环', one: '单曲循环', shuffle: '随机播放',
 }
 
+// Audio file extensions
+const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'aac', 'ogg', 'wma', 'm4a'])
+
+interface UploadedAudioFile {
+  id: string
+  name: string
+  size: string
+  sizeBytes: number
+  storagePath?: string
+  url?: string
+  createdAt: string
+}
+
+/** Read audio files from minitu_files localStorage */
+function getAudioFilesFromStore(): UploadedAudioFile[] {
+  try {
+    const raw = localStorage.getItem('minitu_files')
+    if (!raw) return []
+    const files = JSON.parse(raw)
+    return files.filter((f: any) => {
+      const ext = f.name?.split('.').pop()?.toLowerCase() || ''
+      return AUDIO_EXTS.has(ext)
+    })
+  } catch { return [] }
+}
+
+/** Upload file via presigned URL (bypasses Vercel 4.5MB limit) */
+async function uploadViaPresignedUrl(file: File, id: string): Promise<{ storagePath: string; publicUrl: string }> {
+  const presignRes = await fetch('/api/storage/presign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: file.name, contentType: file.type, id }),
+  })
+  if (!presignRes.ok) {
+    const err = await presignRes.json().catch(() => ({}))
+    throw new Error(err.error || '获取上传链接失败')
+  }
+  const { signedUrl, storagePath, publicUrl } = await presignRes.json()
+
+  const uploadRes = await fetch(signedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'audio/mpeg' },
+    body: file,
+  })
+  if (!uploadRes.ok) throw new Error(`上传失败 (${uploadRes.status})`)
+
+  return { storagePath, publicUrl }
+}
+
 export default function MiniPlayer() {
   const ctx = useMusic();
   if (!ctx) return null;
@@ -30,60 +82,123 @@ export default function MiniPlayer() {
 
   const [expanded, setExpanded] = useState(false)
   const [showPlaylist, setShowPlaylist] = useState(false)
+  const [showImport, setShowImport] = useState(false)
+  const [importFiles, setImportFiles] = useState<UploadedAudioFile[]>([])
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [importing, setImporting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [showUploadLyrics, setShowUploadLyrics] = useState(false)
   const [uploadText, setUploadText] = useState('')
   const [deleting, setDeleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileUpload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
+  // Refresh import file list when panel opens
+  useEffect(() => {
+    if (showImport) {
+      const audioFiles = getAudioFilesFromStore()
+      // Filter out files already in the playlist
+      const playlistIds = new Set(playlist.map(t => t.id))
+      const available = audioFiles.filter(f => !playlistIds.has(f.id))
+      setImportFiles(available)
+      setSelectedIds(new Set())
+    }
+  }, [showImport, playlist])
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => {
+    if (selectedIds.size === importFiles.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(importFiles.map(f => f.id)))
+    }
+  }
+
+  const handleImport = useCallback(async () => {
+    if (selectedIds.size === 0) return
+    setImporting(true)
+    const toImport = importFiles.filter(f => selectedIds.has(f.id))
+    let imported = 0
+    for (const f of toImport) {
+      const url = f.url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/minitu-garden/${f.storagePath}`
+      const ext = f.name.split('.').pop()?.toLowerCase() || ''
+      if (!url) continue
+      const parsed = parseFilename(f.name.replace(/\.[^.]+$/, ''))
+      const track: Track = {
+        id: f.id,
+        title: parsed.title,
+        artist: parsed.artist,
+        url,
+        storagePath: f.storagePath || `${f.id}/${f.id}.${ext}`,
+      }
+      addTrack(track)
+      imported++
+      // Background lyric search
+      searchAndCacheLyrics(track.id, track.title, track.artist)
+    }
+    toast.success(`已导入 ${imported} 首歌曲`)
+    setShowImport(false)
+    setImporting(false)
+  }, [selectedIds, importFiles, addTrack])
+
+  // Direct upload handler (for MiniPlayer's own upload capability)
+  const handleDirectUpload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
-    if (!file.type.startsWith('audio/')) { toast.error('请选择音频文件'); return }
-    if (file.size > 20 * 1024 * 1024) { toast.error('文件不能超过 20MB'); return }
+
+    if (file.size > MAX_SIZE) { toast.error('文件不能超过 50MB'); return }
+
     setUploading(true)
     try {
       const rawName = file.name.replace(/\.[^.]+$/, '')
       const parsed = parseFilename(rawName)
-      const trackId = Date.now().toString()
+      const id = crypto.randomUUID()
 
-      // Upload audio file to Supabase Storage for cross-device sync
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('id', trackId)
-      const res = await fetch('/api/music/upload', { method: 'POST', body: formData })
-      const json = await res.json()
-      if (!json.ok) throw new Error(json.error || '上传失败')
+      // Upload via presigned URL
+      const { storagePath, publicUrl } = await uploadViaPresignedUrl(file, id)
+
+      // Save to files store (so it appears in files page too)
+      try {
+        const raw = localStorage.getItem('minitu_files')
+        const currentFiles = raw ? JSON.parse(raw) : []
+        const newFile = {
+          id, name: file.name,
+          size: file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+          sizeBytes: file.size,
+          type: (file.name.split('.').pop()?.toUpperCase() || 'MP3'),
+          category: '', createdAt: new Date().toISOString(),
+          storagePath, url: publicUrl,
+        }
+        currentFiles.unshift(newFile)
+        localStorage.setItem('minitu_files', JSON.stringify(currentFiles))
+      } catch {}
 
       const track: Track = {
-        id: trackId,
-        title: parsed.title,
-        artist: parsed.artist,
-        url: json.publicUrl,
-        storagePath: json.storagePath,
+        id, title: parsed.title, artist: parsed.artist,
+        url: publicUrl, storagePath,
       }
       addTrack(track)
       toast.success(`已添加: ${track.title}${track.artist ? ` — ${track.artist}` : ''}`)
 
-      // 后台搜索歌词
+      // Background lyric search
       searchAndCacheLyrics(track.id, track.title, track.artist).then(result => {
-        if (result) {
-          toast.success(`📝 已找到「${track.title}」的歌词`, {
-            description: '播放时将自动显示',
-            duration: 3000,
-          })
-        } else {
-          toast.info(`未找到「${track.title}」的歌词`, {
-            description: '播放时将显示歌曲信息',
-            duration: 3000,
-          })
-        }
+        if (result) toast.success(`📝 已找到「${track.title}」的歌词`)
       })
-    } catch (err: any) { toast.error(err.message || '上传失败') }
+    } catch (err: any) {
+      toast.error(err.message || '上传失败')
+    }
     finally { setUploading(false); if (fileInputRef.current) fileInputRef.current.value = '' }
   }, [addTrack])
 
-  const handleRemoveTrack = (id: string, e: React.MouseEvent) => { e.stopPropagation(); removeTrack(id); toast.success('已删除') }
+  const handleRemoveTrack = (id: string, e: React.MouseEvent) => { e.stopPropagation(); removeTrack(id) }
 
+  // --- Collapsed state ---
   if (playlist.length === 0 && !expanded) {
     return (
       <div className="fixed bottom-20 md:bottom-4 right-4 z-40">
@@ -95,6 +210,7 @@ export default function MiniPlayer() {
     )
   }
 
+  // --- Expanded state ---
   return (
     <div className="fixed bottom-20 md:bottom-4 right-4 z-40">
       {expanded ? (
@@ -114,7 +230,80 @@ export default function MiniPlayer() {
             </div>
           </div>
 
-          {showPlaylist && (
+          {/* Import Panel */}
+          {showImport && (
+            <div className="space-y-2 p-2 border-2 border-[var(--skin-border)]"
+                 style={{ background: 'var(--skin-muted)' }}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-[var(--skin-text-secondary)]">
+                  选择音频文件导入 ({importFiles.length} 个可用)
+                </span>
+                <button onClick={() => setShowImport(false)} className="text-[10px] text-[var(--skin-text-secondary)] hover:text-[var(--skin-text)]">
+                  关闭
+                </button>
+              </div>
+
+              {importFiles.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-xs text-[var(--skin-text-secondary)]">尚无可用音频文件</p>
+                  <p className="text-[10px] text-[var(--skin-text-secondary)] mt-1 opacity-60">请先在「文件」页面上传音频，或使用下方按钮直接上传</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 mb-1">
+                    <button onClick={selectAll} className="text-[10px] font-bold text-[var(--skin-primary)] hover:underline">
+                      {selectedIds.size === importFiles.length ? '取消全选' : '全选'}
+                    </button>
+                    <span className="text-[10px] text-[var(--skin-text-secondary)]">
+                      已选 {selectedIds.size} / {importFiles.length}
+                    </span>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto space-y-0.5">
+                    {importFiles.map(f => (
+                      <div key={f.id}
+                        className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-[var(--skin-surface)] transition-colors"
+                        onClick={() => toggleSelect(f.id)}>
+                        <span style={{ color: selectedIds.has(f.id) ? 'var(--skin-primary)' : 'var(--skin-text-secondary)' }}>
+                          {selectedIds.has(f.id) ? <CheckSquare className="size-3.5" /> : <Square className="size-3.5" />}
+                        </span>
+                        <span className="truncate flex-1 font-medium">{f.name}</span>
+                        <span className="text-[10px] text-[var(--skin-text-secondary)] shrink-0">{f.size}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleImport}
+                    disabled={selectedIds.size === 0 || importing}
+                    className="w-full py-1.5 text-xs font-bold rounded transition-all mt-1"
+                    style={{
+                      backgroundColor: selectedIds.size > 0 ? 'var(--skin-primary)' : 'var(--skin-border)',
+                      color: selectedIds.size > 0 ? '#fff' : 'var(--skin-text-secondary)',
+                    }}>
+                    {importing ? '导入中...' : `确认导入 (${selectedIds.size})`}
+                  </button>
+                </>
+              )}
+
+              {/* Direct upload option */}
+              <div className="pt-2 border-t border-[var(--skin-border)]">
+                <label className="flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer hover:bg-[var(--skin-surface)] transition-colors text-[var(--skin-text-secondary)] font-bold w-full">
+                  <Plus className="size-3.5" />
+                  {uploading ? '上传中...' : '直接上传新音频文件 (最多50MB)'}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={handleDirectUpload}
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Playlist Panel */}
+          {showPlaylist && !showImport && (
             <div className="space-y-0.5 max-h-48 overflow-y-auto p-2 border-2 border-[var(--skin-border)]"
                  style={{ background: 'var(--skin-muted)' }}>
               {playlist.map((track, i) => (
@@ -127,10 +316,12 @@ export default function MiniPlayer() {
                   <button onClick={(e) => handleRemoveTrack(track.id, e)} className="p-0.5 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all shrink-0"><Trash2 className="size-3" /></button>
                 </div>
               ))}
-              <label className="flex items-center gap-2 px-2 py-2 text-xs cursor-pointer hover:bg-[var(--skin-surface)] transition-colors text-[var(--skin-text-secondary)] font-bold">
-                <Upload className="size-3.5" />{uploading ? '导入中...' : '导入音频文件'}
-                <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={handleFileUpload} disabled={uploading} />
-              </label>
+              <button
+                onClick={() => { setShowPlaylist(false); setShowImport(true); }}
+                className="flex items-center gap-2 px-2 py-2 text-xs cursor-pointer hover:bg-[var(--skin-surface)] transition-colors text-[var(--skin-text-secondary)] font-bold w-full text-left"
+              >
+                <Upload className="size-3.5" />导入音频文件
+              </button>
             </div>
           )}
 
@@ -141,82 +332,49 @@ export default function MiniPlayer() {
               </div>
               <p className="text-[10px] text-[var(--skin-text-secondary)] mt-1 font-mono">{currentIndex + 1} / {playlist.length} · {loopLabels[loopMode]}</p>
 
-              {/* 歌词操作 — 不明显的小按钮行 */}
+              {/* Lyrics management */}
               <div className="flex items-center justify-center gap-2 mt-2.5">
-                <button
-                  onClick={() => setShowUploadLyrics(!showUploadLyrics)}
+                <button onClick={() => setShowUploadLyrics(!showUploadLyrics)}
                   className="text-[9px] tracking-wide opacity-25 hover:opacity-100 transition-opacity duration-200"
-                  style={{ color: 'var(--skin-text-secondary)' }}
-                  title="粘贴上传歌词"
-                >
-                  上传歌词
-                </button>
+                  style={{ color: 'var(--skin-text-secondary)' }}>上传歌词</button>
                 <span className="text-[var(--skin-border)] opacity-20 select-none">|</span>
                 <button
                   onClick={async () => {
                     if (!currentTrack || deleting) return
                     setDeleting(true)
-                    try {
-                      deleteLyrics(currentTrack.id)
-                      toast.success('歌词已删除，下次播放将重新搜索')
-                    } finally {
-                      setDeleting(false)
-                    }
+                    try { deleteLyrics(currentTrack.id); toast.success('歌词已删除') }
+                    finally { setDeleting(false) }
                   }}
                   disabled={deleting}
                   className="text-[9px] tracking-wide opacity-25 hover:opacity-100 transition-opacity duration-200"
-                  style={{ color: 'var(--skin-text-secondary)' }}
-                  title="删除当前歌词"
-                >
-                  删除歌词
-                </button>
+                  style={{ color: 'var(--skin-text-secondary)' }}>删除歌词</button>
               </div>
 
-              {/* 上传歌词表单 */}
               {showUploadLyrics && (
                 <div className="mt-3 pt-3 border-t border-[var(--skin-border)] space-y-2 animate-fade-in-up">
-                  <textarea
-                    value={uploadText}
-                    onChange={e => setUploadText(e.target.value)}
-                    placeholder="粘贴 LRC 或纯文本歌词…"
-                    rows={4}
-                    className="w-full text-[10px] px-2.5 py-1.5 rounded border border-[var(--skin-border)] bg-[var(--skin-muted)] text-[var(--skin-text)] outline-none focus:border-[var(--skin-primary)] transition-colors resize-none leading-relaxed"
-                  />
+                  <textarea value={uploadText} onChange={e => setUploadText(e.target.value)}
+                    placeholder="粘贴 LRC 或纯文本歌词…" rows={4}
+                    className="w-full text-[10px] px-2.5 py-1.5 rounded border border-[var(--skin-border)] bg-[var(--skin-muted)] text-[var(--skin-text)] outline-none focus:border-[var(--skin-primary)] transition-colors resize-none leading-relaxed" />
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        if (!uploadText.trim() || !currentTrack) return
-                        const text = uploadText.trim()
-                        const hasLrcTags = /\[\d{2}:\d{2}\.\d{2,3}\]/.test(text)
-                        setLyrics(currentTrack.id, {
-                          lyrics: text.replace(/\[\d{2}:\d{2}\.\d{2,3}\]/g, '').split('\n').filter(l => l.trim()).join('\n'),
-                          syncedLyrics: hasLrcTags ? text : undefined,
-                          source: 'manual',
-                          searchedAt: Date.now(),
-                        })
-                        toast.success('歌词已保存')
-                        setShowUploadLyrics(false)
-                        setUploadText('')
-                        // 触发 LyricsMarquee 刷新
-                        window.location.reload()
-                      }}
+                    <button onClick={() => {
+                      if (!uploadText.trim() || !currentTrack) return
+                      const text = uploadText.trim()
+                      const hasLrcTags = /\[\d{2}:\d{2}\.\d{2,3}\]/.test(text)
+                      setLyrics(currentTrack.id, {
+                        lyrics: text.replace(/\[\d{2}:\d{2}\.\d{2,3}\]/g, '').split('\n').filter(l => l.trim()).join('\n'),
+                        syncedLyrics: hasLrcTags ? text : undefined,
+                        source: 'manual', searchedAt: Date.now(),
+                      })
+                      toast.success('歌词已保存'); setShowUploadLyrics(false); setUploadText(''); window.location.reload()
+                    }}
                       disabled={!uploadText.trim()}
                       className="flex-1 text-[10px] font-bold py-1 rounded transition-all"
-                      style={{
-                        backgroundColor: 'var(--skin-primary)',
-                        color: '#fff',
-                        opacity: uploadText.trim() ? 1 : 0.3,
-                      }}
-                    >
+                      style={{ backgroundColor: 'var(--skin-primary)', color: '#fff', opacity: uploadText.trim() ? 1 : 0.3 }}>
                       保存歌词
                     </button>
-                    <button
-                      onClick={() => { setShowUploadLyrics(false); setUploadText('') }}
+                    <button onClick={() => { setShowUploadLyrics(false); setUploadText('') }}
                       className="text-[10px] font-bold py-1 px-3 rounded transition-colors border border-[var(--skin-border)]"
-                      style={{ color: 'var(--skin-text-secondary)' }}
-                    >
-                      取消
-                    </button>
+                      style={{ color: 'var(--skin-text-secondary)' }}>取消</button>
                   </div>
                 </div>
               )}

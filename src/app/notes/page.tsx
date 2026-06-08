@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Trash2, Upload, X, Layers, Pencil, BookOpen, Check, Edit3 } from "lucide-react";
+import { updateLocalCollection } from '@/lib/db/local-store';
 
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[];
@@ -21,30 +22,23 @@ const bentoPalette = [
   { bg: '#F0F7FA', accent: '#3A8B9E', text: '#1E3A4A' },
 ];
 
-// Pull notes from Supabase cloud (stored as resources with is_note metadata)
+// Pull notes from cloud via /api/sync (server-side service key, no RLS issues)
 async function syncNotesFromCloud(): Promise<Note[]> {
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!rawUrl || !supabaseKey) return [];
-  const supabaseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
   try {
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/resources?select=*&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=200`,
-      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
-    );
+    const res = await fetch('/api/sync', { method: 'GET' });
     if (!res.ok) return [];
-    const rows = await res.json();
-    return (rows || []).map((r: any) => ({
+    const data = await res.json();
+    return (data.notes || []).map((r: any) => ({
       id: r.id,
       title: r.title || '',
-      content: r.metadata?.content || '',
-      type: r.metadata?.type || 'article',
-      tags: r.metadata?.tags || [],
-      collectionId: r.metadata?.collectionId || undefined,
-      collectionName: r.metadata?.collectionName || undefined,
-      createdAt: r.created_at || new Date().toISOString(),
-      image: r.metadata?.image || undefined,
-      imageThumb: r.metadata?.imageThumb || undefined,
+      content: r.content || '',
+      type: r.type || 'article',
+      tags: r.tags || [],
+      collectionId: r.collectionId || undefined,
+      collectionName: r.collectionName || undefined,
+      createdAt: r.createdAt || new Date().toISOString(),
+      image: r.image || undefined,
+      imageThumb: r.imageThumb || undefined,
     }));
   } catch { return []; }
 }
@@ -109,13 +103,49 @@ export default function Notes() {
   const [editCollectionName, setEditCollectionName] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  // Load notes: localStorage first, then merge from Supabase
+  // UUID pattern: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
+  // Load notes: migrate old IDs → then pull from cloud
   useEffect(() => {
     const loadNotes = async () => {
       try {
-        const local: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]');
-        setNotes(local);
+        let local: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]');
+        let migrated = false;
+
+        // Migrate old non-UUID note IDs to proper UUIDs
+        const idMap = new Map<string, string>();
+        for (const n of local) {
+          if (!isUUID(n.id)) {
+            const newId = crypto.randomUUID?.() || 'n-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+            console.log('[migrate] note ID:', n.id.substring(0, 12), '→', newId.substring(0, 12), 'title:', n.title);
+            idMap.set(n.id, newId);
+            n.id = newId;
+            migrated = true;
+          }
+        }
+        // Update collectionId references if any were migrated
+        if (migrated) {
+          for (const n of local) {
+            if (n.collectionId && idMap.has(n.collectionId)) {
+              n.collectionId = idMap.get(n.collectionId)!;
+            }
+          }
+          localStorage.setItem('minitu_notes', JSON.stringify(local));
+          setNotes(local);
+          // Re-sync all migrated notes to cloud
+          local.forEach(n => {
+            fetch('/api/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ table: 'notes', action: 'upsert', data: n }),
+            }).catch(() => {});
+          });
+        } else {
+          setNotes(local);
+        }
         setCollections(JSON.parse(localStorage.getItem('garden_collections') || '[]'));
+
         // Pull cloud notes and merge
         const cloud = await syncNotesFromCloud();
         if (cloud.length > 0) {
@@ -167,11 +197,11 @@ export default function Notes() {
       setEditingCollectionId(null);
       return;
     }
-    const updated = collections.map(c =>
-      c.id === editingCollectionId ? { ...c, title: editCollectionName.trim() } : c
-    );
-    setCollections(updated);
-    localStorage.setItem("garden_collections", JSON.stringify(updated));
+    // Use local-store which also syncs to cloud
+    updateLocalCollection(editingCollectionId, { title: editCollectionName.trim() });
+    // Refresh collections from localStorage (updateLocalCollection writes there)
+    const updatedCols = JSON.parse(localStorage.getItem('garden_collections') || '[]');
+    setCollections(updatedCols);
     // 同步更新所有相关笔记的 collectionName
     const updatedNotes = notes.map(n =>
       n.collectionId === editingCollectionId ? { ...n, collectionName: editCollectionName.trim() } : n

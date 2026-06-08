@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import { saveBlob, getBlob, deleteBlob } from '@/lib/db/idb-store'
 
 // ========== 类型 ==========
 
@@ -11,7 +10,7 @@ export interface Track {
   title: string
   artist?: string
   album?: string
-  url: string // runtime URL (public HTTP URL or legacy data URL)
+  url: string // public Supabase Storage URL
   storagePath?: string // Supabase storage path for cross-device sync
 }
 
@@ -48,7 +47,7 @@ export function useMusic() {
   return ctx
 }
 
-// ========== 存储 (元数据 local，二进制 IndexedDB) ==========
+// ========== 本地存储 ==========
 
 const STORAGE_KEY = 'minitu_music'
 
@@ -63,17 +62,17 @@ function readMeta(): Track[] {
 function writeMeta(tracks: Track[]) {
   if (typeof window === 'undefined') return
   try {
-    // Store full metadata including url (public URLs for Supabase tracks)
     const meta = tracks.map(t => ({
-      id: t.id, title: t.title, artist: t.artist, album: t.album, url: t.url, storagePath: t.storagePath,
+      id: t.id, title: t.title, artist: t.artist, album: t.album,
+      url: t.url, storagePath: t.storagePath,
     }))
     localStorage.setItem(STORAGE_KEY, JSON.stringify(meta))
-    // Fire-and-forget sync to Supabase
+    // Fire-and-forget sync to cloud
     syncPlaylistToCloud(tracks)
   } catch { toast.error('存储空间不足') }
 }
 
-// 后台同步播放列表到 Supabase
+// 后台同步到 Supabase
 function syncPlaylistToCloud(tracks: Track[]) {
   if (typeof window === 'undefined') return
   try {
@@ -95,30 +94,14 @@ function syncPlaylistToCloud(tracks: Track[]) {
   } catch { /* silent */ }
 }
 
-// 从 Supabase 拉取云端播放列表
+// 从云端拉取播放列表
 async function loadPlaylistFromCloud(): Promise<Track[]> {
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!rawUrl || !supabaseKey) return []
-  const supabaseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`
-
-  // Deterministic UUID matching the sync API route
-  const playlistId = '254e932e-ac70-4320-8944-92107bcc4eb1'
-
   try {
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/resources?id=eq.${playlistId}&select=metadata`,
-      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
-    )
+    const res = await fetch('/api/sync', { method: 'GET' })
     if (!res.ok) return []
     const data = await res.json()
-    if (!data?.[0]?.metadata?.tracks) return []
-    const cloudTracks: Track[] = data[0].metadata.tracks
-    console.log(`[Music] 从云端加载了 ${cloudTracks.length} 首歌曲`)
-    return cloudTracks
-  } catch {
-    return []
-  }
+    return (data.musicPlaylist || []) as Track[]
+  } catch { return [] }
 }
 
 export { loadPlaylistFromCloud }
@@ -134,50 +117,40 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [loopMode, setLoopMode] = useState<LoopMode>('all')
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [ready, setReady] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const shuffleOrderRef = useRef<number[]>([])
 
-  // 初始化：从 localStorage 读元数据，然后从 Supabase 拉取云端数据合并
+  // 初始化：合并本地 + 云端数据（云端优先）
   useEffect(() => {
     const loadTracks = async () => {
-      const meta = readMeta()
-      const localTracks: Track[] = []
-      for (const m of meta) {
-        // New tracks have url directly in metadata (Supabase public URLs or data URLs)
-        if (m.url && (m.url.startsWith('http') || m.url.startsWith('data:') || m.url.startsWith('blob:'))) {
-          localTracks.push({ id: m.id, title: m.title, artist: m.artist, album: m.album, url: m.url, storagePath: m.storagePath })
-        } else {
-          // Legacy: try IndexedDB
-          const url = await getBlob(m.id)
-          if (url) {
-            localTracks.push({ id: m.id, title: m.title, artist: m.artist, album: m.album, url })
-          }
-        }
-      }
-
-      // 从云端拉取并合并
+      const localMeta = readMeta()
       const cloudTracks = await loadPlaylistFromCloud()
+
+      // Cloud as source of truth
       const merged = new Map<string, Track>()
-      for (const t of localTracks) merged.set(t.id, t)
-      for (const t of cloudTracks) {
+      for (const t of cloudTracks) merged.set(t.id, t)
+      for (const t of localMeta) {
         if (!merged.has(t.id)) merged.set(t.id, t)
       }
       const allTracks = Array.from(merged.values())
 
-      // 清理已失效的元数据
-      if (allTracks.length > meta.length) {
-        writeMeta(allTracks)
-      } else if (allTracks.length < meta.length) {
-        writeMeta(allTracks)
+      // Rewrite if cloud had data
+      if (cloudTracks.length > 0) {
+        try {
+          const clean = allTracks.map(t => ({
+            id: t.id, title: t.title, artist: t.artist, album: t.album,
+            url: t.url, storagePath: t.storagePath,
+          }))
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(clean))
+        } catch {}
       }
+
       setPlaylist(allTracks)
-      setReady(true)
     }
     loadTracks()
   }, [])
 
-  // 初始化 Audio + 时间追踪
+  // 初始化 Audio
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio()
@@ -201,7 +174,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const currentTrack = playlist[currentIndex] || null
 
-  // 处理播放结束
+  // 播放结束处理
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
@@ -232,7 +205,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     if (audioRef.current) audioRef.current.volume = muted ? 0 : volume
   }, [volume, muted])
 
-  // 当切换 loopMode 为 shuffle 时重建随机列表
+  // shuffle 重建
   useEffect(() => {
     if (loopMode === 'shuffle') shuffleOrderRef.current = []
   }, [loopMode])
@@ -308,7 +281,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const removeTrack = useCallback((id: string) => {
-    // Delete from Supabase Storage if track has a storage path
     const track = playlist.find(t => t.id === id)
     if (track?.storagePath) {
       fetch('/api/music/delete', {
@@ -317,8 +289,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ storagePath: track.storagePath }),
       }).catch(() => {})
     }
-    // Also clean up legacy IndexedDB
-    deleteBlob(id)
     setPlaylist(prev => {
       const updated = prev.filter(t => t.id !== id)
       writeMeta(updated)
@@ -328,7 +298,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }, [currentIndex, playlist])
 
   const clearPlaylist = useCallback(() => {
-    playlist.forEach(t => deleteBlob(t.id))
     setPlaylist([]); setCurrentIndex(0); setPlaying(false)
     audioRef.current?.pause()
   }, [playlist])

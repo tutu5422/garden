@@ -6,6 +6,28 @@ import { getLocalCollections, createLocalCollection, deleteLocalCollection, upda
 import CollectionCard from '@/components/collections/CollectionCard'
 import { toast } from 'sonner'
 
+/** Pull collections from cloud via /api/sync and merge into localStorage */
+async function pullCollectionsFromCloud() {
+  try {
+    const res = await fetch('/api/sync', { method: 'GET' })
+    if (!res.ok) return
+    const data = await res.json()
+    const cloudCols = data.collections || []
+    if (!cloudCols.length) return
+    const localStr = localStorage.getItem('garden_collections')
+    const local = localStr ? JSON.parse(localStr) : []
+    const merged = new Map()
+    for (const c of local) merged.set(c.id, c)
+    for (const c of cloudCols) {
+      const existing = merged.get(c.id)
+      if (!existing || !existing.updatedAt || new Date(c.updatedAt) > new Date(existing.updatedAt || 0)) {
+        merged.set(c.id, c)
+      }
+    }
+    localStorage.setItem('garden_collections', JSON.stringify(Array.from(merged.values())))
+  } catch { /* silent */ }
+}
+
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<LocalCollection[]>([])
   const [noteCounts, setNoteCounts] = useState<Record<string, number>>({})
@@ -18,16 +40,12 @@ export default function CollectionsPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
-    const cols = getLocalCollections()
-    setCollections(cols)
-    try {
-      const notes: any[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
-      const counts: Record<string, number> = {}
-      cols.forEach(c => {
-        counts[c.id] = notes.filter((n: any) => n.collectionId === c.id).length
-      })
-      setNoteCounts(counts)
-    } catch {}
+    // Self-sufficient: pull from cloud then refresh
+    pullCollectionsFromCloud().then(() => refresh())
+    // Also re-read if CloudSyncProvider finishes later (belt-and-suspenders)
+    const handler = () => refresh()
+    window.addEventListener('cloud-sync-done', handler)
+    return () => window.removeEventListener('cloud-sync-done', handler)
   }, [])
 
   const refresh = () => {

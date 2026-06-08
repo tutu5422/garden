@@ -8,19 +8,20 @@ function isAuth(req: NextRequest): boolean {
   return req.cookies.get(COOKIE)?.value === PASS;
 }
 
-async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: string): Promise<boolean> {
+async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: string): Promise<true | { ok: false; status: number; detail: string }> {
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  if (!serviceKey || !rawUrl) return false;
+  if (!serviceKey || !rawUrl) return { ok: false, status: 500, detail: 'Missing Supabase config' };
   const baseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
-  // Try object route (v2 client convention)
-  const url = `${baseUrl}/storage/v1/object/files/${path}`;
+  // Upload to Supabase Storage — POST raw binary (most compatible)
+  const url = `${baseUrl}/storage/v1/object/minitu-garden/${path}`;
   const res = await fetch(url, {
-    method: 'PUT',
+    method: 'POST',
     headers: {
+      'apikey': serviceKey,
       'Authorization': `Bearer ${serviceKey}`,
-      'Content-Type': contentType,
+      'Content-Type': contentType || 'application/octet-stream',
       'x-upsert': 'true',
     },
     body: buffer,
@@ -28,10 +29,9 @@ async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: 
 
   if (res.ok || res.status === 200) return true;
 
-  // Fallback: try upload via POST (v1 style)
   const text = await res.text().catch(() => '');
-  console.warn('Supabase PUT failed', res.status, text.substring(0, 200));
-  return false;
+  console.warn('Supabase upload failed', res.status, text.substring(0, 400));
+  return { ok: false, status: res.status, detail: text.substring(0, 200) };
 }
 
 export async function POST(req: NextRequest) {
@@ -49,16 +49,26 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = await file.arrayBuffer();
-    const ok = await uploadToSupabase(`${id}/${file.name}`, buffer, file.type || 'application/octet-stream');
+    const fileName = file.name;
+    // Use safe filename to avoid Unicode/encoding issues with Supabase Storage
+    const ext = file.name.split('.').pop() || 'bin';
+    const safeName = `${id}.${ext}`;
+    const storagePath = `${id}/${safeName}`;
+    const result = await uploadToSupabase(storagePath, buffer, file.type || 'application/octet-stream');
 
-    if (!ok) {
-      return NextResponse.json({ error: '上传到存储失败' }, { status: 500 });
+    if (result !== true) {
+      return NextResponse.json({
+        error: '上传到存储失败',
+        detail: typeof result === 'object' ? result : 'unknown',
+        debug: { fileName, fileSize: buffer.byteLength, fileType: file.type },
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       ok: true,
-      storagePath: `${id}/${file.name}`,
-      publicUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/files/${id}/${file.name}`,
+      storagePath,
+      publicUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/minitu-garden/${storagePath}`,
+      originalName: file.name,
     });
   } catch (e: any) {
     console.error('Upload error:', e);

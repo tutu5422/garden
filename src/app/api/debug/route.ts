@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const PASS = process.env.SITE_PASSWORD || '123';
-const COOKIE = 'minitu_auth';
+const COOKIE_NAME = 'minitu_auth';
 
 export async function GET(req: NextRequest) {
-  if (req.cookies.get(COOKIE)?.value !== PASS) {
+  if (req.cookies.get(COOKIE_NAME)?.value !== PASS) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
@@ -21,61 +21,83 @@ export async function GET(req: NextRequest) {
     localUserId: LOCAL_USER_ID,
   };
 
-  // Test direct Supabase connection
   if (SERVICE_KEY && SUPABASE_URL) {
+    // Test direct note insert (same format as /api/sync notes handler)
+    const testNoteId = crypto.randomUUID();
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/resources?limit=1`, {
-        headers: {
-          apikey: SERVICE_KEY,
-          Authorization: `Bearer ${SERVICE_KEY}`,
-        },
-      });
-      info.restTest = { status: res.status, ok: res.ok };
-      if (!res.ok) {
-        info.restTest.body = (await res.text()).substring(0, 300);
-      } else {
-        info.restTest.data = (await res.text()).substring(0, 200);
-      }
-    } catch (e: any) {
-      info.restTest = { error: e.message };
-    }
-
-    // Test POST
-    const testId = 'debug-' + Date.now().toString(36);
-    try {
-      const res2 = await fetch(`${SUPABASE_URL}/rest/v1/resources`, {
+      const noteData = {
+        id: testNoteId,
+        title: 'debug-note-test',
+        description: 'test',
+        resource_type: 'article',
+        user_id: LOCAL_USER_ID,
+        status: 'active',
+        metadata: { is_note: true, content: 'hello', tags: [], type: 'article' },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const noteRes = await fetch(`${SUPABASE_URL}/rest/v1/resources`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: SERVICE_KEY,
-          Authorization: `Bearer ${SERVICE_KEY}`,
-          Prefer: 'return=minimal',
-        },
-        body: JSON.stringify({
-          id: testId,
-          title: 'debug-test',
-          resource_type: 'article',
-          user_id: LOCAL_USER_ID,
-          created_at: new Date().toISOString(),
-        }),
+        headers: { 'Content-Type': 'application/json', apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Prefer: 'return=representation' },
+        body: JSON.stringify(noteData),
       });
-      info.postTest = { status: res2.status, ok: res2.ok };
-      if (!res2.ok) {
-        info.postTest.body = (await res2.text()).substring(0, 300);
+      info.noteDirectInsert = { status: noteRes.status, ok: noteRes.ok };
+      if (noteRes.ok) {
+        info.noteDirectInsert.data = (await noteRes.text()).substring(0, 200);
+      } else {
+        info.noteDirectInsert.body = (await noteRes.text()).substring(0, 300);
       }
       // Cleanup
-      if (res2.ok) {
-        await fetch(`${SUPABASE_URL}/rest/v1/resources?id=eq.${testId}`, {
+      if (noteRes.ok || noteRes.status === 409) {
+        await fetch(`${SUPABASE_URL}/rest/v1/resources?id=eq.${testNoteId}`, {
           method: 'DELETE',
-          headers: {
-            apikey: SERVICE_KEY,
-            Authorization: `Bearer ${SERVICE_KEY}`,
-          },
+          headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
         });
       }
-    } catch (e: any) {
-      info.postTest = { error: e.message };
-    }
+    } catch (e: any) { info.noteDirectInsert = { error: e.message }; }
+
+    // Test read with service key
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/resources?limit=3&select=id,title,resource_type,metadata`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      });
+      info.serviceRead = { status: r.status, ok: r.ok };
+      if (r.ok) { info.serviceRead.rows = await r.json(); }
+      else { info.serviceRead.body = (await r.text()).substring(0, 300); }
+    } catch (e: any) { info.serviceRead = { error: e.message }; }
+
+    // Count total rows
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/resources?select=count`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      });
+      if (r.ok) {
+        const d = await r.json();
+        info.totalRows = d[0]?.count ?? 0;
+      }
+    } catch {}
+
+    // Count notes
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/resources?select=count&metadata->>is_note=eq.true`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      });
+      if (r.ok) {
+        const d = await r.json();
+        info.noteRows = d[0]?.count ?? 0;
+      }
+    } catch {}
+
+    // Count collections
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/collections?select=count`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      });
+      if (r.ok) {
+        const d = await r.json();
+        info.collectionRows = d[0]?.count ?? 0;
+      }
+    } catch {}
   }
 
   return NextResponse.json(info);

@@ -13,21 +13,23 @@ async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: 
   if (!serviceKey || !rawUrl) return false;
   const baseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
-  const url = `${baseUrl}/storage/v1/object/files/${path}`;
+  // Upload to Supabase Storage — POST raw binary (most compatible)
+  const url = `${baseUrl}/storage/v1/object/minitu-garden/${path}`;
   const res = await fetch(url, {
-    method: 'PUT',
+    method: 'POST',
     headers: {
+      'apikey': serviceKey,
       'Authorization': `Bearer ${serviceKey}`,
-      'Content-Type': contentType,
+      'Content-Type': contentType || 'audio/mpeg',
       'x-upsert': 'true',
     },
     body: buffer,
   });
 
-  if (res.ok) return true;
+  if (res.ok || res.status === 200) return true;
 
   const text = await res.text().catch(() => '');
-  console.warn('Music upload PUT failed:', res.status, text.substring(0, 200));
+  console.warn('Music upload failed:', res.status, text.substring(0, 200));
   return false;
 }
 
@@ -46,16 +48,19 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = await file.arrayBuffer();
-    const storagePath = `music/${id}/${file.name}`;
+    // Use safe filename to avoid Unicode/encoding issues with Supabase Storage
+    const ext = file.name.split('.').pop() || 'mp3';
+    const safeName = `${id}.${ext}`;
+    const storagePath = `music/${id}/${safeName}`;
     const ok = await uploadToSupabase(storagePath, buffer, file.type || 'audio/mpeg');
 
     if (!ok) {
       return NextResponse.json({ error: '上传到存储失败' }, { status: 500 });
     }
 
-    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/files/${storagePath}`;
+    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/minitu-garden/${storagePath}`;
 
-    return NextResponse.json({ ok: true, storagePath, publicUrl });
+    return NextResponse.json({ ok: true, storagePath, publicUrl, originalName: file.name });
   } catch (e: any) {
     console.error('Music upload error:', e);
     return NextResponse.json({ error: e.message || '上传异常' }, { status: 500 });

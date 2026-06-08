@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: { formats: ["image/webp", "image/avif"] },
-  compiler: { removeConsole: process.env.NODE_ENV === "production" },
+  compiler: { removeConsole: false }, // temporarily disabled for debugging
   async headers() {
     return [
       { source: "/(.*)", headers: [

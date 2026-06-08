@@ -43,12 +43,20 @@ function uid(): string {
 async function syncToCloud(table: string, action: string, data: any) {
   if (typeof window === 'undefined') return;
   try {
-    await fetch('/api/sync', {
+    const res = await fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table, action, data }),
     });
-  } catch { /* silent */ }
+    if (!res.ok) {
+      const err = await res.text().catch(() => '');
+      console.warn('[syncToCloud]', table, action, data.id?.substring(0,12), '→', res.status, err.substring(0, 200));
+    } else {
+      console.log('[syncToCloud]', table, action, data.id?.substring(0,12), '✅');
+    }
+  } catch (e: any) {
+    console.error('[syncToCloud] network error:', table, action, e.message);
+  }
 }
 
 // ========== 分类 ==========

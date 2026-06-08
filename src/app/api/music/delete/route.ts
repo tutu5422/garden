@@ -26,10 +26,11 @@ export async function POST(req: NextRequest) {
     }
     const baseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
-    const url = `${baseUrl}/storage/v1/object/files/${storagePath}`;
+    const url = `${baseUrl}/storage/v1/object/minitu-garden/${storagePath}`;
     const res = await fetch(url, {
       method: 'DELETE',
       headers: {
+        'apikey': serviceKey,
         'Authorization': `Bearer ${serviceKey}`,
       },
     });

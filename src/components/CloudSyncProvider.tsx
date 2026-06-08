@@ -4,53 +4,85 @@ import { useEffect } from 'react'
 import { syncCollectionsFromCloud } from '@/lib/db/supabase-queries'
 
 /**
- * Pull all cloud data (resources, notes) into localStorage on startup.
- * Ensures cross-device data visibility.
+ * Pull all cloud data (notes, resources, collections) into localStorage on startup.
+ * Uses /api/sync GET (server-side service key, bypasses RLS).
  */
 async function syncResourcesFromCloud() {
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!rawUrl || !supabaseKey) return
-  const supabaseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`
-
   try {
-    // Pull resources (non-note articles, links, etc.)
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/resources?select=*&metadata->>is_note=is.null&order=updated_at.desc&limit=200`,
-      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
-    )
+    const res = await fetch('/api/sync', { method: 'GET' })
     if (!res.ok) return
-    const cloudRows = await res.json()
-    if (!cloudRows?.length) return
+    const data = await res.json()
 
-    const localStr = localStorage.getItem('garden_resources')
-    const local = localStr ? JSON.parse(localStr) : []
-    const merged = new Map()
-    for (const r of local) merged.set(r.id, r)
-    for (const r of cloudRows) {
-      const existing = merged.get(r.id)
-      if (!existing || new Date(r.updated_at) > new Date(existing.updated_at || 0)) {
-        merged.set(r.id, {
-          id: r.id,
-          title: r.title,
-          description: r.description,
-          resource_type: r.metadata?.actual_resource_type || r.resource_type,
-          url: r.url,
-          cover_image_url: r.cover_image_url,
-          author: r.author,
-          rating: r.rating,
-          status: r.status,
-          category_id: r.category_id,
-          category: r.category,
-          resource_tags: (r.metadata?.tags || []).map((name: string) => ({ tag: { name } })),
-          metadata: r.metadata || {},
-          pinned: r.pinned,
-          created_at: r.created_at,
-          updated_at: r.updated_at,
-        })
+    // Merge notes (from cloud → minitu_notes)
+    if (data.notes?.length) {
+      const localNotesStr = localStorage.getItem('minitu_notes')
+      const localNotes = localNotesStr ? JSON.parse(localNotesStr) : []
+      const notesMerged = new Map()
+      for (const n of localNotes) notesMerged.set(n.id, n)
+      for (const n of data.notes) {
+        const existing = notesMerged.get(n.id)
+        if (!existing || new Date(n.createdAt) > new Date(existing.createdAt || 0)) {
+          notesMerged.set(n.id, {
+            id: n.id,
+            title: n.title,
+            content: n.content || '',
+            type: n.type || 'article',
+            tags: n.tags || [],
+            collectionId: n.collectionId || undefined,
+            collectionName: n.collectionName || undefined,
+            createdAt: n.createdAt,
+            image: n.image || undefined,
+            imageThumb: n.imageThumb || undefined,
+          })
+        }
       }
+      localStorage.setItem('minitu_notes', JSON.stringify(Array.from(notesMerged.values())))
     }
-    localStorage.setItem('garden_resources', JSON.stringify(Array.from(merged.values())))
+
+    // Merge resources (non-note items)
+    if (data.resources?.length) {
+      const localStr = localStorage.getItem('garden_resources')
+      const local = localStr ? JSON.parse(localStr) : []
+      const merged = new Map()
+      for (const r of local) merged.set(r.id, r)
+      for (const r of data.resources) {
+        const existing = merged.get(r.id)
+        if (!existing || new Date(r.updated_at) > new Date(existing.updated_at || 0)) {
+          merged.set(r.id, r)
+        }
+      }
+      localStorage.setItem('garden_resources', JSON.stringify(Array.from(merged.values())))
+    }
+
+    // Merge files (file metadata)
+    if (data.files?.length) {
+      const localStr = localStorage.getItem('minitu_files')
+      const local = localStr ? JSON.parse(localStr) : []
+      const merged = new Map()
+      for (const f of local) merged.set(f.id, f)
+      for (const f of data.files) {
+        const existing = merged.get(f.id)
+        if (!existing || new Date(f.createdAt) > new Date(existing.createdAt || 0)) {
+          merged.set(f.id, f)
+        }
+      }
+      localStorage.setItem('minitu_files', JSON.stringify(Array.from(merged.values())))
+    }
+
+    // Merge collections
+    if (data.collections?.length) {
+      const localStr = localStorage.getItem('garden_collections')
+      const local = localStr ? JSON.parse(localStr) : []
+      const merged = new Map()
+      for (const c of local) merged.set(c.id, c)
+      for (const c of data.collections) {
+        const existing = merged.get(c.id)
+        if (!existing || !(existing as any).updatedAt || new Date(c.updatedAt) > new Date((existing as any).updatedAt || 0)) {
+          merged.set(c.id, c)
+        }
+      }
+      localStorage.setItem('garden_collections', JSON.stringify(Array.from(merged.values())))
+    }
   } catch { /* silent */ }
 }
 
@@ -60,8 +92,13 @@ async function syncResourcesFromCloud() {
  */
 export default function CloudSyncProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    syncCollectionsFromCloud()
-    syncResourcesFromCloud()
+    async function sync() {
+      await syncResourcesFromCloud()
+      await syncCollectionsFromCloud()
+      // Signal all pages that cloud sync is done
+      window.dispatchEvent(new CustomEvent('cloud-sync-done'))
+    }
+    sync()
   }, [])
 
   return <>{children}</>

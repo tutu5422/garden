@@ -1,12 +1,44 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { Upload, File, Trash2, Download, FileText, Music, Image, Archive, Film, Search, X, ChevronDown } from "lucide-react";
-import { useMusic, type Track } from "@/lib/music/MusicContext";
+import { toast } from "sonner";
+
+declare global {
+  interface WindowEventMap {
+    'cloud-sync-done': Event
+  }
+}
+
+// Max file size: 50 MB
+const MAX_SIZE = 50 * 1024 * 1024;
+
+/** Pull file metadata from cloud and merge into localStorage */
+async function pullFilesFromCloud(): Promise<void> {
+  try {
+    const res = await fetch('/api/sync', { method: 'GET' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const cloudFiles = data.files || [];
+    if (!cloudFiles.length) return;
+    const localStr = localStorage.getItem('minitu_files');
+    const local = localStr ? JSON.parse(localStr) : [];
+    const merged = new Map();
+    for (const f of local) merged.set(f.id, f);
+    for (const f of cloudFiles) {
+      const existing = merged.get(f.id);
+      if (!existing || new Date(f.createdAt) > new Date(existing.createdAt || 0)) {
+        merged.set(f.id, f);
+      }
+    }
+    localStorage.setItem('minitu_files', JSON.stringify(Array.from(merged.values())));
+  } catch { /* silent */ }
+}
 
 interface MyFile {
   id: string; name: string; size: string; sizeBytes: number;
   type: string; category: string; createdAt: string;
-  storagePath?: string; // Supabase storage path, null = local/legacy
+  storagePath?: string;
+  url?: string; // public URL for audio
 }
 
 const STORAGE_KEY = "minitu_files";
@@ -29,8 +61,6 @@ const extType: Record<string, string> = {
   txt: "TXT", md: "Markdown", csv: "CSV",
 };
 
-const audioExts = ["mp3", "wav", "flac", "aac", "ogg", "wma", "m4a"];
-
 const CATS_KEY = "minitu_file_categories";
 
 function loadCats(): string[] { try { return JSON.parse(localStorage.getItem(CATS_KEY) || "[]"); } catch { return []; } }
@@ -42,6 +72,38 @@ function formatBytes(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
+// Upload a single file via presigned URL (bypasses Vercel 4.5MB body limit)
+async function uploadFile(file: File, id: string): Promise<{ storagePath: string; publicUrl: string } | null> {
+  try {
+    // Step 1: Get presigned URL from server
+    const presignRes = await fetch('/api/storage/presign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: file.name, contentType: file.type, id }),
+    });
+    if (!presignRes.ok) {
+      const err = await presignRes.json().catch(() => ({}));
+      throw new Error(err.error || '获取上传链接失败');
+    }
+    const { signedUrl, storagePath, publicUrl } = await presignRes.json();
+
+    // Step 2: Upload directly to Supabase via signed URL
+    const uploadRes = await fetch(signedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+    });
+    if (!uploadRes.ok) {
+      throw new Error(`上传失败 (${uploadRes.status})`);
+    }
+
+    return { storagePath, publicUrl };
+  } catch (err: any) {
+    console.error('Upload error:', err);
+    throw err;
+  }
+}
+
 export default function Files() {
   const [files, setFiles] = useState<MyFile[]>([]);
   const [activeCat, setActiveCat] = useState("all");
@@ -49,75 +111,95 @@ export default function Files() {
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [customCats, setCustomCats] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
-    try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
+    pullFilesFromCloud().then(() => {
+      try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
+    });
     setCustomCats(loadCats());
     setLoaded(true);
+    const handler = () => {
+      try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
+    };
+    window.addEventListener('cloud-sync-done', handler);
+    return () => window.removeEventListener('cloud-sync-done', handler);
   }, []);
   const [newCatName, setNewCatName] = useState("");
   const [showCatManager, setShowCatManager] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const ctx = useMusic();
-  const addTrack = ctx?.addTrack;
 
   const save = (f: MyFile[]) => { setFiles(f); localStorage.setItem(STORAGE_KEY, JSON.stringify(f)); };
 
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fl = e.target.files; if (!fl) return;
+    
+    // Validate sizes first
+    const oversized: string[] = [];
+    for (const f of Array.from(fl)) {
+      if (f.size > MAX_SIZE) oversized.push(f.name);
+    }
+    if (oversized.length > 0) {
+      toast.error(`以下文件超过 50MB 限制: ${oversized.join(', ')}`);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress({ current: 0, total: fl.length });
     const newFiles: MyFile[] = [];
-    const audioTracks: Track[] = [];
+    let errored = 0;
 
     for (const f of Array.from(fl)) {
       const ext = f.name.split(".").pop()?.toLowerCase() || "";
-      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      const id = crypto.randomUUID();
 
-      // Upload to Supabase via API
-      const formData = new FormData();
-      formData.append("file", f);
-      formData.append("id", id);
-
-      let publicUrl = "";
-      let storagePath = "";
       try {
-        const res = await fetch("/api/files/upload", {
-          method: "POST",
-          body: formData,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          publicUrl = data.publicUrl || "";
-          storagePath = data.storagePath || "";
-        }
-      } catch (err) {
-        console.error("Upload failed:", err);
-      }
+        const result = await uploadFile(f, id);
+        
+        const myFile: MyFile = {
+          id, name: f.name, size: formatBytes(f.size), sizeBytes: f.size,
+          type: extType[ext] || ext.toUpperCase(), category: "",
+          createdAt: new Date().toISOString(),
+          storagePath: result?.storagePath || undefined,
+          url: result?.publicUrl || undefined,
+        };
+        newFiles.push(myFile);
 
-      const myFile: MyFile = {
-        id, name: f.name, size: formatBytes(f.size), sizeBytes: f.size,
-        type: extType[ext] || ext.toUpperCase(), category: "",
-        createdAt: new Date().toISOString(),
-        storagePath: storagePath || undefined,
-      };
-      newFiles.push(myFile);
-
-      if (audioExts.includes(ext) && publicUrl) {
-        audioTracks.push({ id: myFile.id, title: f.name.replace(/\.[^.]+$/, ""), url: publicUrl });
+        // Fire-and-forget: sync file metadata to cloud
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table: 'files', action: 'upsert', data: myFile }),
+        }).catch(() => {});
+      } catch (err: any) {
+        errored++;
+        toast.error(`${f.name}: ${err.message}`);
       }
+      setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
     }
 
-    save([...newFiles, ...files]);
-    if (audioTracks.length > 0) audioTracks.forEach(t => addTrack?.(t));
+    if (newFiles.length > 0) {
+      save([...newFiles, ...files]);
+      const audioFiles = newFiles.filter(f => f.url && extGroup[f.name.split(".").pop()?.toLowerCase() || ""] === "audio");
+      if (audioFiles.length > 0) {
+        toast.success(`已上传 ${newFiles.length} 个文件 (含 ${audioFiles.length} 个音频，可在音乐播放器中导入)`);
+      } else {
+        toast.success(`已上传 ${newFiles.length} 个文件`);
+      }
+    }
+    if (errored > 0) toast.error(`${errored} 个文件上传失败`);
+
+    setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
   };
 
   const handleDownload = async (f: MyFile) => {
-    if (f.storagePath) {
-      // Supabase file: use public URL
+    const url = f.url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/minitu-garden/${f.storagePath}`;
+    if (url) {
       const a = document.createElement("a");
-      a.href = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/files/${f.storagePath}`;
-      a.download = f.name;
-      a.target = "_blank";
+      a.href = url; a.download = f.name; a.target = "_blank";
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       return;
     }
@@ -132,7 +214,6 @@ export default function Files() {
 
   const del = async (f: MyFile) => {
     if (f.storagePath) {
-      // Delete from Supabase
       try {
         await fetch("/api/files/delete", {
           method: "POST",
@@ -143,11 +224,15 @@ export default function Files() {
         console.error("Delete from Supabase failed:", err);
       }
     } else {
-      // Legacy IndexedDB file
       const { deleteBlob } = await import("@/lib/db/idb-store");
       await deleteBlob(f.id);
     }
     save(files.filter(x => x.id !== f.id));
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'files', action: 'delete', data: { id: f.id } }),
+    }).catch(() => {});
   };
 
   const changeCategory = (id: string, newCat: string) => {
@@ -186,7 +271,7 @@ export default function Files() {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 page-enter">
-      {/* Header — Editorial */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-10">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -201,9 +286,9 @@ export default function Files() {
             <span className="text-xs tracking-[0.15em] uppercase text-[var(--skin-text-secondary)] font-bold">个文件</span>
           </div>
         </div>
-        <label className="btn cursor-pointer">
-          <Upload className="size-4" />上传
-          <input ref={fileRef} type="file" multiple className="hidden" onChange={upload} />
+        <label className={`btn cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+          <Upload className="size-4" />{uploading ? `上传中 ${uploadProgress.current}/${uploadProgress.total}...` : '上传'}
+          <input ref={fileRef} type="file" multiple className="hidden" onChange={upload} disabled={uploading} />
         </label>
       </div>
 
@@ -218,7 +303,7 @@ export default function Files() {
           )}
       </div>
 
-      {/* Category Filter — dedicated row with more space */}
+      {/* Category Filter */}
       <div className="mb-8 p-4 rounded-xl" style={{ background: 'var(--skin-muted)' }}>
         <div className="flex items-center gap-2 mb-3">
           <span className="text-[10px] tracking-[0.2em] uppercase font-bold text-[var(--skin-text-secondary)] font-mono">分类筛选</span>
