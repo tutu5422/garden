@@ -90,7 +90,7 @@ function EditForm() {
 
       if (isNew) {
         const note: Note = {
-          id: Date.now().toString(36),
+          id: crypto.randomUUID?.() || 'n-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
           title: form.title, content: form.content,
           type: 'article',
           tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
@@ -99,18 +99,35 @@ function EditForm() {
           createdAt: new Date().toISOString(), image, imageThumb,
         }
         localStorage.setItem('minitu_notes', JSON.stringify([note, ...notes]))
+        // Sync to cloud
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
+        }).catch(() => {})
       } else {
+        let syncedNote: Note | undefined
         const updated = notes.map(n => {
           if (n.id !== noteId) return n
-          return {
+          const note = {
             ...n, title: form.title, content: form.content,
             tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
             collectionId: form.collectionId || undefined,
             collectionName: col?.title,
             ...(image ? { image, imageThumb } : {}),
           }
+          syncedNote = note
+          return note
         })
         localStorage.setItem('minitu_notes', JSON.stringify(updated))
+        // Sync to cloud
+        if (syncedNote) {
+          fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: 'notes', action: 'upsert', data: syncedNote }),
+          }).catch(() => {})
+        }
       }
       router.push('/notes')
     } catch {} finally { setUploading(false) }

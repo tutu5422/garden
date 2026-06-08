@@ -121,6 +121,32 @@ export async function POST(req: NextRequest) {
         };
         const { ok: ok2, error: err2 } = await supabaseUpsert('resources', supabaseData);
         if (!ok2) return NextResponse.json({ error: '同步播放列表失败', detail: err2 }, { status: 500 });
+      } else if (table === 'notes') {
+        // Store note as a resource row with resource_type='article'
+        // Note-specific fields (content, image, tags, collectionId) go into metadata
+        const note = data;
+        const supabaseData = {
+          id: note.id,
+          title: note.title || '',
+          description: note.content ? note.content.substring(0, 500) : null,
+          resource_type: 'article',
+          user_id: LOCAL_USER_ID,
+          status: 'active',
+          metadata: {
+            is_note: true,
+            content: note.content || '',
+            image: note.image || null,
+            imageThumb: note.imageThumb || null,
+            tags: Array.isArray(note.tags) ? note.tags : [],
+            collectionId: note.collectionId || null,
+            collectionName: note.collectionName || null,
+            type: note.type || 'article',
+          },
+          created_at: note.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const { ok: noteOk, error: noteErr } = await supabaseUpsert('resources', supabaseData);
+        if (!noteOk) return NextResponse.json({ error: '同步笔记失败', detail: noteErr }, { status: 500 });
       } else if (table === 'collections') {
         const col = data;
         const supabaseData = {
@@ -154,9 +180,9 @@ export async function POST(req: NextRequest) {
         }
       }
     } else if (action === 'delete') {
-      if (table === 'resources') {
+      if (table === 'resources' || table === 'notes') {
         const result = await supabaseFetch(`resources?id=eq.${data.id}`, { method: 'DELETE' });
-        if (!result.ok) return NextResponse.json({ error: '删除资源失败', detail: result.error }, { status: 500 });
+        if (!result.ok) return NextResponse.json({ error: '删除失败', detail: result.error }, { status: 500 });
       } else if (table === 'collections') {
         // Delete junction table entries first
         await supabaseFetch(`collection_resources?collection_id=eq.${data.id}`, { method: 'DELETE' });

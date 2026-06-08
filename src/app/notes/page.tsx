@@ -21,6 +21,34 @@ const bentoPalette = [
   { bg: '#F0F7FA', accent: '#3A8B9E', text: '#1E3A4A' },
 ];
 
+// Pull notes from Supabase cloud (stored as resources with is_note metadata)
+async function syncNotesFromCloud(): Promise<Note[]> {
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!rawUrl || !supabaseKey) return [];
+  const supabaseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/resources?select=*&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=200`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    );
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return (rows || []).map((r: any) => ({
+      id: r.id,
+      title: r.title || '',
+      content: r.metadata?.content || '',
+      type: r.metadata?.type || 'article',
+      tags: r.metadata?.tags || [],
+      collectionId: r.metadata?.collectionId || undefined,
+      collectionName: r.metadata?.collectionName || undefined,
+      createdAt: r.created_at || new Date().toISOString(),
+      image: r.metadata?.image || undefined,
+      imageThumb: r.metadata?.imageThumb || undefined,
+    }));
+  } catch { return []; }
+}
+
 function compressImage(file: File, maxW: number, quality: number): Promise<{ full: string; thumb: string }> {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -81,10 +109,50 @@ export default function Notes() {
   const [editCollectionName, setEditCollectionName] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
 
+  // Load notes: localStorage first, then merge from Supabase
   useEffect(() => {
-    try { setNotes(JSON.parse(localStorage.getItem("minitu_notes") || "[]")); } catch {}
-    try { setCollections(JSON.parse(localStorage.getItem("garden_collections") || "[]")); } catch {}
+    const loadNotes = async () => {
+      try {
+        const local: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]');
+        setNotes(local);
+        setCollections(JSON.parse(localStorage.getItem('garden_collections') || '[]'));
+        // Pull cloud notes and merge
+        const cloud = await syncNotesFromCloud();
+        if (cloud.length > 0) {
+          const merged = new Map<string, Note>();
+          for (const n of local) merged.set(n.id, n);
+          for (const n of cloud) {
+            const existing = merged.get(n.id);
+            if (!existing || new Date(n.createdAt) > new Date(existing.createdAt)) {
+              merged.set(n.id, n);
+            }
+          }
+          const mergedList = Array.from(merged.values());
+          if (mergedList.length !== local.length || cloud.some(c => !local.find(l => l.id === c.id))) {
+            setNotes(mergedList);
+            localStorage.setItem('minitu_notes', JSON.stringify(mergedList));
+          }
+        }
+      } catch { /* local data is fine */ }
+    };
+    loadNotes();
   }, []);
+
+  // Sync helper: push note to Supabase (fire-and-forget)
+  const syncNote = (note: Note) => {
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
+    }).catch(() => {});
+  };
+  const syncNoteDelete = (id: string) => {
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'notes', action: 'delete', data: { id } }),
+    }).catch(() => {});
+  };
 
   const save = (n: Note[]) => { setNotes(n); localStorage.setItem("minitu_notes", JSON.stringify(n)); };
 
@@ -109,6 +177,8 @@ export default function Notes() {
       n.collectionId === editingCollectionId ? { ...n, collectionName: editCollectionName.trim() } : n
     );
     save(updatedNotes);
+    // Sync affected notes to cloud
+    updatedNotes.filter(n => n.collectionId === editingCollectionId).forEach(syncNote);
     setEditingCollectionId(null);
   };
 
@@ -143,7 +213,7 @@ export default function Notes() {
     }
     const col = collections.find(c => c.id === form.collectionId);
     const note: Note = {
-      id: Date.now().toString(36),
+      id: crypto.randomUUID?.() || 'n-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
       title: form.title, content: form.content, type: "article",
       tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
       collectionId: form.collectionId || undefined,
@@ -151,10 +221,11 @@ export default function Notes() {
       createdAt: new Date().toISOString(), image, imageThumb,
     };
     save([note, ...notes]);
+    syncNote(note);
     resetForm(); setUploading(false);
   };
 
-  const del = (id: string) => save(notes.filter(n => n.id !== id));
+  const del = (id: string) => { save(notes.filter(n => n.id !== id)); syncNoteDelete(id); };
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 page-enter relative z-0">
