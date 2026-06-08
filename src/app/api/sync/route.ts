@@ -25,7 +25,7 @@ function mapResourceType(type: string): string | null {
   return null; // store in metadata instead
 }
 
-async function supabaseFetch(path: string, options: RequestInit): Promise<{ ok: boolean; status: number }> {
+async function supabaseFetch(path: string, options: RequestInit): Promise<{ ok: boolean; status: number; error?: string }> {
   const url = `${SUPABASE_URL}/rest/v1/${path}`;
   const res = await fetch(url, {
     ...options,
@@ -39,30 +39,30 @@ async function supabaseFetch(path: string, options: RequestInit): Promise<{ ok: 
   });
   if (!res.ok) {
     const err = await res.text().catch(() => '');
-    console.error(`Supabase ${path}:`, res.status, err.substring(0, 200));
-    return { ok: false, status: res.status };
+    console.error(`Supabase ${path}:`, res.status, err.substring(0, 300));
+    return { ok: false, status: res.status, error: `${res.status}: ${err.substring(0, 200)}` };
   }
   return { ok: true, status: res.status };
 }
 
 // POST-first upsert: POST to create, PATCH on duplicate conflict
-async function supabaseUpsert(table: string, data: Record<string, any>): Promise<boolean> {
+async function supabaseUpsert(table: string, data: Record<string, any>): Promise<{ ok: boolean; error?: string }> {
   const id = data.id;
   // Try POST first (create)
   const postResult = await supabaseFetch(table, {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  if (postResult.ok) return true;
+  if (postResult.ok) return { ok: true };
   // If conflict (duplicate id), update via PATCH
   if (postResult.status === 409) {
     const patchResult = await supabaseFetch(`${table}?id=eq.${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
-    return patchResult.ok;
+    return { ok: patchResult.ok, error: patchResult.error };
   }
-  return false;
+  return { ok: false, error: postResult.error || `POST returned ${postResult.status}` };
 }
 
 export async function POST(req: NextRequest) {
@@ -103,8 +103,8 @@ export async function POST(req: NextRequest) {
           created_at: resource.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const ok = await supabaseUpsert('resources', supabaseData);
-        if (!ok) return NextResponse.json({ error: '同步资源失败' }, { status: 500 });
+        const { ok, error } = await supabaseUpsert('resources', supabaseData);
+        if (!ok) return NextResponse.json({ error: '同步资源失败', detail: error, url: SUPABASE_URL }, { status: 500 });
       } else if (table === 'music_playlist') {
         // Store playlist as a resource row — use deterministic UUID derived from user_id
         const playlistId = MUSIC_PLAYLIST_ID;
@@ -119,8 +119,8 @@ export async function POST(req: NextRequest) {
           created_at: data.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const ok2 = await supabaseUpsert('resources', supabaseData);
-        if (!ok2) return NextResponse.json({ error: '同步播放列表失败' }, { status: 500 });
+        const { ok: ok2, error: err2 } = await supabaseUpsert('resources', supabaseData);
+        if (!ok2) return NextResponse.json({ error: '同步播放列表失败', detail: err2 }, { status: 500 });
       } else if (table === 'collections') {
         const col = data;
         const supabaseData = {
@@ -135,8 +135,8 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         };
         // Upsert collection
-        const ok = await supabaseUpsert('collections', supabaseData);
-        if (!ok) return NextResponse.json({ error: '同步合集失败' }, { status: 500 });
+        const { ok: ok3, error: err3 } = await supabaseUpsert('collections', supabaseData);
+        if (!ok3) return NextResponse.json({ error: '同步合集失败', detail: err3, url: SUPABASE_URL }, { status: 500 });
         // Sync resource associations via junction table
         const resourceIds: string[] = col.resourceIds || [];
         // Delete old associations
@@ -156,12 +156,12 @@ export async function POST(req: NextRequest) {
     } else if (action === 'delete') {
       if (table === 'resources') {
         const result = await supabaseFetch(`resources?id=eq.${data.id}`, { method: 'DELETE' });
-        if (!result.ok) return NextResponse.json({ error: '删除资源失败' }, { status: 500 });
+        if (!result.ok) return NextResponse.json({ error: '删除资源失败', detail: result.error }, { status: 500 });
       } else if (table === 'collections') {
         // Delete junction table entries first
         await supabaseFetch(`collection_resources?collection_id=eq.${data.id}`, { method: 'DELETE' });
         const result = await supabaseFetch(`collections?id=eq.${data.id}`, { method: 'DELETE' });
-        if (!result.ok) return NextResponse.json({ error: '删除合集失败' }, { status: 500 });
+        if (!result.ok) return NextResponse.json({ error: '删除合集失败', detail: result.error }, { status: 500 });
       }
     }
 
