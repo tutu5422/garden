@@ -73,11 +73,25 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Pull music playlist (stored as a resource)
-    const musicUrl = `${SUPABASE_URL}/rest/v1/resources?id=eq.${MUSIC_PLAYLIST_ID}&select=metadata`;
-    const musicRes = await fetch(musicUrl, {
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-    });
+    // Parallelize all Supabase queries
+    const [musicRes, notesRes, resRes, filesRes, colRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/resources?id=eq.${MUSIC_PLAYLIST_ID}&select=metadata`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/resources?select=*&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=200`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/resources?select=*&or=(metadata->>is_note.is.null,metadata->>is_note.eq.false)&order=updated_at.desc&limit=200`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/resources?select=*&metadata->>is_file=eq.true&order=updated_at.desc&limit=200`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/collections?select=*&user_id=eq.${LOCAL_USER_ID}&order=updated_at.desc`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      }),
+    ]);
+
     let musicPlaylist: any[] = [];
     if (musicRes.ok) {
       const musicData = await musicRes.json();
@@ -86,32 +100,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Pull notes (resources with is_note metadata)
-    const notesUrl = `${SUPABASE_URL}/rest/v1/resources?select=*&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=200`;
-    const notesRes = await fetch(notesUrl, {
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-    });
     const notes = notesRes.ok ? await notesRes.json() : [];
-
-    // Pull non-note resources
-    const resUrl = `${SUPABASE_URL}/rest/v1/resources?select=*&or=(metadata->>is_note.is.null,metadata->>is_note.eq.false)&order=updated_at.desc&limit=200`;
-    const resRes = await fetch(resUrl, {
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-    });
     const resources = resRes.ok ? await resRes.json() : [];
-
-    // Pull files (resources with is_file metadata)
-    const filesUrl = `${SUPABASE_URL}/rest/v1/resources?select=*&metadata->>is_file=eq.true&order=updated_at.desc&limit=200`;
-    const filesRes = await fetch(filesUrl, {
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-    });
     const cloudFiles = filesRes.ok ? await filesRes.json() : [];
-
-    // Pull collections with their resource associations
-    const colUrl = `${SUPABASE_URL}/rest/v1/collections?select=*&user_id=eq.${LOCAL_USER_ID}&order=updated_at.desc`;
-    const colRes = await fetch(colUrl, {
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-    });
     const collections = colRes.ok ? await colRes.json() : [];
 
     // Pull collection_resources junctions

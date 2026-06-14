@@ -86,6 +86,7 @@ export default function TimelinePage() {
   const [loading, setLoading] = useState(true);
   const [newMemo, setNewMemo] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; content: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -131,6 +132,12 @@ export default function TimelinePage() {
     const memos: TimelineMemo[] = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
     localStorage.setItem("minitu_timeline", JSON.stringify(memos.filter(m => m.id !== id)));
     refresh();
+  };
+
+  const handleDeleteMemo = () => {
+    if (!confirmDelete) return;
+    delMemo(confirmDelete.id);
+    setConfirmDelete(null);
   };
 
   const totalCount = slots.reduce((sum, s) => sum + s.memos.length + s.notes.length, 0);
@@ -264,10 +271,23 @@ export default function TimelinePage() {
                                   <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
                                     {new Date(item.memo.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
                                   </span>
-                                  <button onClick={() => delMemo(item.memo.id)}
-                                          className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
-                                    <Trash2 className="size-3.5" />
-                                  </button>
+                                  {confirmDelete?.id === item.memo.id ? (
+                                    <span className="flex gap-1">
+                                      <button onClick={handleDeleteMemo}
+                                              className="p-1 rounded bg-red-500 text-white text-[10px] font-bold whitespace-nowrap">
+                                        确认
+                                      </button>
+                                      <button onClick={() => setConfirmDelete(null)}
+                                              className="p-1 rounded bg-white/20 hover:bg-white/35 text-[var(--skin-text-secondary)] text-[10px] font-bold">
+                                        取消
+                                      </button>
+                                    </span>
+                                  ) : (
+                                    <button onClick={() => setConfirmDelete({ id: item.memo.id, content: item.memo.content })}
+                                            className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
+                                      <Trash2 className="size-3.5" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>

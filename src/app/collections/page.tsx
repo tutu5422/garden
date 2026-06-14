@@ -40,9 +40,10 @@ export default function CollectionsPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
-    // Self-sufficient: pull from cloud then refresh
+    // Show localStorage data immediately, then sync from cloud in background
+    refresh()
     pullCollectionsFromCloud().then(() => refresh())
-    // Also re-read if CloudSyncProvider finishes later (belt-and-suspenders)
+    // Also re-read if CloudSyncProvider finishes later
     const handler = () => refresh()
     window.addEventListener('cloud-sync-done', handler)
     return () => window.removeEventListener('cloud-sync-done', handler)

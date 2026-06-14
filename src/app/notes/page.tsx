@@ -102,6 +102,7 @@ export default function Notes() {
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
   const [editCollectionName, setEditCollectionName] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null);
 
   // UUID pattern: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
   const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
@@ -457,10 +458,23 @@ export default function Notes() {
                           className="p-1.5 rounded-lg hover:bg-[var(--skin-muted)] transition-colors text-[var(--skin-text-secondary)] hover:text-[var(--skin-primary)]">
                           <Pencil className="size-3.5" />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); del(n.id); }}
+                        {confirmDelete?.id === n.id ? (
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); del(n.id); setConfirmDelete(null); }}
+                              className="p-1.5 rounded-lg bg-red-500 text-white text-[10px] font-bold backdrop-blur-sm transition-all">
+                              确认
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
+                              className="p-1.5 rounded-lg bg-white/20 hover:bg-white/35 text-[var(--skin-text-secondary)] text-[10px] font-bold backdrop-blur-sm transition-all">
+                              取消
+                            </button>
+                          </>
+                        ) : (
+                        <button onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: n.id, title: n.title }); }}
                           className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-[var(--skin-text-secondary)] hover:text-red-500">
                           <Trash2 className="size-3.5" />
                         </button>
+                        )}
                       </div>
                     </div>
                   </div>

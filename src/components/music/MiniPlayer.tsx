@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useMusic, type Track, type LoopMode } from '@/lib/music/MusicContext'
-import { searchAndCacheLyrics, setLyrics, deleteLyrics, parseFilename } from '@/lib/music/lyrics-store'
+import { searchAndCacheLyrics, setLyrics, hideLyrics, parseFilename } from '@/lib/music/lyrics-store'
 
 const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
 
@@ -78,7 +78,7 @@ export default function MiniPlayer() {
   if (!ctx) return null;
 
   const { playlist, currentIndex, currentTrack, playing, volume, muted, loopMode,
-    togglePlay, play, next, prev, setVolume, setMuted, cycleLoopMode, addTrack, removeTrack } = ctx;
+    togglePlay, play, next, prev, setVolume, setMuted, cycleLoopMode, addTrack, removeTrack, notifyLyricsUpdated, updateTrackLyrics } = ctx;
 
   const [expanded, setExpanded] = useState(false)
   const [showPlaylist, setShowPlaylist] = useState(false)
@@ -88,9 +88,11 @@ export default function MiniPlayer() {
   const [importing, setImporting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [showUploadLyrics, setShowUploadLyrics] = useState(false)
-  const [uploadText, setUploadText] = useState('')
+  const [lrcFileName, setLrcFileName] = useState('')
+  const [lrcFileContent, setLrcFileContent] = useState('')
   const [deleting, setDeleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const lrcInputRef = useRef<HTMLInputElement>(null)
 
   // Refresh import file list when panel opens
   useEffect(() => {
@@ -336,43 +338,68 @@ export default function MiniPlayer() {
               <div className="flex items-center justify-center gap-2 mt-2.5">
                 <button onClick={() => setShowUploadLyrics(!showUploadLyrics)}
                   className="text-[9px] tracking-wide opacity-25 hover:opacity-100 transition-opacity duration-200"
-                  style={{ color: 'var(--skin-text-secondary)' }}>上传歌词</button>
+                  style={{ color: 'var(--skin-text-secondary)' }}>上传 .lrc 歌词</button>
                 <span className="text-[var(--skin-border)] opacity-20 select-none">|</span>
                 <button
-                  onClick={async () => {
+                  onClick={() => {
                     if (!currentTrack || deleting) return
                     setDeleting(true)
-                    try { deleteLyrics(currentTrack.id); toast.success('歌词已删除') }
+                    try { hideLyrics(currentTrack.id); updateTrackLyrics(currentTrack.id, { lyricsHidden: true }); notifyLyricsUpdated(); toast.success('歌词已隐藏，仅显示歌名和歌手') }
                     finally { setDeleting(false) }
                   }}
                   disabled={deleting}
                   className="text-[9px] tracking-wide opacity-25 hover:opacity-100 transition-opacity duration-200"
-                  style={{ color: 'var(--skin-text-secondary)' }}>删除歌词</button>
+                  style={{ color: 'var(--skin-text-secondary)' }}>仅显示歌名</button>
               </div>
 
               {showUploadLyrics && (
                 <div className="mt-3 pt-3 border-t border-[var(--skin-border)] space-y-2 animate-fade-in-up">
-                  <textarea value={uploadText} onChange={e => setUploadText(e.target.value)}
-                    placeholder="粘贴 LRC 或纯文本歌词…" rows={4}
-                    className="w-full text-[10px] px-2.5 py-1.5 rounded border border-[var(--skin-border)] bg-[var(--skin-muted)] text-[var(--skin-text)] outline-none focus:border-[var(--skin-primary)] transition-colors resize-none leading-relaxed" />
+                  <label className="flex items-center justify-center gap-1.5 w-full px-2 py-2 text-[10px] font-bold cursor-pointer rounded border border-dashed border-[var(--skin-border)] hover:border-[var(--skin-primary)] transition-colors"
+                         style={{ color: 'var(--skin-text-secondary)' }}>
+                    <Upload className="size-3" />
+                    {lrcFileName ? `已选: ${lrcFileName}` : '选择 .lrc 歌词文件'}
+                    <input
+                      ref={lrcInputRef}
+                      type="file"
+                      accept=".lrc"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setLrcFileName(file.name)
+                        const reader = new FileReader()
+                        reader.onload = () => setLrcFileContent(reader.result as string)
+                        reader.onerror = () => toast.error('读取文件失败')
+                        reader.readAsText(file)
+                      }}
+                    />
+                  </label>
+                  {lrcFileContent && (
+                    <pre className="w-full text-[9px] px-2.5 py-1.5 rounded border border-[var(--skin-border)] bg-[var(--skin-muted)] text-[var(--skin-text)] max-h-20 overflow-y-auto leading-relaxed opacity-70 whitespace-pre-wrap"
+                    >{lrcFileContent.slice(0, 300)}{lrcFileContent.length > 300 ? '…' : ''}</pre>
+                  )}
                   <div className="flex gap-2">
                     <button onClick={() => {
-                      if (!uploadText.trim() || !currentTrack) return
-                      const text = uploadText.trim()
-                      const hasLrcTags = /\[\d{2}:\d{2}\.\d{2,3}\]/.test(text)
+                      if (!lrcFileContent || !currentTrack) return
                       setLyrics(currentTrack.id, {
-                        lyrics: text.replace(/\[\d{2}:\d{2}\.\d{2,3}\]/g, '').split('\n').filter(l => l.trim()).join('\n'),
-                        syncedLyrics: hasLrcTags ? text : undefined,
+                        lyrics: lrcFileContent.replace(/\[\d{2}:\d{2}\.\d{2,3}\]/g, '').split('\n').filter(l => l.trim()).join('\n'),
+                        syncedLyrics: lrcFileContent,
                         source: 'manual', searchedAt: Date.now(),
                       })
-                      toast.success('歌词已保存'); setShowUploadLyrics(false); setUploadText(''); window.location.reload()
+                      // 同步到云端
+                      updateTrackLyrics(currentTrack.id, {
+                        lyrics: lrcFileContent.replace(/\[\d{2}:\d{2}\.\d{2,3}\]/g, '').split('\n').filter(l => l.trim()).join('\n'),
+                        syncedLyrics: lrcFileContent,
+                        lyricsSource: 'manual',
+                      })
+                      toast.success('LRC 歌词已保存'); setShowUploadLyrics(false); setLrcFileName(''); setLrcFileContent(''); notifyLyricsUpdated()
                     }}
-                      disabled={!uploadText.trim()}
+                      disabled={!lrcFileContent}
                       className="flex-1 text-[10px] font-bold py-1 rounded transition-all"
-                      style={{ backgroundColor: 'var(--skin-primary)', color: '#fff', opacity: uploadText.trim() ? 1 : 0.3 }}>
-                      保存歌词
+                      style={{ backgroundColor: 'var(--skin-primary)', color: '#fff', opacity: lrcFileContent ? 1 : 0.3 }}>
+                      保存
                     </button>
-                    <button onClick={() => { setShowUploadLyrics(false); setUploadText('') }}
+                    <button onClick={() => { setShowUploadLyrics(false); setLrcFileName(''); setLrcFileContent('') }}
                       className="text-[10px] font-bold py-1 px-3 rounded transition-colors border border-[var(--skin-border)]"
                       style={{ color: 'var(--skin-text-secondary)' }}>取消</button>
                   </div>

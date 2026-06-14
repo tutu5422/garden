@@ -113,13 +113,17 @@ export default function Files() {
   const [loaded, setLoaded] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [confirmDelete, setConfirmDelete] = useState<MyFile | null>(null);
 
   useEffect(() => {
+    // Show localStorage data immediately
+    try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
+    setCustomCats(loadCats());
+    setLoaded(true);
+    // Then sync from cloud in background
     pullFilesFromCloud().then(() => {
       try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
     });
-    setCustomCats(loadCats());
-    setLoaded(true);
     const handler = () => {
       try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
     };
@@ -212,7 +216,10 @@ export default function Files() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
-  const del = async (f: MyFile) => {
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    const f = confirmDelete;
+    setConfirmDelete(null);
     if (f.storagePath) {
       try {
         await fetch("/api/files/delete", {
@@ -409,10 +416,23 @@ export default function Files() {
                         className="p-2 hover:text-[var(--skin-primary)] transition-colors">
                   <Download className="size-4" />
                 </button>
-                <button onClick={() => del(f)}
+                {confirmDelete?.id === f.id ? (
+                  <>
+                    <button onClick={handleDelete}
+                      className="p-2 rounded-lg bg-red-500 text-white backdrop-blur-sm transition-all text-[10px] font-bold whitespace-nowrap">
+                      确认
+                    </button>
+                    <button onClick={() => setConfirmDelete(null)}
+                      className="p-2 rounded-lg bg-white/20 hover:bg-white/35 text-[var(--skin-text-secondary)] backdrop-blur-sm transition-all text-[10px] font-bold">
+                      取消
+                    </button>
+                  </>
+                ) : (
+                <button onClick={() => setConfirmDelete(f)}
                         className="p-2 hover:text-red-500 transition-colors">
                   <Trash2 className="size-4" />
                 </button>
+                )}
               </div>
             </div>
             );

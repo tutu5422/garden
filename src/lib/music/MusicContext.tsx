@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import { resolveAudioUrl } from './audio-cache'
 
 // ========== 类型 ==========
 
@@ -12,6 +13,10 @@ export interface Track {
   album?: string
   url: string // public Supabase Storage URL
   storagePath?: string // Supabase storage path for cross-device sync
+  lyrics?: string          // 纯文本歌词（无时间戳）
+  syncedLyrics?: string    // 原始 LRC 格式（含时间戳）
+  lyricsSource?: 'searched' | 'manual'
+  lyricsHidden?: boolean
 }
 
 export type LoopMode = 'none' | 'one' | 'all' | 'shuffle'
@@ -26,6 +31,8 @@ interface MusicContextType {
   currentTrack: Track | null
   currentTime: number
   duration: number
+  lyricsVersion: number
+  notifyLyricsUpdated: () => void
   play: (index?: number) => void
   pause: () => void
   togglePlay: () => void
@@ -38,6 +45,7 @@ interface MusicContextType {
   addTracks: (tracks: Track[]) => void
   removeTrack: (id: string) => void
   clearPlaylist: () => void
+  updateTrackLyrics: (trackId: string, lyricsData: { lyrics?: string; syncedLyrics?: string; lyricsSource?: 'searched' | 'manual'; lyricsHidden?: boolean }) => void
 }
 
 const MusicContext = createContext<MusicContextType | null>(null)
@@ -50,6 +58,32 @@ export function useMusic() {
 // ========== 本地存储 ==========
 
 const STORAGE_KEY = 'minitu_music'
+
+// ========== 播放状态持久化（页面刷新后继续播放）==========
+const PLAYBACK_KEY = 'minitu_playback'
+interface PlaybackState {
+  currentIndex: number
+  currentTime: number
+  playing: boolean
+  volume: number
+  muted: boolean
+  loopMode: LoopMode
+}
+function readPlayback(): PlaybackState | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(PLAYBACK_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+function writePlayback(patch: Partial<PlaybackState>) {
+  if (typeof window === 'undefined') return
+  try {
+    const current = JSON.parse(localStorage.getItem(PLAYBACK_KEY) || 'null') || {}
+    const merged = { ...current, ...patch }
+    localStorage.setItem(PLAYBACK_KEY, JSON.stringify(merged))
+  } catch {}
+}
 
 function readMeta(): Track[] {
   if (typeof window === 'undefined') return []
@@ -65,6 +99,8 @@ function writeMeta(tracks: Track[]) {
     const meta = tracks.map(t => ({
       id: t.id, title: t.title, artist: t.artist, album: t.album,
       url: t.url, storagePath: t.storagePath,
+      lyrics: t.lyrics, syncedLyrics: t.syncedLyrics,
+      lyricsSource: t.lyricsSource, lyricsHidden: t.lyricsHidden,
     }))
     localStorage.setItem(STORAGE_KEY, JSON.stringify(meta))
     // Fire-and-forget sync to cloud
@@ -86,6 +122,8 @@ function syncPlaylistToCloud(tracks: Track[]) {
           tracks: tracks.map(t => ({
             id: t.id, title: t.title, artist: t.artist, album: t.album,
             url: t.url, storagePath: t.storagePath,
+            lyrics: t.lyrics, syncedLyrics: t.syncedLyrics,
+            lyricsSource: t.lyricsSource, lyricsHidden: t.lyricsHidden,
           })),
           created_at: new Date().toISOString(),
         },
@@ -94,13 +132,34 @@ function syncPlaylistToCloud(tracks: Track[]) {
   } catch { /* silent */ }
 }
 
-// 从云端拉取播放列表
+// 从云端拉取播放列表，同时把歌词还原到 localStorage
 async function loadPlaylistFromCloud(): Promise<Track[]> {
   try {
     const res = await fetch('/api/sync', { method: 'GET' })
     if (!res.ok) return []
     const data = await res.json()
-    return (data.musicPlaylist || []) as Track[]
+    const tracks = (data.musicPlaylist || []) as Track[]
+
+    // 把云端歌词还原到 lyric store localStorage
+    try {
+      const lyricsStore: Record<string, any> = JSON.parse(localStorage.getItem('minitu_lyrics') || '{}')
+      let updated = false
+      for (const t of tracks) {
+        if (t.lyrics && !lyricsStore[t.id]) {
+          lyricsStore[t.id] = {
+            lyrics: t.lyrics,
+            syncedLyrics: t.syncedLyrics || undefined,
+            source: t.lyricsSource || 'manual',
+            searchedAt: Date.now(),
+            hidden: t.lyricsHidden || false,
+          }
+          updated = true
+        }
+      }
+      if (updated) localStorage.setItem('minitu_lyrics', JSON.stringify(lyricsStore))
+    } catch {}
+
+    return tracks
   } catch { return [] }
 }
 
@@ -117,8 +176,16 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [loopMode, setLoopMode] = useState<LoopMode>('all')
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [lyricsVersion, setLyricsVersion] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const shuffleOrderRef = useRef<number[]>([])
+  const seekTargetRef = useRef<number | null>(null)     // 刷新恢复：seek 目标
+  const shouldAutoPlayRef = useRef(false)                // 刷新恢复：是否需要自动播放
+  const hasRestoredRef = useRef(false)                   // 防止覆盖已恢复的状态
+  const loadTrackSeqRef = useRef(0)                      // 防竞态：切歌序列号
+  const currentTrackIdRef = useRef<string | null>(null)  // 当前已加载曲目 ID
+  const loadAndPlayRef = useRef(false)                   // play() 标记：加载完成后自动播放
+  const playingRef = useRef(false)                       // 实时 playing 状态，避免闭包过期
 
   // 初始化：合并本地 + 云端数据（云端优先）
   useEffect(() => {
@@ -146,6 +213,21 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       }
 
       setPlaylist(allTracks)
+
+      // 恢复播放状态（页面刷新后继续播放）
+      if (!hasRestoredRef.current && allTracks.length > 0) {
+        hasRestoredRef.current = true
+        const saved = readPlayback()
+        if (saved) {
+          const idx = Math.min(saved.currentIndex, allTracks.length - 1)
+          setCurrentIndex(idx)
+          setVolumeState(saved.volume ?? 0.6)
+          setMutedState(saved.muted ?? false)
+          setLoopMode(saved.loopMode ?? 'all')
+          seekTargetRef.current = saved.currentTime || 0
+          shouldAutoPlayRef.current = saved.playing
+        }
+      }
     }
     loadTracks()
   }, [])
@@ -166,13 +248,37 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         setDuration(audioRef.current?.duration || 0)
       })
       audioRef.current.addEventListener('loadedmetadata', () => {
-        setDuration(audioRef.current?.duration || 0)
+        const dur = audioRef.current?.duration || 0
+        setDuration(dur)
+        // 页面刷新恢复：seek 到上次播放位置
+        if (seekTargetRef.current !== null && audioRef.current) {
+          audioRef.current.currentTime = Math.min(seekTargetRef.current, dur)
+          seekTargetRef.current = null
+        }
+        // 页面刷新恢复：自动播放
+        if (shouldAutoPlayRef.current && audioRef.current) {
+          shouldAutoPlayRef.current = false
+          audioRef.current.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+        }
       })
     }
-    return () => { audioRef.current?.pause() }
+    // 每 5 秒保存播放进度
+    const saveTimer = setInterval(() => {
+      if (audioRef.current && !audioRef.current.paused) {
+        writePlayback({ currentTime: audioRef.current.currentTime })
+      }
+    }, 5000)
+    return () => { audioRef.current?.pause(); clearInterval(saveTimer) }
+  }, [])
+
+  const notifyLyricsUpdated = useCallback(() => {
+    setLyricsVersion(v => v + 1)
   }, [])
 
   const currentTrack = playlist[currentIndex] || null
+
+  // 同步 playingRef 避免闭包过期
+  useEffect(() => { playingRef.current = playing }, [playing])
 
   // 播放结束处理
   useEffect(() => {
@@ -188,16 +294,39 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     return () => audio.removeEventListener('ended', onEnded)
   }, [loopMode, currentIndex, playlist])
 
-  // 切换曲目
+  // 切换曲目（含音频缓存检查）
   useEffect(() => {
     if (!audioRef.current || playlist.length === 0) return
     const track = playlist[currentIndex]
     if (!track) return
-    if (audioRef.current.src !== track.url) {
-      audioRef.current.src = track.url
-      audioRef.current.load()
+
+    // 同一曲目已加载，跳过
+    if (currentTrackIdRef.current === track.id) return
+    currentTrackIdRef.current = track.id
+
+    const cacheKey = track.storagePath || track.id
+    const seq = ++loadTrackSeqRef.current
+
+    const setupAudio = async () => {
+      const audio = audioRef.current!
+
+      // 优先从 IndexedDB 缓存取，未缓存则用网络 URL 并在后台下载缓存
+      const src = await resolveAudioUrl(cacheKey, track.url)
+      if (seq !== loadTrackSeqRef.current) return
+
+      audio.src = src
+      audio.load()
+
+      // play() 或页面刷新恢复 — 加载完成后自动播放（尊重当前 playing 状态）
+      if (loadAndPlayRef.current && seq === loadTrackSeqRef.current) {
+        loadAndPlayRef.current = false
+        if (playingRef.current) {
+          audio.play().catch(() => setPlaying(false))
+        }
+      }
     }
-    if (playing) audioRef.current.play().catch(() => setPlaying(false))
+
+    setupAudio()
   }, [currentIndex, playlist])
 
   // 音量
@@ -213,24 +342,31 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const play = useCallback((index?: number) => {
     if (playlist.length === 0) return
     const idx = index ?? currentIndex
-    setCurrentIndex(idx)
+    const isNewTrack = idx !== currentIndex
+    if (isNewTrack) {
+      loadAndPlayRef.current = true
+      setCurrentIndex(idx)
+    } else {
+      audioRef.current?.play().catch(() => setPlaying(false))
+    }
     setPlaying(true)
-    setTimeout(() => audioRef.current?.play().catch(() => setPlaying(false)), 50)
+    writePlayback({ currentIndex: idx, playing: true })
   }, [playlist, currentIndex])
 
-  const pause = useCallback(() => { audioRef.current?.pause(); setPlaying(false) }, [])
+  const pause = useCallback(() => { audioRef.current?.pause(); setPlaying(false); writePlayback({ playing: false }) }, [])
   const togglePlay = useCallback(() => {
     if (!audioRef.current || playlist.length === 0) return
-    if (playing) { audioRef.current.pause(); setPlaying(false) }
-    else { audioRef.current.play().then(() => setPlaying(true)).catch(() => { toast.error('播放失败'); setPlaying(false) }) }
+    if (playing) { audioRef.current.pause(); setPlaying(false); writePlayback({ playing: false }) }
+    else { audioRef.current.play().then(() => { setPlaying(true); writePlayback({ playing: true }) }).catch(() => { toast.error('播放失败'); setPlaying(false) }) }
   }, [playing, playlist])
 
   const handleNext = useCallback(() => {
     if (playlist.length === 0) return
     const nxt = (currentIndex + 1) % playlist.length
+    loadAndPlayRef.current = true
     setCurrentIndex(nxt)
-    if (playing) setTimeout(() => audioRef.current?.play().catch(() => {}), 100)
-  }, [playlist, currentIndex, playing])
+    writePlayback({ currentIndex: nxt, currentTime: 0 })
+  }, [playlist, currentIndex])
 
   const handleShuffleNext = useCallback(() => {
     if (playlist.length === 0) return
@@ -240,24 +376,29 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       shuffleOrderRef.current = [currentIndex, ...order]
     }
     const pos = shuffleOrderRef.current.indexOf(currentIndex)
-    setCurrentIndex(shuffleOrderRef.current[(pos + 1) % shuffleOrderRef.current.length])
-    if (playing) setTimeout(() => audioRef.current?.play().catch(() => {}), 100)
-  }, [playlist, currentIndex, playing])
+    const nxt = shuffleOrderRef.current[(pos + 1) % shuffleOrderRef.current.length]
+    loadAndPlayRef.current = true
+    setCurrentIndex(nxt)
+    writePlayback({ currentIndex: nxt, currentTime: 0 })
+  }, [playlist, currentIndex])
 
   const next = useCallback(() => { loopMode === 'shuffle' ? handleShuffleNext() : handleNext() }, [loopMode, handleNext, handleShuffleNext])
 
   const prev = useCallback(() => {
     if (playlist.length === 0) return
     const p = (currentIndex - 1 + playlist.length) % playlist.length
+    loadAndPlayRef.current = true
     setCurrentIndex(p)
-    if (playing) setTimeout(() => audioRef.current?.play().catch(() => {}), 100)
-  }, [playlist, currentIndex, playing])
+    writePlayback({ currentIndex: p, currentTime: 0 })
+  }, [playlist, currentIndex])
 
-  const setVolume = useCallback((v: number) => setVolumeState(Math.max(0, Math.min(1, v))), [])
-  const setMuted = useCallback((m: boolean) => setMutedState(m), [])
+  const setVolume = useCallback((v: number) => { const val = Math.max(0, Math.min(1, v)); setVolumeState(val); writePlayback({ volume: val }) }, [])
+  const setMuted = useCallback((m: boolean) => { setMutedState(m); writePlayback({ muted: m }) }, [])
   const cycleLoopMode = useCallback(() => {
     const modes: LoopMode[] = ['all', 'one', 'shuffle', 'none']
-    setLoopMode(modes[(modes.indexOf(loopMode) + 1) % modes.length])
+    const newMode = modes[(modes.indexOf(loopMode) + 1) % modes.length]
+    setLoopMode(newMode)
+    writePlayback({ loopMode: newMode })
   }, [loopMode])
 
   const addTrack = useCallback(async (track: Track) => {
@@ -300,14 +441,25 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const clearPlaylist = useCallback(() => {
     setPlaylist([]); setCurrentIndex(0); setPlaying(false)
     audioRef.current?.pause()
-  }, [playlist])
+  }, [])
+
+  const updateTrackLyrics = useCallback((trackId: string, lyricsData: { lyrics?: string; syncedLyrics?: string; lyricsSource?: 'searched' | 'manual'; lyricsHidden?: boolean }) => {
+    setPlaylist(prev => {
+      const idx = prev.findIndex(t => t.id === trackId)
+      if (idx === -1) return prev
+      const updated = [...prev]
+      updated[idx] = { ...updated[idx], ...lyricsData }
+      writeMeta(updated)
+      return updated
+    })
+  }, [])
 
   return (
     <MusicContext.Provider value={{
       playlist, currentIndex, playing, volume, muted, loopMode, currentTrack,
-      currentTime, duration,
+      currentTime, duration, lyricsVersion, notifyLyricsUpdated,
       play, pause, togglePlay, next, prev, setVolume, setMuted, cycleLoopMode,
-      addTrack, addTracks, removeTrack, clearPlaylist,
+      addTrack, addTracks, removeTrack, clearPlaylist, updateTrackLyrics,
     }}>
       {children}
     </MusicContext.Provider>

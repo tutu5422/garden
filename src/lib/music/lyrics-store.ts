@@ -11,6 +11,7 @@ export interface LyricsData {
   album?: string
   source: 'searched' | 'manual'
   searchedAt?: number
+  hidden?: boolean       // 歌词是否已隐藏
 }
 
 const STORE_KEY = 'minitu_lyrics'
@@ -49,6 +50,24 @@ export function deleteLyrics(trackId: string) {
   const store = readStore()
   delete store[trackId]
   writeStore(store)
+}
+
+// 隐藏歌词（不清除数据，仅标记为隐藏）
+export function hideLyrics(trackId: string) {
+  const store = readStore()
+  if (store[trackId]) {
+    store[trackId] = { ...store[trackId], hidden: true }
+    writeStore(store)
+  }
+}
+
+// 取消隐藏歌词
+export function unhideLyrics(trackId: string) {
+  const store = readStore()
+  if (store[trackId]?.hidden) {
+    store[trackId] = { ...store[trackId], hidden: false }
+    writeStore(store)
+  }
 }
 
 // 清除并重新搜索歌词

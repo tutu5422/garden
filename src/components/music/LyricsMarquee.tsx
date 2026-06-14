@@ -1,11 +1,9 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
 import { useMusic } from '@/lib/music/MusicContext'
-import { getLyrics, searchAndCacheLyrics, refreshLyrics, parseLRC, type LRCLine } from '@/lib/music/lyrics-store'
+import { getLyrics, searchAndCacheLyrics, parseLRC, type LRCLine } from '@/lib/music/lyrics-store'
 
 interface LyricsMarqueeProps {
   className?: string
@@ -15,12 +13,14 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
   const ctx = useMusic()
   const [displayText, setDisplayText] = useState('')
   const [hasLyrics, setHasLyrics] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [duration, setDuration] = useState(12)
+  const [marqueeDuration, setMarqueeDuration] = useState(12)
   const [currentLineIdx, setCurrentLineIdx] = useState(-1)
   const [lrcLines, setLrcLines] = useState<LRCLine[]>([])
+  const [selfSynced, setSelfSynced] = useState(false)
   const lastTrackId = useRef<string | null>(null)
+  const lastVersion = useRef<number>(0)
   const searchSeqRef = useRef(0)
+  const selfSyncedTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const textRef = useRef<HTMLSpanElement>(null)
   const [mounted, setMounted] = useState(false)
 
@@ -28,18 +28,31 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
   const playing = ctx?.playing
   const playlist = ctx?.playlist
   const currentTime = ctx?.currentTime ?? 0
+  const songDuration = ctx?.duration ?? 0
+  const lyricsVersion = ctx?.lyricsVersion ?? 0
+  const updateTrackLyrics = ctx?.updateTrackLyrics
 
   useEffect(() => { setMounted(true) }, [])
 
-  const updateDuration = useCallback(() => {
-    if (!textRef.current) return
-    const w = textRef.current.scrollWidth
-    const single = w / 2
-    const speed = hasLyrics ? 50 : 80
-    const sec = Math.max(8, single / speed)
-    setDuration(sec)
-  }, [hasLyrics])
+  // 将纯文本歌词转为均匀分布的伪 LRC 行
+  const makePseudoLrc = (text: string): { lines: LRCLine[]; timer: boolean } => {
+    const lines = text.split('\n').filter(l => l.trim())
+    if (lines.length === 0) return { lines: [], timer: false }
+    if (songDuration > 0) {
+      const interval = songDuration / lines.length
+      return {
+        lines: lines.map((t, i) => ({ time: i * interval, text: t })),
+        timer: false,
+      }
+    }
+    // 时长未知 — 每行 4 秒定时推进
+    return {
+      lines: lines.map((t, i) => ({ time: i * 4, text: t })),
+      timer: true,
+    }
+  }
 
+  // 加载歌词
   useEffect(() => {
     if (!mounted) return
     if (!track || !playing) {
@@ -47,23 +60,44 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
       setHasLyrics(false)
       setLrcLines([])
       setCurrentLineIdx(-1)
+      setSelfSynced(false)
       return
     }
 
-    if (lastTrackId.current === track.id && displayText) return
+    const sameTrack = lastTrackId.current === track.id
+    const versionChanged = lyricsVersion !== lastVersion.current
+    lastVersion.current = lyricsVersion
+
+    if (sameTrack && !versionChanged && displayText) return
     lastTrackId.current = track.id
 
     const cached = getLyrics(track.id)
-    if (cached?.lyrics) {
-      const plain = cached.lyrics.split('\n').filter(l => l.trim()).join('  ♪  ')
-      setDisplayText(plain)
+
+    // 有歌词且未隐藏 → 显示歌词
+    if (cached?.lyrics && !cached?.hidden) {
       setHasLyrics(true)
+      setDisplayText('')
+
       if (cached.syncedLyrics) {
         setLrcLines(parseLRC(cached.syncedLyrics))
         setCurrentLineIdx(-1)
+        setSelfSynced(false)
       } else {
-        setLrcLines([])
+        const { lines, timer } = makePseudoLrc(cached.lyrics)
+        setLrcLines(lines)
+        setCurrentLineIdx(timer ? 0 : -1)
+        setSelfSynced(timer)
       }
+      return
+    }
+
+    // 歌词已隐藏 / 无歌词 → 显示歌名 + 歌手
+    if (cached?.hidden) {
+      const info = [track.title, track.artist].filter(Boolean).join(' — ')
+      setDisplayText(info)
+      setHasLyrics(false)
+      setLrcLines([])
+      setSelfSynced(false)
       return
     }
 
@@ -71,57 +105,75 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
     setDisplayText(info)
     setHasLyrics(false)
     setLrcLines([])
+    setSelfSynced(false)
 
+    // 自动搜索歌词
     const seq = ++searchSeqRef.current
     searchAndCacheLyrics(track.id, track.title, track.artist).then(result => {
       if (seq !== searchSeqRef.current) return
-      if (result?.lyrics) {
-        const plain = result.lyrics.split('\n').filter(l => l.trim()).join('  ♪  ')
-        setDisplayText(plain)
+      if (result?.lyrics && !result?.hidden) {
         setHasLyrics(true)
-        if (result.syncedLyrics) setLrcLines(parseLRC(result.syncedLyrics))
-      }
-    })
-  }, [track?.id, playing, mounted])
-
-  useEffect(() => {
-    if (!playing || lrcLines.length === 0) return
-    setCurrentLineIdx(findCurrentLine(lrcLines, currentTime))
-  }, [currentTime, playing, lrcLines])
-
-  useEffect(() => {
-    if (!displayText || lrcLines.length > 0) return
-    const t = setTimeout(updateDuration, 100)
-    return () => clearTimeout(t)
-  }, [displayText, updateDuration, lrcLines])
-
-  const handleRefresh = useCallback(async () => {
-    if (!track || isRefreshing) return
-    setIsRefreshing(true)
-    const oldLyrics = getLyrics(track.id)
-    try {
-      const result = await refreshLyrics(track.id, track.title, track.artist)
-      if (result?.lyrics) {
-        const plain = result.lyrics.split('\n').filter(l => l.trim()).join('  ♪  ')
-        setDisplayText(plain)
-        setHasLyrics(true)
+        setDisplayText('')
         if (result.syncedLyrics) {
           setLrcLines(parseLRC(result.syncedLyrics))
           setCurrentLineIdx(-1)
+          setSelfSynced(false)
         } else {
-          setLrcLines([])
+          const { lines, timer } = makePseudoLrc(result.lyrics)
+          setLrcLines(lines)
+          setCurrentLineIdx(timer ? 0 : -1)
+          setSelfSynced(timer)
         }
-        toast.success(oldLyrics?.lyrics === result.lyrics ? '歌词未变化' : '歌词已刷新')
-      } else {
-        toast.info('未找到歌词')
-      }
-    } finally { setIsRefreshing(false) }
-  }, [track, isRefreshing])
+        // 同步歌词到云端
+        updateTrackLyrics?.(track.id, {
+          lyrics: result.lyrics,
+          syncedLyrics: result.syncedLyrics,
+          lyricsSource: result.source,
+          lyricsHidden: result.hidden || false,
+        })
+        }
+    })
+  }, [track?.id, playing, mounted, lyricsVersion])
+
+  // 真实 LRC — 按音频时间同步
+  useEffect(() => {
+    if (!playing || lrcLines.length === 0 || selfSynced) return
+    setCurrentLineIdx(findCurrentLine(lrcLines, currentTime))
+  }, [currentTime, playing, lrcLines, selfSynced])
+
+  // 纯文本歌词 — 定时推进（4s/行）
+  useEffect(() => {
+    if (!playing || !selfSynced || lrcLines.length === 0) return
+    if (selfSyncedTimer.current) clearInterval(selfSyncedTimer.current)
+    selfSyncedTimer.current = setInterval(() => {
+      setCurrentLineIdx(prev => {
+        if (prev + 1 < lrcLines.length) return prev + 1
+        return prev
+      })
+    }, 4000)
+    return () => {
+      if (selfSyncedTimer.current) { clearInterval(selfSyncedTimer.current); selfSyncedTimer.current = null }
+    }
+  }, [playing, selfSynced, lrcLines.length])
+
+  // 跑马灯时长计算
+  useEffect(() => {
+    if (!displayText || lrcLines.length > 0) return
+    const t = setTimeout(() => {
+      if (!textRef.current) return
+      const w = textRef.current.scrollWidth
+      const single = w / 2
+      const speed = hasLyrics ? 50 : 80
+      setMarqueeDuration(Math.max(8, single / speed))
+    }, 100)
+    return () => clearTimeout(t)
+  }, [displayText, hasLyrics, lrcLines])
 
   const rootCls = cn('hidden md:flex items-center mx-3 min-w-0 self-stretch', className)
 
   if (!mounted) return <div className={rootCls} />
 
+  // 空播放列表
   if ((!playlist || playlist.length === 0) && !displayText) {
     return (
       <div className={cn(rootCls, 'justify-end')}>
@@ -133,6 +185,46 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
     )
   }
 
+  // ==================== LRC 逐行显示（统一模式） ====================
+  if (lrcLines.length > 0) {
+    const idx = currentLineIdx >= 0 ? currentLineIdx : 0
+    const cur = lrcLines[idx]
+    const next = idx + 1 < lrcLines.length ? lrcLines[idx + 1] : null
+
+    return (
+      <div className={cn(rootCls, 'justify-end')}>
+        <div className="flex flex-col justify-center w-full overflow-hidden items-end gap-1">
+          {cur && (
+            <span
+              key={`cur-${idx}`}
+              className="text-sm font-bold whitespace-nowrap truncate lyrics-line-enter text-right"
+              style={{
+                fontFamily: 'var(--font-display)',
+                color: 'var(--skin-primary)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {cur.text}
+            </span>
+          )}
+          {next && (
+            <span
+              key={`next-${idx}`}
+              className="text-[11px] whitespace-nowrap truncate lyrics-line-next text-right"
+              style={{
+                color: 'var(--skin-text-secondary)',
+                opacity: 0.3,
+              }}
+            >
+              {next.text}
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // 未播放 / 无内容
   if (!displayText || !playing) {
     return (
       <div className={cn(rootCls, 'justify-end')}>
@@ -146,61 +238,26 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
     )
   }
 
-  // LRC 同步模式
-  if (lrcLines.length > 0) {
-    const cur = lrcLines[currentLineIdx >= 0 ? currentLineIdx : 0]
-    const next = currentLineIdx >= 0 && currentLineIdx + 1 < lrcLines.length ? lrcLines[currentLineIdx + 1] : null
-    return (
-      <div className={cn(rootCls, 'justify-end')}>
-        <div className="flex flex-col justify-center w-full overflow-hidden items-end">
-          {cur && (
-            <span className="text-sm font-bold whitespace-nowrap truncate transition-all duration-300 text-right"
-                  style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-primary)', letterSpacing: '0.03em' }}>
-              {cur.text}
-            </span>
-          )}
-          {next && (
-            <span className="text-[11px] whitespace-nowrap truncate mt-0.5 transition-all duration-300 text-right"
-                  style={{ color: 'var(--skin-text-secondary)', opacity: 0.35 }}>
-              {next.text}
-            </span>
-          )}
-        </div>
-        <button onClick={handleRefresh} disabled={isRefreshing}
-                className="ml-2 p-1 transition-all shrink-0 hover:scale-110 active:scale-95 hover:text-[var(--skin-primary)]"
-                style={{ color: 'var(--skin-text-secondary)', opacity: 0.45 }} title="重新搜索歌词">
-          <RefreshCw className={`size-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
-    )
-  }
-
-  // 跑马灯模式
+  // ==================== 跑马灯（无歌词时显示歌名） ====================
   return (
-    <div className={cn(rootCls, 'overflow-hidden relative group/marquee justify-end')}>
+    <div className={cn(rootCls, 'overflow-hidden relative justify-end')}>
       <div className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
            style={{ background: 'linear-gradient(to right, var(--skin-surface), transparent)' }} />
       <div className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none"
            style={{ background: 'linear-gradient(to left, var(--skin-surface), transparent)' }} />
       <div className="marquee-track w-full text-right">
         <span ref={textRef}
-              className={`marquee-text leading-none ${hasLyrics ? 'marquee-lyrics' : 'marquee-title'}`}
+              className="marquee-text leading-none marquee-title"
               style={{
-                color: hasLyrics ? 'var(--skin-text-secondary)' : 'var(--skin-primary)',
-                animationName: 'marquee-scroll', animationDuration: `${duration}s`,
-                animationTimingFunction: 'linear', animationIterationCount: 'infinite',
+                color: 'var(--skin-primary)',
+                animationName: 'marquee-scroll',
+                animationDuration: `${marqueeDuration}s`,
+                animationTimingFunction: 'linear',
+                animationIterationCount: 'infinite',
               }}>
           {displayText}&nbsp;&nbsp;&nbsp;{displayText}
         </span>
       </div>
-      {hasLyrics && (
-        <button onClick={handleRefresh} disabled={isRefreshing}
-                className="absolute right-9 top-1/2 -translate-y-1/2 p-1 z-20 transition-all opacity-0 group-hover/marquee:opacity-100 hover:scale-110 active:scale-95 hover:text-[var(--skin-primary)]"
-                style={{ color: 'var(--skin-text-secondary)', background: 'var(--skin-surface)', borderRadius: '4px' }}
-                title="重新搜索歌词">
-          <RefreshCw className={`size-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </button>
-      )}
     </div>
   )
 }
