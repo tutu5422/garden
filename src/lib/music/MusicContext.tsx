@@ -36,6 +36,7 @@ interface MusicContextType {
   play: (index?: number) => void
   pause: () => void
   togglePlay: () => void
+  seek: (time: number) => void
   next: () => void
   prev: () => void
   setVolume: (v: number) => void
@@ -167,6 +168,17 @@ export { loadPlaylistFromCloud }
 
 // ========== Provider ==========
 
+// ========== 模块级 Audio（脱离 React 生命周期，页面切换不中断）==========
+let globalAudio: HTMLAudioElement | null = null
+function getAudio(): HTMLAudioElement {
+  if (!globalAudio) {
+    globalAudio = new Audio()
+    ;(globalAudio as any).playsInline = true
+    globalAudio.preload = 'auto'
+  }
+  return globalAudio
+}
+
 export function MusicProvider({ children }: { children: ReactNode }) {
   const [playlist, setPlaylist] = useState<Track[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -177,9 +189,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [lyricsVersion, setLyricsVersion] = useState(0)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const shuffleOrderRef = useRef<number[]>([])
   const seekTargetRef = useRef<number | null>(null)     // 刷新恢复：seek 目标
+ const seekToRef = useRef<number | null>(null)    // 用户拖拽 seek 目标
   const shouldAutoPlayRef = useRef(false)                // 刷新恢复：是否需要自动播放
   const hasRestoredRef = useRef(false)                   // 防止覆盖已恢复的状态
   const loadTrackSeqRef = useRef(0)                      // 防竞态：切歌序列号
@@ -232,43 +244,42 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     loadTracks()
   }, [])
 
-  // 初始化 Audio
+  // 初始化 Audio（绑定事件，模块级 Audio 已创建）
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio()
-      audioRef.current.volume = volume
-      audioRef.current.addEventListener('error', () => {
-        toast.error('无法播放此音频')
-        setPlaying(false)
-      })
-      audioRef.current.addEventListener('timeupdate', () => {
-        setCurrentTime(audioRef.current?.currentTime || 0)
-      })
-      audioRef.current.addEventListener('durationchange', () => {
-        setDuration(audioRef.current?.duration || 0)
-      })
-      audioRef.current.addEventListener('loadedmetadata', () => {
-        const dur = audioRef.current?.duration || 0
-        setDuration(dur)
-        // 页面刷新恢复：seek 到上次播放位置
-        if (seekTargetRef.current !== null && audioRef.current) {
-          audioRef.current.currentTime = Math.min(seekTargetRef.current, dur)
-          seekTargetRef.current = null
-        }
-        // 页面刷新恢复：自动播放
-        if (shouldAutoPlayRef.current && audioRef.current) {
-          shouldAutoPlayRef.current = false
-          audioRef.current.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
-        }
-      })
-    }
-    // 每 5 秒保存播放进度
-    const saveTimer = setInterval(() => {
-      if (audioRef.current && !audioRef.current.paused) {
-        writePlayback({ currentTime: audioRef.current.currentTime })
+    const audio = getAudio()
+    audio.volume = volume
+    const onError = () => { toast.error('无法播放此音频'); setPlaying(false) }
+    const onTimeUpdate = () => { setCurrentTime(audio.currentTime || 0) }
+    const onDurationChange = () => { setDuration(audio.duration || 0) }
+    const onLoadedMeta = () => {
+      const dur = audio.duration || 0
+      setDuration(dur)
+      if (seekTargetRef.current !== null) {
+        audio.currentTime = Math.min(seekTargetRef.current, dur)
+        seekTargetRef.current = null
       }
+      if (shouldAutoPlayRef.current) {
+        shouldAutoPlayRef.current = false
+        audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
+      }
+    }
+    audio.addEventListener('error', onError)
+    audio.addEventListener('timeupdate', onTimeUpdate)
+    audio.addEventListener('durationchange', onDurationChange)
+    audio.addEventListener('loadedmetadata', onLoadedMeta)
+
+    const saveTimer = setInterval(() => {
+      if (!audio.paused) writePlayback({ currentTime: audio.currentTime })
     }, 5000)
-    return () => { audioRef.current?.pause(); clearInterval(saveTimer) }
+
+    return () => {
+      audio.removeEventListener('error', onError)
+      audio.removeEventListener('timeupdate', onTimeUpdate)
+      audio.removeEventListener('durationchange', onDurationChange)
+      audio.removeEventListener('loadedmetadata', onLoadedMeta)
+      clearInterval(saveTimer)
+      // 不断开播放——音频跨页面持续
+    }
   }, [])
 
   const notifyLyricsUpdated = useCallback(() => {
@@ -282,7 +293,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 播放结束处理
   useEffect(() => {
-    const audio = audioRef.current
+    const audio = getAudio()
     if (!audio) return
     const onEnded = () => {
       if (loopMode === 'one') { audio.currentTime = 0; audio.play().catch(() => {}) }
@@ -296,7 +307,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 切换曲目（含音频缓存检查）
   useEffect(() => {
-    if (!audioRef.current || playlist.length === 0) return
+    if (!getAudio() || playlist.length === 0) return
     const track = playlist[currentIndex]
     if (!track) return
 
@@ -307,23 +318,41 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const cacheKey = track.storagePath || track.id
     const seq = ++loadTrackSeqRef.current
 
-    const setupAudio = async () => {
-      const audio = audioRef.current!
+    const setupAudio = () => {
+      const audio = getAudio()!
 
-      // 优先从 IndexedDB 缓存取，未缓存则用网络 URL 并在后台下载缓存
-      const src = await resolveAudioUrl(cacheKey, track.url)
-      if (seq !== loadTrackSeqRef.current) return
-
-      audio.src = src
+      // 直接用网络 URL，不 await 缓存（避免打断移动端手势链）
+      audio.src = track.url
       audio.load()
 
-      // play() 或页面刷新恢复 — 加载完成后自动播放（尊重当前 playing 状态）
+      // 用户触发的播放：等音频缓冲就绪
       if (loadAndPlayRef.current && seq === loadTrackSeqRef.current) {
         loadAndPlayRef.current = false
         if (playingRef.current) {
-          audio.play().catch(() => setPlaying(false))
+          const doRealPlay = () => {
+            if (seq !== loadTrackSeqRef.current) return
+            audio.play().catch(() => setPlaying(false))
+          }
+          // 移动端需要等缓冲，桌面端 readyState 通常已就绪
+          if (audio.readyState >= 3) {
+            doRealPlay()
+          } else {
+            const onReady = () => {
+              audio.removeEventListener('canplaythrough', onReady)
+              doRealPlay()
+            }
+            audio.addEventListener('canplaythrough', onReady)
+            // 3 秒兜底
+            setTimeout(() => {
+              audio.removeEventListener('canplaythrough', onReady)
+              doRealPlay()
+            }, 3000)
+          }
         }
       }
+
+      // 后台缓存，下次播放自动使用
+      resolveAudioUrl(cacheKey, track.url).catch(() => {})
     }
 
     setupAudio()
@@ -331,7 +360,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 音量
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = muted ? 0 : volume
+    if (getAudio()) getAudio().volume = muted ? 0 : volume
   }, [volume, muted])
 
   // shuffle 重建
@@ -345,25 +374,47 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const isNewTrack = idx !== currentIndex
     if (isNewTrack) {
       loadAndPlayRef.current = true
+      playingRef.current = true  // 提前同步 ref，避免 track-loading effect 读到旧值
       setCurrentIndex(idx)
     } else {
-      audioRef.current?.play().catch(() => setPlaying(false))
+      getAudio()?.play().catch(() => setPlaying(false))
     }
     setPlaying(true)
     writePlayback({ currentIndex: idx, playing: true })
   }, [playlist, currentIndex])
 
-  const pause = useCallback(() => { audioRef.current?.pause(); setPlaying(false); writePlayback({ playing: false }) }, [])
+  const pause = useCallback(() => { getAudio()?.pause(); setPlaying(false); writePlayback({ playing: false }) }, [])
+  const seek = useCallback((time: number) => {
+    if (!getAudio()) return
+    const dur = getAudio().duration
+    if (!isFinite(dur)) return
+    const t = Math.max(0, Math.min(time, dur))
+    getAudio().currentTime = t
+    setCurrentTime(t)
+    writePlayback({ currentTime: t })
+  }, [])
   const togglePlay = useCallback(() => {
-    if (!audioRef.current || playlist.length === 0) return
-    if (playing) { audioRef.current.pause(); setPlaying(false); writePlayback({ playing: false }) }
-    else { audioRef.current.play().then(() => { setPlaying(true); writePlayback({ playing: true }) }).catch(() => { toast.error('播放失败'); setPlaying(false) }) }
-  }, [playing, playlist])
+    if (!getAudio() || playlist.length === 0) return
+    if (playing) { getAudio().pause(); setPlaying(false); writePlayback({ playing: false }) }
+    else {
+      const audio = getAudio()
+      // 确保 src 已设置（切歌 effect 可能还没跑完）
+      if (!audio.src || audio.src === window.location.href) {
+        const track = playlist[currentIndex]
+        if (track) {
+          audio.src = track.url
+          audio.load()
+        }
+      }
+      audio.play().then(() => { setPlaying(true); writePlayback({ playing: true }) }).catch(() => { toast.error('播放失败'); setPlaying(false) })
+    }
+  }, [playing, playlist, currentIndex])
 
   const handleNext = useCallback(() => {
     if (playlist.length === 0) return
     const nxt = (currentIndex + 1) % playlist.length
     loadAndPlayRef.current = true
+    playingRef.current = true
     setCurrentIndex(nxt)
     writePlayback({ currentIndex: nxt, currentTime: 0 })
   }, [playlist, currentIndex])
@@ -378,6 +429,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const pos = shuffleOrderRef.current.indexOf(currentIndex)
     const nxt = shuffleOrderRef.current[(pos + 1) % shuffleOrderRef.current.length]
     loadAndPlayRef.current = true
+    playingRef.current = true
     setCurrentIndex(nxt)
     writePlayback({ currentIndex: nxt, currentTime: 0 })
   }, [playlist, currentIndex])
@@ -388,6 +440,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     if (playlist.length === 0) return
     const p = (currentIndex - 1 + playlist.length) % playlist.length
     loadAndPlayRef.current = true
+    playingRef.current = true
     setCurrentIndex(p)
     writePlayback({ currentIndex: p, currentTime: 0 })
   }, [playlist, currentIndex])
@@ -440,7 +493,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const clearPlaylist = useCallback(() => {
     setPlaylist([]); setCurrentIndex(0); setPlaying(false)
-    audioRef.current?.pause()
+    getAudio()?.pause()
   }, [])
 
   const updateTrackLyrics = useCallback((trackId: string, lyricsData: { lyrics?: string; syncedLyrics?: string; lyricsSource?: 'searched' | 'manual'; lyricsHidden?: boolean }) => {
@@ -458,7 +511,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     <MusicContext.Provider value={{
       playlist, currentIndex, playing, volume, muted, loopMode, currentTrack,
       currentTime, duration, lyricsVersion, notifyLyricsUpdated,
-      play, pause, togglePlay, next, prev, setVolume, setMuted, cycleLoopMode,
+      play, pause, togglePlay, seek, next, prev, setVolume, setMuted, cycleLoopMode,
       addTrack, addTracks, removeTrack, clearPlaylist, updateTrackLyrics,
     }}>
       {children}

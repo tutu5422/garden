@@ -54,10 +54,10 @@ function compressImage(file: File, maxW: number, quality: number): Promise<{ ful
         const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext("2d")!; ctx.drawImage(img, 0, 0, w, h);
         const full = canvas.toDataURL("image/jpeg", quality);
-        const ts = Math.min(1, 150 / Math.max(img.width, img.height));
+        const ts = Math.min(1, 400 / Math.max(img.width, img.height));
         canvas.width = Math.round(img.width * ts); canvas.height = Math.round(img.height * ts);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const thumb = canvas.toDataURL("image/jpeg", 0.5);
+        const thumb = canvas.toDataURL("image/jpeg", 0.75);
         resolve({ full, thumb });
       };
       img.src = reader.result as string;
@@ -103,6 +103,7 @@ export default function Notes() {
   const [editCollectionName, setEditCollectionName] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   // UUID pattern: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
   const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
@@ -278,7 +279,7 @@ export default function Notes() {
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[var(--skin-text-secondary)] pointer-events-none" />
-            <input className="input-filled w-44 sm:w-64 text-sm" style={{ paddingLeft: '2.75rem' }} placeholder="搜索..." value={search} onChange={e => setSearch(e.target.value)} />
+            <input className="input-filled w-32 sm:w-44 md:w-64 text-sm" style={{ paddingLeft: '2.75rem' }} placeholder="搜索..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <button onClick={() => router.push('/notes/edit')} className="btn">
             <Plus className="size-4" />新建
@@ -399,9 +400,51 @@ export default function Notes() {
             return (
               <div
                 key={n.id}
-                className={`${bentoClass} group cursor-pointer`}
+                className={`${bentoClass} group cursor-pointer relative`}
                 onClick={() => router.push(`/notes/${n.id}`)}
               >
+                {/* Mobile: ⋮ 菜单 — 放在 card-bento 外面避免 overflow:hidden 裁剪 */}
+                <div className="sm:hidden absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === n.id ? null : n.id); setConfirmDelete(null); }}
+                    className="p-1.5 text-[var(--skin-text-secondary)] opacity-40 hover:opacity-100 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+                    </svg>
+                  </button>
+                  {(menuOpenId === n.id || confirmDelete?.id === n.id) && (
+                    <>
+                      <div className="fixed inset-0 z-20" onClick={() => { setMenuOpenId(null); setConfirmDelete(null); }} />
+                      <div className="absolute right-0 top-full mt-1 flex gap-1.5 z-30">
+                        {confirmDelete?.id === n.id ? (
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); del(n.id); setConfirmDelete(null); }}
+                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                              确认
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
+                              className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">
+                              取消
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); router.push(`/notes/edit?id=${n.id}`); }}
+                              className="px-2.5 py-1 rounded-lg bg-gray-800 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                              编辑
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); setConfirmDelete({ id: n.id, title: n.title }); }}
+                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                              删除
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <div className="card-bento flex-1 min-h-0 flex flex-col">
                   {/* 图片区 — 大卡片全宽顶图，普通卡片可选 */}
                   {hasImage && (
@@ -453,27 +496,30 @@ export default function Notes() {
                       <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
                         {new Date(n.createdAt).toLocaleDateString('zh-CN')}
                       </span>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={(e) => { e.stopPropagation(); router.push(`/notes/edit?id=${n.id}`); }}
-                          className="p-1.5 rounded-lg hover:bg-[var(--skin-muted)] transition-colors text-[var(--skin-text-secondary)] hover:text-[var(--skin-primary)]">
-                          <Pencil className="size-3.5" />
-                        </button>
+                      {/* Desktop: hover 编辑/删除或确认/取消 */}
+                      <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {confirmDelete?.id === n.id ? (
                           <>
                             <button onClick={(e) => { e.stopPropagation(); del(n.id); setConfirmDelete(null); }}
-                              className="p-1.5 rounded-lg bg-red-500 text-white text-[10px] font-bold backdrop-blur-sm transition-all">
+                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
                               确认
                             </button>
                             <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
-                              className="p-1.5 rounded-lg bg-white/20 hover:bg-white/35 text-[var(--skin-text-secondary)] text-[10px] font-bold backdrop-blur-sm transition-all">
+                              className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">
                               取消
                             </button>
                           </>
                         ) : (
-                        <button onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: n.id, title: n.title }); }}
-                          className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-[var(--skin-text-secondary)] hover:text-red-500">
-                          <Trash2 className="size-3.5" />
-                        </button>
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); router.push(`/notes/edit?id=${n.id}`); }}
+                              className="p-1.5 rounded-lg hover:bg-[var(--skin-muted)] transition-colors text-[var(--skin-text-secondary)] hover:text-[var(--skin-primary)]">
+                              <Pencil className="size-3.5" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: n.id, title: n.title }); }}
+                              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-[var(--skin-text-secondary)] hover:text-red-500">
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

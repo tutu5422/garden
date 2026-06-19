@@ -22,8 +22,17 @@ export default function HomeMusicPlayer() {
   if (!ctx) return <EmptyState />;
 
   const { playlist, currentIndex, currentTrack, playing, loopMode,
-    togglePlay, play, next, prev, cycleLoopMode } = ctx;
+    currentTime, duration, togglePlay, play, seek, next, prev, cycleLoopMode } = ctx;
   const [showList, setShowList] = useState(false);
+  const [seeking, setSeeking] = useState(false);
+  const [seekValue, setSeekValue] = useState(0);
+
+  const fmtTime = (s: number) => {
+    if (!isFinite(s) || s < 0) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
 
   if (playlist.length === 0) return <EmptyState />;
 
@@ -57,6 +66,32 @@ export default function HomeMusicPlayer() {
           ))}
         </div>
       )}
+
+      {/* Progress Bar */}
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-[10px] font-mono text-[var(--skin-text-secondary)] w-8 shrink-0">
+          {seeking ? fmtTime(seekValue) : fmtTime(currentTime)}
+        </span>
+        <input
+          type="range"
+          min="0"
+          max={duration && isFinite(duration) ? duration : 0}
+          step="0.1"
+          value={seeking ? seekValue : currentTime}
+          onChange={(e) => {
+            const v = parseFloat(e.target.value);
+            setSeeking(true);
+            setSeekValue(v);
+          }}
+          onMouseUp={() => { seek(seekValue); setSeeking(false); }}
+          onTouchEnd={() => { seek(seekValue); setSeeking(false); }}
+          className="flex-1 h-1 accent-[var(--skin-primary)] cursor-pointer"
+          style={{ background: 'var(--skin-muted)' }}
+        />
+        <span className="text-[10px] font-mono text-[var(--skin-text-secondary)] w-8 shrink-0">
+          {fmtTime(duration)}
+        </span>
+      </div>
 
       {/* Playlist */}
       {showList && (

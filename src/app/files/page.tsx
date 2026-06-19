@@ -114,6 +114,7 @@ export default function Files() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [confirmDelete, setConfirmDelete] = useState<MyFile | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     // Show localStorage data immediately
@@ -373,6 +374,7 @@ export default function Files() {
             const ext = f.name.split(".").pop()?.toLowerCase() || "";
             const extGroupKey = extGroup[ext] || "other";
             return (
+            <div className="relative">
             <div key={f.id} className="card rounded-lg flex items-center gap-4 px-5 py-4 group">
               <div className="size-10 rounded flex items-center justify-center shrink-0" style={{ background: 'var(--skin-muted)' }}>
                 {extGroupKey === "audio" ? <Music className="size-5" style={{ color: 'var(--skin-primary)' }} />
@@ -411,31 +413,74 @@ export default function Files() {
                 )}
               </div>
 
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleDownload(f)}
-                        className="p-2 hover:text-[var(--skin-primary)] transition-colors">
-                  <Download className="size-4" />
-                </button>
+              {/* Desktop: hover 下载/删除或确认/取消 */}
+              <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {confirmDelete?.id === f.id ? (
                   <>
                     <button onClick={handleDelete}
-                      className="p-2 rounded-lg bg-red-500 text-white backdrop-blur-sm transition-all text-[10px] font-bold whitespace-nowrap">
+                      className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
                       确认
                     </button>
                     <button onClick={() => setConfirmDelete(null)}
-                      className="p-2 rounded-lg bg-white/20 hover:bg-white/35 text-[var(--skin-text-secondary)] backdrop-blur-sm transition-all text-[10px] font-bold">
+                      className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">
                       取消
                     </button>
                   </>
                 ) : (
-                <button onClick={() => setConfirmDelete(f)}
-                        className="p-2 hover:text-red-500 transition-colors">
-                  <Trash2 className="size-4" />
-                </button>
+                  <>
+                    <button onClick={() => handleDownload(f)}
+                            className="p-2 hover:text-[var(--skin-primary)] transition-colors">
+                      <Download className="size-4" />
+                    </button>
+                    <button onClick={() => setConfirmDelete(f)}
+                            className="p-2 hover:text-red-500 transition-colors">
+                      <Trash2 className="size-4" />
+                    </button>
+                  </>
                 )}
               </div>
             </div>
-            );
+
+            {/* Mobile: 下载 + ⋮ — 放在 card 外面避免 overflow:hidden 裁剪 */}
+            <div className="flex sm:hidden absolute right-4 top-4 items-center gap-1 z-10">
+              <button onClick={() => handleDownload(f)}
+                      className="p-2 hover:text-[var(--skin-primary)] transition-colors">
+                <Download className="size-4" />
+              </button>
+              <button onClick={() => { setMenuOpenId(menuOpenId === f.id ? null : f.id); setConfirmDelete(null); }}
+                      className="p-1.5 text-[var(--skin-text-secondary)] opacity-40 hover:opacity-100 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+                </svg>
+              </button>
+              {(menuOpenId === f.id || confirmDelete?.id === f.id) && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => { setMenuOpenId(null); setConfirmDelete(null); }} />
+                  <div className="absolute right-0 top-full mt-1 flex gap-1.5 z-30">
+                    {confirmDelete?.id === f.id ? (
+                      <>
+                        <button onClick={handleDelete}
+                          className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                          确认
+                        </button>
+                        <button onClick={() => setConfirmDelete(null)}
+                          className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">
+                          取消
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => { setMenuOpenId(null); setConfirmDelete(f); }}
+                        className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                        删除
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          );
           })}
         </div>
       )}

@@ -35,7 +35,7 @@ export default function LoginPage() {
       })
       if (r.ok) {
         toast.success('欢迎回来 🐰')
-        router.push('/')
+        window.location.href = '/'
       } else {
         const data = await r.json().catch(() => ({ error: '验证失败' }))
         setError(data.error || '验证失败，请重试')

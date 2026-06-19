@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Library, Calendar, Layers, FileText } from "lucide-react"
+import { Library, Calendar, Layers, FileText, Home } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import LyricsMarquee from "@/components/music/LyricsMarquee"
@@ -100,6 +100,28 @@ export default function Nav() {
         style={{ backgroundColor: "var(--skin-surface)" }}
       >
         <div className="flex items-center justify-around h-14">
+          {/* Home */}
+          <Link
+            href="/"
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-1 text-xs font-bold tracking-wider transition-all duration-200",
+              path === "/"
+                ? ""
+                : "text-[var(--skin-text-secondary)] hover:text-[var(--skin-text)]"
+            )}
+            style={
+              path === "/"
+                ? {
+                    color: "var(--skin-primary)",
+                    borderTop: "2px solid var(--skin-primary)",
+                    marginTop: "-2px",
+                  }
+                : {}
+            }
+          >
+            <Home className="size-5 transition-transform duration-200" />
+            <span>首页</span>
+          </Link>
           {navItems.map((item) => {
             const active = isActive(item.href)
             return (

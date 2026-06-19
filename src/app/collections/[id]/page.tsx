@@ -212,7 +212,7 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
                   </p>
                 </div>
                 <button onClick={() => removeFromCollection(n.id, n.title)}
-                  className="p-2 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all shrink-0">
+                  className="p-2 sm:opacity-0 sm:group-hover:opacity-100 hover:text-red-500 transition-all shrink-0">
                   <X className="size-4" />
                 </button>
               </div>

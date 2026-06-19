@@ -87,6 +87,7 @@ export default function TimelinePage() {
   const [newMemo, setNewMemo] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; content: string } | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -221,8 +222,8 @@ export default function TimelinePage() {
       ) : (
         /* === 双轨时间线 === */
         <div className="relative">
-          {/* Center line — visible on desktop */}
-          <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-px"
+          {/* Center line */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-px"
                style={{ background: `linear-gradient(to bottom, var(--skin-primary), var(--skin-accent), transparent 95%)` }} />
 
           <div className="space-y-4">
@@ -252,62 +253,100 @@ export default function TimelinePage() {
                     <div style={{ minHeight: '60px' }} />
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {items.map((item) => (
                       <div key={item.kind === 'memo' ? item.memo.id : item.note.id}
-                           className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                           className="grid grid-cols-2 gap-1.5 md:gap-8">
                         {item.kind === 'memo' ? (
                           <>
                             {/* 备忘 — 左侧 */}
                             <div className="md:pr-6 md:text-right">
-                              <div className="card rounded-xl p-5 group relative"
+                              <div className="relative">
+                              <div className="card rounded-xl p-2.5 sm:p-5 group"
                                    style={{ borderLeft: `3px solid ${C.plum}` }}>
                                 <div className="hidden md:block absolute -right-[calc(1rem+4px)] top-5 size-2 rounded-full"
                                      style={{ background: C.plum, boxShadow: `0 0 8px ${C.plum}66` }} />
-                                <p className="text-sm leading-relaxed font-medium" style={{ color: 'var(--skin-text)' }}>
+                                <p className="text-xs sm:text-sm leading-relaxed font-medium" style={{ color: 'var(--skin-text)' }}>
                                   {item.memo.content}
                                 </p>
-                                <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-[var(--skin-border)] md:flex-row-reverse">
+                                <div className="flex items-center justify-between mt-2 sm:mt-3 pt-2 sm:pt-3 border-t-2 border-[var(--skin-border)] md:flex-row-reverse">
                                   <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
                                     {new Date(item.memo.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
                                   </span>
+                                  {/* Desktop: hover 删除或确认/取消 */}
                                   {confirmDelete?.id === item.memo.id ? (
-                                    <span className="flex gap-1">
+                                    <span className="hidden sm:flex gap-1.5">
                                       <button onClick={handleDeleteMemo}
-                                              className="p-1 rounded bg-red-500 text-white text-[10px] font-bold whitespace-nowrap">
+                                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
                                         确认
                                       </button>
                                       <button onClick={() => setConfirmDelete(null)}
-                                              className="p-1 rounded bg-white/20 hover:bg-white/35 text-[var(--skin-text-secondary)] text-[10px] font-bold">
+                                              className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">
                                         取消
                                       </button>
                                     </span>
                                   ) : (
                                     <button onClick={() => setConfirmDelete({ id: item.memo.id, content: item.memo.content })}
-                                            className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
+                                            className="hidden sm:block p-1 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
                                       <Trash2 className="size-3.5" />
                                     </button>
                                   )}
                                 </div>
                               </div>
+
+                              {/* Mobile: ⋮ — 放在 card 外面避免 overflow:hidden 裁剪 */}
+                              <div className="sm:hidden absolute top-3 right-3 z-10">
+                                <button onClick={() => { setMenuOpenId(menuOpenId === item.memo.id ? null : item.memo.id); setConfirmDelete(null); }}
+                                        className="p-1 text-[var(--skin-text-secondary)] opacity-40 hover:opacity-100 transition-opacity">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+                                  </svg>
+                                </button>
+                                {(menuOpenId === item.memo.id || confirmDelete?.id === item.memo.id) && (
+                                  <>
+                                    <div className="fixed inset-0 z-20" onClick={() => { setMenuOpenId(null); setConfirmDelete(null); }} />
+                                    <div className="absolute right-0 top-full mt-1 flex gap-1.5 z-30">
+                                      {confirmDelete?.id === item.memo.id ? (
+                                        <>
+                                          <button onClick={handleDeleteMemo}
+                                                  className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                                            确认
+                                          </button>
+                                          <button onClick={() => setConfirmDelete(null)}
+                                                  className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">
+                                            取消
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <button
+                                          onClick={() => { setMenuOpenId(null); setConfirmDelete({ id: item.memo.id, content: item.memo.content }); }}
+                                          className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                                          删除
+                                        </button>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                             </div>
                             {/* 右侧留空 */}
-                            <div className="hidden md:block" style={{ minHeight: '60px' }} />
+                            <div style={{ minHeight: '40px' }} />
                           </>
                         ) : (
                           <>
                             {/* 左侧留空 */}
-                            <div className="hidden md:block" style={{ minHeight: '60px' }} />
+                            <div style={{ minHeight: '40px' }} />
                             {/* 笔记 — 右侧 */}
                             <div className="md:pl-6">
                               <Link href={`/notes/edit?id=${item.note.id}`}
-                                 className="card rounded-xl p-5 group relative block hover:shadow-md transition-all duration-300"
+                                 className="card rounded-xl p-2.5 sm:p-5 group relative block hover:shadow-md transition-all duration-300"
                                  style={{ borderLeft: `3px solid ${C.teal}` }}>
                                 <div className="hidden md:block absolute -left-[calc(1rem+4px)] top-5 size-2 rounded-full"
                                      style={{ background: C.teal, boxShadow: `0 0 8px ${C.teal}66` }} />
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Clock className="size-3" style={{ color: C.teal }} />
-                                  <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: C.teal }}>
+                                <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
+                                  <Clock className="size-2.5 sm:size-3" style={{ color: C.teal }} />
+                                  <span className="text-[9px] sm:text-[10px] font-bold tracking-wider uppercase" style={{ color: C.teal }}>
                                     笔记
                                   </span>
                                   {item.note.collectionName && (
@@ -317,27 +356,27 @@ export default function TimelinePage() {
                                     </span>
                                   )}
                                 </div>
-                                <h4 className="text-sm font-extrabold line-clamp-1 mb-1"
+                                <h4 className="text-xs sm:text-sm font-extrabold line-clamp-1 mb-0.5 sm:mb-1"
                                     style={{ color: 'var(--skin-text)', fontFamily: 'var(--font-display)' }}>
                                   {item.note.title}
                                 </h4>
                                 {item.note.content && (
-                                  <p className="text-xs text-[var(--skin-text-secondary)] line-clamp-2 leading-relaxed">
-                                    {item.note.content.slice(0, 80)}
+                                  <p className="text-[10px] sm:text-xs text-[var(--skin-text-secondary)] line-clamp-2 leading-relaxed">
+                                    {item.note.content.slice(0, 50)}
                                   </p>
                                 )}
                                 {item.note.tags?.length > 0 && (
-                                  <div className="flex gap-1 flex-wrap mt-2">
-                                    {item.note.tags.slice(0, 3).map(t => (
-                                      <span key={t} className="text-[10px] text-[var(--skin-text-secondary)] font-bold">#{t}</span>
+                                  <div className="flex gap-1 flex-wrap mt-1.5 sm:mt-2">
+                                    {item.note.tags.slice(0, 2).map(t => (
+                                      <span key={t} className="text-[9px] sm:text-[10px] text-[var(--skin-text-secondary)] font-bold">#{t}</span>
                                     ))}
                                   </div>
                                 )}
-                                <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-[var(--skin-border)]">
+                                <div className="flex items-center justify-between mt-2 sm:mt-3 pt-2 sm:pt-3 border-t-2 border-[var(--skin-border)]">
                                   <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
                                     {new Date(item.note.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
                                   </span>
-                                  <Pencil className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: C.teal }} />
+                                  <Pencil className="size-3 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" style={{ color: C.teal }} />
                                 </div>
                               </Link>
                             </div>

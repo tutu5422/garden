@@ -78,7 +78,7 @@ export default function MiniPlayer() {
   if (!ctx) return null;
 
   const { playlist, currentIndex, currentTrack, playing, volume, muted, loopMode,
-    togglePlay, play, next, prev, setVolume, setMuted, cycleLoopMode, addTrack, removeTrack, notifyLyricsUpdated, updateTrackLyrics } = ctx;
+    currentTime, duration, togglePlay, play, seek, next, prev, setVolume, setMuted, cycleLoopMode, addTrack, removeTrack, notifyLyricsUpdated, updateTrackLyrics } = ctx;
 
   const [expanded, setExpanded] = useState(false)
   const [showPlaylist, setShowPlaylist] = useState(false)
@@ -91,6 +91,8 @@ export default function MiniPlayer() {
   const [lrcFileName, setLrcFileName] = useState('')
   const [lrcFileContent, setLrcFileContent] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [seeking, setSeeking] = useState(false)
+  const [seekValue, setSeekValue] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lrcInputRef = useRef<HTMLInputElement>(null)
 
@@ -105,6 +107,13 @@ export default function MiniPlayer() {
       setSelectedIds(new Set())
     }
   }, [showImport, playlist])
+
+  const fmtTime = (s: number) => {
+    if (!isFinite(s) || s < 0) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  };
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -160,7 +169,9 @@ export default function MiniPlayer() {
     try {
       const rawName = file.name.replace(/\.[^.]+$/, '')
       const parsed = parseFilename(rawName)
-      const id = crypto.randomUUID()
+      const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'm-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)
 
       // Upload via presigned URL
       const { storagePath, publicUrl } = await uploadViaPresignedUrl(file, id)
@@ -294,7 +305,7 @@ export default function MiniPlayer() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="audio/*"
+                    accept="audio/mpeg,audio/mp3,audio/wav,audio/flac,audio/aac,audio/ogg,audio/*"
                     className="hidden"
                     onChange={handleDirectUpload}
                     disabled={uploading}
@@ -315,7 +326,7 @@ export default function MiniPlayer() {
                   onClick={() => play(i)}>
                   <span className="text-[var(--skin-text-secondary)] shrink-0 w-4 text-right font-mono">{i + 1}</span>
                   <span className="truncate flex-1">{track.title}</span>
-                  <button onClick={(e) => handleRemoveTrack(track.id, e)} className="p-0.5 opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all shrink-0"><Trash2 className="size-3" /></button>
+                  <button onClick={(e) => handleRemoveTrack(track.id, e)} className="p-0.5 sm:opacity-0 sm:group-hover:opacity-100 hover:text-red-500 transition-all shrink-0"><Trash2 className="size-3" /></button>
                 </div>
               ))}
               <button
@@ -418,13 +429,36 @@ export default function MiniPlayer() {
             <button onClick={next} className="p-2 transition-colors hover:text-[var(--skin-primary)]"><SkipForward className="size-4" /></button>
           </div>
 
+          {/* Progress Bar */}
           <div className="flex items-center gap-2">
-            <button onClick={() => setMuted(!muted)} className="p-0.5 transition-colors" style={{ color: muted ? 'var(--skin-text-secondary)' : 'var(--skin-text)' }}>
+            <span className="text-[10px] font-mono text-[var(--skin-text-secondary)] w-8 shrink-0">
+              {seeking ? fmtTime(seekValue) : fmtTime(currentTime)}
+            </span>
+            <input
+              type="range"
+              min="0"
+              max={duration && isFinite(duration) ? duration : 0}
+              step="0.1"
+              value={seeking ? seekValue : currentTime}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setSeeking(true);
+                setSeekValue(v);
+              }}
+              onMouseUp={() => { seek(seekValue); setSeeking(false); }}
+              onTouchEnd={() => { seek(seekValue); setSeeking(false); }}
+              className="flex-1 h-1.5 accent-[var(--skin-primary)] cursor-pointer"
+              style={{ background: 'var(--skin-muted)' }}
+            />
+            <span className="text-[10px] font-mono text-[var(--skin-text-secondary)] w-8 shrink-0">
+              {fmtTime(duration)}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-center">
+            <button onClick={() => setMuted(!muted)} className="p-1 transition-colors" style={{ color: muted ? 'var(--skin-text-secondary)' : 'var(--skin-text)' }} title={muted ? '取消静音' : '静音'}>
               {muted ? <VolumeX className="size-3.5" /> : <Volume2 className="size-3.5" />}
             </button>
-            <input type="range" min="0" max="100" value={muted ? 0 : Math.round(volume * 100)}
-                   onChange={(e) => { setMuted(false); setVolume(Number(e.target.value) / 100); }}
-                   className="flex-1 h-1.5 accent-[var(--skin-primary)]" />
           </div>
         </div>
       ) : (

@@ -24,10 +24,10 @@ function compressImage(file: File, maxW: number, quality: number): Promise<{ ful
         const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
         const ctx = canvas.getContext('2d')!; ctx.drawImage(img, 0, 0, w, h)
         const full = canvas.toDataURL('image/jpeg', quality)
-        const ts = Math.min(1, 150 / Math.max(img.width, img.height))
+        const ts = Math.min(1, 400 / Math.max(img.width, img.height))
         canvas.width = Math.round(img.width * ts); canvas.height = Math.round(img.height * ts)
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        const thumb = canvas.toDataURL('image/jpeg', 0.5)
+        const thumb = canvas.toDataURL('image/jpeg', 0.75)
         resolve({ full, thumb })
       }
       img.src = reader.result as string

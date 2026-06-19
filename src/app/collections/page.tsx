@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Layers, Sparkles } from 'lucide-react'
+import { Plus, Layers, Sparkles, Pencil, Trash2 } from 'lucide-react'
 import { getLocalCollections, createLocalCollection, deleteLocalCollection, updateLocalCollection, type LocalCollection } from '@/lib/db/local-store'
 import CollectionCard from '@/components/collections/CollectionCard'
 import { toast } from 'sonner'
@@ -38,6 +38,7 @@ export default function CollectionsPage() {
   const [editTitle, setEditTitle] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
 
   useEffect(() => {
     // Show localStorage data immediately, then sync from cloud in background
@@ -184,45 +185,80 @@ export default function CollectionsPage() {
                 </div>
               ) : (
                 <>
-                  {/* Action buttons — visible on hover */}
-                  <div className="absolute top-3 right-3 flex gap-1.5 z-10">
-                    {/* Edit */}
-                    <button
-                      onClick={(e) => { e.preventDefault(); startEdit(col) }}
-                      className="p-2 rounded-lg opacity-0 group-hover/col:opacity-100 bg-white/20 hover:bg-white/35 text-white backdrop-blur-sm transition-all text-xs"
-                      title="编辑合集"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                      </svg>
-                    </button>
-
-                    {/* Delete / Confirm */}
+                  {/* Desktop: hover 显示编辑/删除或确认/取消 */}
+                  <div className="absolute top-3 right-3 hidden sm:flex gap-1.5 z-10">
                     {confirmDelete?.id === col.id ? (
                       <>
-                        <button
-                          onClick={handleDelete}
-                          className="p-2 rounded-lg bg-red-500 text-white backdrop-blur-sm transition-all text-[10px] font-bold whitespace-nowrap"
-                        >
+                        <button onClick={handleDelete}
+                          className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
                           确认
                         </button>
-                        <button
-                          onClick={() => setConfirmDelete(null)}
-                          className="p-2 rounded-lg bg-white/20 hover:bg-white/35 text-white backdrop-blur-sm transition-all text-[10px] font-bold"
-                        >
+                        <button onClick={() => setConfirmDelete(null)}
+                          className="px-2.5 py-1 rounded-lg bg-white/20 text-white text-xs font-bold whitespace-nowrap shadow-sm">
                           取消
                         </button>
                       </>
                     ) : (
-                      <button
-                        onClick={(e) => { e.preventDefault(); setConfirmDelete({ id: col.id, name: col.title }) }}
-                        className="p-2 rounded-lg opacity-0 group-hover/col:opacity-100 bg-red-500/80 hover:bg-red-500 text-white backdrop-blur-sm transition-all text-xs"
-                        title="删除合集"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                        </svg>
-                      </button>
+                      <>
+                        <button
+                          onClick={(e) => { e.preventDefault(); startEdit(col) }}
+                          className="p-2 rounded-lg opacity-0 group-hover/col:opacity-100 bg-white/20 hover:bg-white/35 text-white backdrop-blur-sm transition-all"
+                          title="编辑合集"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.preventDefault(); setConfirmDelete({ id: col.id, name: col.title }) }}
+                          className="p-2 rounded-lg opacity-0 group-hover/col:opacity-100 bg-red-500/80 hover:bg-red-500 text-white backdrop-blur-sm transition-all"
+                          title="删除合集"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Mobile: ⋮ 菜单 */}
+                  <div className="absolute top-3 right-3 z-10 sm:hidden">
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(menuOpenId === col.id ? null : col.id); setConfirmDelete(null); }}
+                      className="p-1.5 text-white/60 hover:text-white transition-opacity"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+                      </svg>
+                    </button>
+                    {(menuOpenId === col.id || confirmDelete?.id === col.id) && (
+                      <>
+                        <div className="fixed inset-0 z-20" onClick={() => { setMenuOpenId(null); setConfirmDelete(null); }} />
+                        <div className="absolute right-0 top-full mt-1.5 flex gap-1.5 z-30">
+                          {confirmDelete?.id === col.id ? (
+                            <>
+                              <button onClick={handleDelete}
+                                className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                                确认
+                              </button>
+                              <button onClick={() => setConfirmDelete(null)}
+                                className="px-2.5 py-1 rounded-lg bg-white/20 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                                取消
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); startEdit(col) }}
+                                className="px-2.5 py-1 rounded-lg bg-white/25 text-white text-xs font-bold whitespace-nowrap shadow-sm hover:bg-white/35 transition-colors">
+                                编辑
+                              </button>
+                              <button
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); setConfirmDelete({ id: col.id, name: col.title }) }}
+                                className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
+                                删除
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                   <CollectionCard collection={col} noteCount={noteCounts[col.id] || 0} />

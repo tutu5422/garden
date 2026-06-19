@@ -99,13 +99,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--skin-bg)" }}>
-      <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 page-enter">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-10 page-enter">
 
         {/* ════════════════════════════════════════════════════════
             HERO — 编辑刊头
            ════════════════════════════════════════════════════════ */}
-        <header className="pt-8 sm:pt-16 pb-10 sm:pb-20">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-8 sm:mb-14">
+        <header className="pt-4 sm:pt-16 pb-6 sm:pb-20">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-4 sm:mb-14">
             <div>
               <p className="text-[11px] tracking-[0.2em] uppercase font-bold text-[var(--skin-text-secondary)] font-mono">
                 {dateStr}
@@ -120,23 +120,23 @@ export default function Home() {
             </Link>
           </div>
 
-          <h1 className="editorial-hero mb-4 sm:mb-6" style={{ color: "var(--skin-text)" }}>
-            迷<br className="sm:hidden" />你<span className="hidden sm:inline"> </span>兔
+          <h1 className="hidden sm:block editorial-hero mb-4 sm:mb-6" style={{ color: "var(--skin-text)" }}>
+            迷你兔
           </h1>
 
-          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-6 sm:mb-8">
+          <div className="hidden sm:flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-4 sm:mb-8">
             <span className="editorial-hero-sub text-[var(--skin-text-secondary)]">个人数字花园</span>
-            <span className="w-1.5 h-1.5 rounded-full hidden sm:block" style={{ background: "var(--skin-primary)" }} />
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--skin-primary)" }} />
             <span className="text-sm font-medium text-[var(--skin-text-secondary)] tracking-wide">{greeting}</span>
           </div>
 
-          <div className="rule-fade mb-6" />
+          <div className="hidden sm:block rule-fade mb-4" />
 
-          <div className="flex items-center justify-between">
+          <div className="hidden sm:flex items-center justify-between">
             <p className="text-[13px] leading-relaxed max-w-md text-[var(--skin-text-secondary)] font-medium">
               记录思考、收集灵感、整理知识。<br />这是属于你的数字花园。
             </p>
-            <span className="hidden sm:flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase font-bold text-[var(--skin-text-secondary)] opacity-40">
+            <span className="flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase font-bold text-[var(--skin-text-secondary)] opacity-40">
               向下浏览 <ChevronDown className="size-3 animate-bounce" />
             </span>
           </div>
@@ -148,10 +148,10 @@ export default function Home() {
         <section className="section-gap-sm">
           <SectionHead num="01" label="精选笔记" />
 
-          <div className="magazine-grid-2to1">
+          <div className="grid grid-cols-[3fr_2fr] sm:grid-cols-[2fr_1fr] gap-2 sm:gap-5">
             {featuredNote ? (
               <Link href="/notes"
-                className="block-gloss rounded-2xl p-6 sm:p-10 flex flex-col justify-between min-h-[320px] sm:min-h-[400px] cursor-pointer group relative overflow-hidden"
+                className="block-gloss rounded-2xl p-3 sm:p-10 flex flex-col justify-between min-h-[160px] sm:min-h-[400px] cursor-pointer group relative overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.crimson})` }}>
                 {featuredNote.imageThumb && (
                   <>
@@ -195,7 +195,7 @@ export default function Home() {
               </Link>
             ) : (
               <Link href="/notes"
-                className="block-gloss rounded-2xl p-6 sm:p-10 flex flex-col justify-center items-center text-center min-h-[320px] sm:min-h-[400px] cursor-pointer group"
+                className="block-gloss rounded-2xl p-3 sm:p-10 flex flex-col justify-center items-center text-center min-h-[160px] sm:min-h-[400px] cursor-pointer group"
                 style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.crimson})` }}>
                 <BookOpen className="size-12 mb-5 text-white/30" />
                 <h2 className="editorial-section-title text-white/90 mb-3">开始记录</h2>
@@ -209,7 +209,7 @@ export default function Home() {
             )}
 
             <div className="flex flex-col justify-between gap-4">
-              <div className="rounded-2xl p-6 sm:p-8 flex-1 flex flex-col justify-center"
+              <div className="rounded-2xl p-4 sm:p-8 flex-1 flex flex-col justify-center"
                    style={{ background: `linear-gradient(180deg, ${C.gold}15, ${C.gold}08)` }}>
                 <span className="section-number mb-4">数据</span>
                 <div className="space-y-5">
@@ -220,7 +220,7 @@ export default function Home() {
                     { label: "文件", num: stats.files, color: C.slate },
                   ].map(s => (
                     <div key={s.label} className="flex items-end justify-between group/item">
-                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight"
+                      <span className="text-xl sm:text-4xl font-extrabold tracking-tight"
                             style={{ fontFamily: "var(--font-display)", color: s.color }}>
                         {s.num}
                       </span>
@@ -235,8 +235,8 @@ export default function Home() {
                 </div>
               </div>
 
-              <Link href="/notes?action=new"
-                className="rounded-2xl p-5 flex items-center justify-between cursor-pointer group transition-all hover:shadow-md"
+              <Link href="/notes/edit"
+                className="rounded-2xl p-3 sm:p-5 flex items-center justify-between cursor-pointer group transition-all hover:shadow-md"
                 style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.gold}dd)` }}>
                 <div>
                   <span className="text-xs font-extrabold tracking-wider uppercase"
@@ -252,87 +252,68 @@ export default function Home() {
         </section>
 
         {/* ════════════════════════════════════════════════════════
-            SECTION 2 — 笔记 + 时间线 + 合集 (2+1+1 非等分)
+            SECTION 2 — 四宫格：笔记 / 时间线 / 合集 / 文件
            ════════════════════════════════════════════════════════ */}
         <section className="section-gap-sm">
           <SectionHead num="02" label="探索" />
 
-          <div className="magazine-grid-3uneven">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
+            {/* 笔记 */}
             <Link href="/notes"
-              className="rounded-2xl p-6 sm:p-8 flex flex-col justify-between cursor-pointer group min-h-[220px] transition-all duration-400 hover:shadow-lg"
+              className="rounded-2xl p-3 sm:p-6 flex flex-col justify-between cursor-pointer group min-h-[100px] sm:min-h-[180px] transition-all duration-400 hover:shadow-lg"
               style={{ background: `linear-gradient(135deg, ${C.teal}08, ${C.teal}15)`, border: `1px solid ${C.teal}20` }}>
               <div>
-                <BookOpen className="size-9 mb-4" style={{ color: C.teal }} />
-                <h3 className="editorial-section-title text-[1.75rem] sm:text-[2.25rem] mb-2" style={{ color: "var(--skin-text)" }}>
-                  笔记
-                </h3>
-                <p className="text-sm text-[var(--skin-text-secondary)] leading-relaxed max-w-xs">记录思考与灵感</p>
+                <BookOpen className="size-5 sm:size-7 mb-1.5 sm:mb-3" style={{ color: C.teal }} />
+                <h3 className="text-base sm:text-2xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--skin-text)" }}>笔记</h3>
+                <p className="text-[10px] sm:text-xs text-[var(--skin-text-secondary)] leading-relaxed mt-0.5 sm:mt-1 hidden sm:block">记录思考与灵感</p>
               </div>
-              {recentNotes.length > 0 && (
-                <div className="mt-5 space-y-2">
-                  {recentNotes.slice(0, 2).map(n => (
-                    <div key={n.id} className="flex items-center gap-2.5 text-xs text-[var(--skin-text-secondary)]">
-                      <span className="w-1 h-1 rounded-full shrink-0" style={{ background: C.teal }} />
-                      <span className="truncate font-medium">{n.title}</span>
-                      <span className="text-[10px] opacity-40 font-mono shrink-0">
-                        {new Date(n.createdAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric" })}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex items-center justify-between mt-5 pt-4 border-t border-[var(--skin-border)]">
-                <span className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.teal }}>
-                  {stats.notes}
-                </span>
+              <div className="flex items-center justify-between mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-[var(--skin-border)]">
+                <span className="text-xl sm:text-3xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.teal }}>{stats.notes}</span>
                 <ArrowHint />
               </div>
             </Link>
 
+            {/* 时间线 */}
             <Link href="/timeline"
-              className="rounded-2xl p-6 sm:p-8 flex flex-col justify-between cursor-pointer group min-h-[220px] transition-all duration-400 hover:shadow-lg"
+              className="rounded-2xl p-3 sm:p-6 flex flex-col justify-between cursor-pointer group min-h-[100px] sm:min-h-[180px] transition-all duration-400 hover:shadow-lg"
               style={{ background: `linear-gradient(180deg, ${C.plum}08, ${C.plum}12)`, border: `1px solid ${C.plum}18` }}>
               <div>
-                <Calendar className="size-9 mb-4" style={{ color: C.plum }} />
-                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight mb-1.5"
-                    style={{ fontFamily: "var(--font-display)", color: "var(--skin-text)" }}>
-                  时间线
-                </h3>
-                <p className="text-xs text-[var(--skin-text-secondary)] leading-relaxed">回顾时光轨迹</p>
+                <Calendar className="size-5 sm:size-7 mb-1.5 sm:mb-3" style={{ color: C.plum }} />
+                <h3 className="text-base sm:text-2xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--skin-text)" }}>时间线</h3>
+                <p className="text-[10px] sm:text-xs text-[var(--skin-text-secondary)] leading-relaxed mt-0.5 sm:mt-1 hidden sm:block">回顾时光轨迹</p>
               </div>
-              <div className="flex items-center justify-between mt-4">
-                <span className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.plum }}>
-                  {stats.timeline}
-                </span>
+              <div className="flex items-center justify-between mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-[var(--skin-border)]">
+                <span className="text-xl sm:text-3xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.plum }}>{stats.timeline}</span>
                 <ArrowHint />
               </div>
             </Link>
 
+            {/* 合集 */}
             <Link href="/collections"
-              className="rounded-2xl p-6 sm:p-8 flex flex-col justify-between cursor-pointer group min-h-[220px] transition-all duration-400 hover:shadow-lg"
+              className="rounded-2xl p-3 sm:p-6 flex flex-col justify-between cursor-pointer group min-h-[100px] sm:min-h-[180px] transition-all duration-400 hover:shadow-lg"
               style={{ background: `linear-gradient(180deg, ${C.sapphire}08, ${C.sapphire}12)`, border: `1px solid ${C.sapphire}18` }}>
               <div>
-                <Layers className="size-9 mb-4" style={{ color: C.sapphire }} />
-                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight mb-1.5"
-                    style={{ fontFamily: "var(--font-display)", color: "var(--skin-text)" }}>
-                  合集
-                </h3>
-                <p className="text-xs text-[var(--skin-text-secondary)] leading-relaxed">整理知识体系</p>
+                <Layers className="size-5 sm:size-7 mb-1.5 sm:mb-3" style={{ color: C.sapphire }} />
+                <h3 className="text-base sm:text-2xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--skin-text)" }}>合集</h3>
+                <p className="text-[10px] sm:text-xs text-[var(--skin-text-secondary)] leading-relaxed mt-0.5 sm:mt-1 hidden sm:block">整理知识体系</p>
               </div>
-              {collectionPreviews.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {collectionPreviews.map(c => (
-                    <span key={c.id} className="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider"
-                          style={{ background: `${C.sapphire}18`, color: C.sapphire }}>
-                      {c.title} · {c.count}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="flex items-center justify-between mt-4">
-                <span className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.sapphire }}>
-                  {stats.collections}
-                </span>
+              <div className="flex items-center justify-between mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-[var(--skin-border)]">
+                <span className="text-xl sm:text-3xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.sapphire }}>{stats.collections}</span>
+                <ArrowHint />
+              </div>
+            </Link>
+
+            {/* 文件 — 手机端在四宫格，电脑端在音乐区 */}
+            <Link href="/files"
+              className="sm:hidden rounded-2xl p-3 sm:p-6 flex flex-col justify-between cursor-pointer group min-h-[100px] sm:min-h-[180px] transition-all duration-400 hover:shadow-lg"
+              style={{ background: `linear-gradient(180deg, ${C.slate}08, ${C.slate}15)`, border: `1px solid ${C.slate}20` }}>
+              <div>
+                <FileText className="size-5 sm:size-7 mb-1.5 sm:mb-3" style={{ color: C.slate }} />
+                <h3 className="text-base sm:text-2xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--skin-text)" }}>文件</h3>
+                <p className="text-[10px] sm:text-xs text-[var(--skin-text-secondary)] leading-relaxed mt-0.5 sm:mt-1 hidden sm:block">管理文档与媒体</p>
+              </div>
+              <div className="flex items-center justify-between mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-[var(--skin-border)]">
+                <span className="text-xl sm:text-3xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.slate }}>{stats.files}</span>
                 <ArrowHint />
               </div>
             </Link>
@@ -340,50 +321,34 @@ export default function Home() {
         </section>
 
         {/* ════════════════════════════════════════════════════════
-            SECTION 3 — 音乐 (2/3) + 文件 (1/3)
+            SECTION 3 — 音乐 & 文件（电脑端）
            ════════════════════════════════════════════════════════ */}
         <section className="section-gap-sm">
           <SectionHead num="03" label="音乐 &amp; 文件" />
-
-          <div className="magazine-grid-2to1">
-            <div className="block-gloss rounded-2xl p-6 sm:p-8 flex flex-col justify-center min-h-[240px]"
+          {/* 手机端：仅音乐全宽；电脑端：音乐左 + 文件右 */}
+          <div className="flex flex-col sm:grid sm:grid-cols-[2fr_1fr] gap-2 sm:gap-5">
+            <div className="block-gloss rounded-2xl p-4 sm:p-8 flex flex-col justify-center min-h-[160px] sm:min-h-[200px]"
                  style={{ background: `linear-gradient(135deg, ${C.crimson}dd, ${C.crimson}, ${C.dark})` }}>
-              <div className="flex items-center gap-2.5 mb-5">
+              <div className="flex items-center gap-2.5 mb-3 sm:mb-4">
                 <Music className="size-5 text-white/80" />
-                <span className="text-[10px] tracking-[0.25em] uppercase font-bold text-white/70 font-mono">
-                  正在播放
-                </span>
+                <span className="text-[10px] tracking-[0.25em] uppercase font-bold text-white/70 font-mono">正在播放</span>
               </div>
               <div className="text-white">
                 <HomeMusicPlayer />
               </div>
             </div>
 
+            {/* 文件 — 仅电脑端显示 */}
             <Link href="/files"
-              className="rounded-2xl p-6 sm:p-8 flex flex-col justify-between cursor-pointer group min-h-[240px] transition-all duration-400 hover:shadow-lg relative overflow-hidden"
+              className="hidden sm:flex rounded-2xl p-4 sm:p-8 flex-col justify-between cursor-pointer group min-h-[180px] sm:min-h-[200px] transition-all duration-400 hover:shadow-lg"
               style={{ background: `linear-gradient(180deg, ${C.slate}08, ${C.slate}15)`, border: `1px solid ${C.slate}20` }}>
               <div>
-                <FileText className="size-9 mb-4" style={{ color: C.slate }} />
-                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight mb-1.5"
-                    style={{ fontFamily: "var(--font-display)", color: "var(--skin-text)" }}>
-                  文件
-                </h3>
-                <p className="text-xs text-[var(--skin-text-secondary)] leading-relaxed">管理文档与媒体</p>
+                <FileText className="size-6 sm:size-8 mb-2 sm:mb-3" style={{ color: C.slate }} />
+                <h3 className="text-lg sm:text-2xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--skin-text)" }}>文件</h3>
+                <p className="text-xs text-[var(--skin-text-secondary)] leading-relaxed mt-1 hidden sm:block">管理文档与媒体</p>
               </div>
-              <div className="mt-4 space-y-2">
-                {stats.files > 0 ? (
-                  <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--skin-text-secondary)]">
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.slate }} />
-                    {stats.files} 个文件等待整理
-                  </div>
-                ) : (
-                  <p className="text-[10px] font-mono text-[var(--skin-text-secondary)] opacity-40">上传文件开始管理</p>
-                )}
-              </div>
-              <div className="flex items-center justify-between mt-5 pt-4 border-t border-[var(--skin-border)]">
-                <span className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.slate }}>
-                  {stats.files}
-                </span>
+              <div className="flex items-center justify-between mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-[var(--skin-border)]">
+                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.slate }}>{stats.files}</span>
                 <ArrowHint />
               </div>
             </Link>

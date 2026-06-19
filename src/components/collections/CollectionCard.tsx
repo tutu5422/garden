@@ -31,7 +31,7 @@ export default function CollectionCard({ collection, noteCount }: { collection: 
       className="group block"
     >
       <article
-        className="block-gloss relative overflow-hidden rounded-2xl p-6 sm:p-8 flex flex-col justify-between cursor-pointer min-h-[200px] transition-all duration-400 hover:shadow-xl"
+        className="block-gloss relative overflow-hidden rounded-2xl p-4 sm:p-8 flex flex-col justify-between cursor-pointer min-h-[140px] sm:min-h-[200px] transition-all duration-400 hover:shadow-xl"
         style={{
           background: palette.bg,
           boxShadow: `0 4px 12px ${palette.shadow}33`,
@@ -63,24 +63,25 @@ export default function CollectionCard({ collection, noteCount }: { collection: 
             </span>
           </div>
           <h3
-            className="text-xl sm:text-2xl font-extrabold tracking-tight text-white mb-2 line-clamp-2"
+            className="text-base sm:text-2xl font-extrabold tracking-tight text-white mb-1 sm:mb-2 line-clamp-2"
             style={{ fontFamily: 'var(--font-display)', textShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
           >
             {collection.title}
           </h3>
           {collection.description ? (
-            <p className="text-xs sm:text-sm text-white/70 line-clamp-2 leading-relaxed">
+            <p className="text-[11px] sm:text-sm text-white/70 line-clamp-2 leading-relaxed">
               {collection.description}
             </p>
           ) : (
-            <p className="text-xs italic text-white/35">暂无描述</p>
+            <p className="text-[10px] italic text-white/35">暂无描述</p>
           )}
+
         </div>
 
-        <div className="relative z-10 flex items-end justify-between mt-5 pt-4 border-t border-white/15">
+        <div className="relative z-10 flex items-end justify-between mt-3 sm:mt-5 pt-3 sm:pt-4 border-t border-white/15">
           <div className="flex items-center gap-2">
-            <BookOpen className="size-3.5 text-white/60" />
-            <span className="text-3xl font-extrabold tracking-tight text-white/90"
+            <BookOpen className="size-3 sm:size-3.5 text-white/60" />
+            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white/90"
                   style={{ fontFamily: 'var(--font-display)' }}>
               {noteCount}
             </span>
