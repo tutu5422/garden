@@ -9,6 +9,7 @@ import { writeCache } from '@/lib/db/supabase-queries'
 import { compressImage } from '@/lib/utils/image'
 import type { Tag, Resource, Category } from '@/lib/types'
 import { Plus, X, Upload, ImageIcon } from 'lucide-react'
+import SmartImage from '@/components/shared/SmartImage'
 
 const inputClass = 'w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all'
 const glassInput = `${inputClass} bg-white/40 dark:bg-white/5 border-white/30 dark:border-white/10 text-foreground placeholder:text-muted-foreground/50 focus:ring-[var(--skin-primary)]/30`
@@ -193,8 +194,8 @@ export default function SimpleForm({ resource }: { resource?: Resource }) {
         <div>
           <label className="block text-sm font-medium mb-1.5 text-foreground">封面图</label>
           {cover ? (
-            <div className="relative mb-3 rounded-xl overflow-hidden glass shadow-3d">
-              <img src={cover} alt="" className="w-full max-h-52 object-cover" />
+            <div className="relative mb-3 rounded-xl overflow-hidden glass shadow-3d h-52">
+              <SmartImage src={cover} alt="" fill sizes="600px" className="object-cover" />
               <button onClick={() => setCover('')}
                 className="absolute top-3 right-3 px-3 py-1.5 rounded-full text-xs font-medium bg-black/40 text-white backdrop-blur hover:bg-black/60 transition-colors">
                 移除封面

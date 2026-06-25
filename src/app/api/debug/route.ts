@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth } from '@/lib/auth';
+import {
+  LOCAL_USER_ID,
+  RAW_URL,
+  SERVICE_KEY,
+  SUPABASE_URL,
+  dbFetch,
+  vpsDbEnabled,
+  vpsDbUrl,
+  vpsStorageEnabled,
+} from '@/lib/supabase-admin';
 
 export async function GET(req: NextRequest) {
   if (!getPass()) return configMissingResponse();
@@ -7,17 +17,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const SUPABASE_URL = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
-  const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
-  const LOCAL_USER_ID = process.env.SUPABASE_LOCAL_USER_ID || '';
-
-  const info: Record<string, any> = {
-    supabaseUrl_raw: rawUrl,
+  const info: Record<string, unknown> = {
+    supabaseUrl_raw: RAW_URL,
     supabaseUrl_fixed: SUPABASE_URL,
     hasServiceKey: SERVICE_KEY.length > 0,
     serviceKeyLen: SERVICE_KEY.length,
     localUserId: LOCAL_USER_ID,
+    // VPS dispatch status
+    vpsDbEnabled: vpsDbEnabled(),
+    vpsStorageEnabled: vpsStorageEnabled(),
+    vpsDbUrl: vpsDbUrl() || '(not set)',
+    vpsStorageUrl: (process.env.VPS_STORAGE_URL || '(not set)').replace(/\/+$/, ''),
   };
 
   if (SERVICE_KEY && SUPABASE_URL) {
@@ -35,66 +45,62 @@ export async function GET(req: NextRequest) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-      const noteRes = await fetch(`${SUPABASE_URL}/rest/v1/resources`, {
+      const noteRes = await dbFetch('resources', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Prefer: 'return=representation' },
+        headers: { Prefer: 'return=representation' },
         body: JSON.stringify(noteData),
       });
-      info.noteDirectInsert = { status: noteRes.status, ok: noteRes.ok };
+      const noteInsert: Record<string, unknown> = { status: noteRes.status, ok: noteRes.ok };
       if (noteRes.ok) {
-        info.noteDirectInsert.data = (await noteRes.text()).substring(0, 200);
+        noteInsert.data = JSON.stringify(noteRes.body).substring(0, 200);
       } else {
-        info.noteDirectInsert.body = (await noteRes.text()).substring(0, 300);
+        noteInsert.body = noteRes.error || '';
       }
-      // Cleanup
+      info.noteDirectInsert = noteInsert;
+      // Cleanup (scoped to LOCAL_USER_ID for defense-in-depth)
       if (noteRes.ok || noteRes.status === 409) {
-        await fetch(`${SUPABASE_URL}/rest/v1/resources?id=eq.${testNoteId}`, {
-          method: 'DELETE',
-          headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-        });
+        await dbFetch(`resources?id=eq.${testNoteId}&user_id=eq.${LOCAL_USER_ID}`, { method: 'DELETE' });
       }
     } catch (e: any) { info.noteDirectInsert = { error: e.message }; }
 
-    // Test read with service key
+    // Test read with service key (scoped to LOCAL_USER_ID for defense-in-depth)
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/resources?limit=3&select=id,title,resource_type,metadata`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      });
-      info.serviceRead = { status: r.status, ok: r.ok };
-      if (r.ok) { info.serviceRead.rows = await r.json(); }
-      else { info.serviceRead.body = (await r.text()).substring(0, 300); }
+      const r = await dbFetch(`resources?limit=3&user_id=eq.${LOCAL_USER_ID}&select=id,title,resource_type,metadata`);
+      const serviceRead: Record<string, unknown> = { status: r.status, ok: r.ok };
+      if (r.ok) { serviceRead.rows = r.body; }
+      else { serviceRead.body = r.error || ''; }
+      info.serviceRead = serviceRead;
     } catch (e: any) { info.serviceRead = { error: e.message }; }
 
-    // Count total rows
+    // Count total rows (user-scoped)
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/resources?select=count`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      });
-      if (r.ok) {
-        const d = await r.json();
-        info.totalRows = d[0]?.count ?? 0;
+      const r = await dbFetch(`resources?select=count&user_id=eq.${LOCAL_USER_ID}`);
+      if (r.ok && Array.isArray(r.body)) {
+        info.totalRows = (r.body as { count: number }[])[0]?.count ?? 0;
       }
     } catch {}
 
-    // Count notes
+    // Count notes (user-scoped)
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/resources?select=count&metadata->>is_note=eq.true`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      });
-      if (r.ok) {
-        const d = await r.json();
-        info.noteRows = d[0]?.count ?? 0;
+      const r = await dbFetch(`resources?select=count&user_id=eq.${LOCAL_USER_ID}&metadata->>is_note=eq.true`);
+      if (r.ok && Array.isArray(r.body)) {
+        info.noteRows = (r.body as { count: number }[])[0]?.count ?? 0;
       }
     } catch {}
 
-    // Count collections
+    // Count collections (user-scoped)
     try {
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/collections?select=count`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      });
-      if (r.ok) {
-        const d = await r.json();
-        info.collectionRows = d[0]?.count ?? 0;
+      const r = await dbFetch(`collections?select=count&user_id=eq.${LOCAL_USER_ID}`);
+      if (r.ok && Array.isArray(r.body)) {
+        info.collectionRows = (r.body as { count: number }[])[0]?.count ?? 0;
+      }
+    } catch {}
+
+    // Count collection_resources junction
+    try {
+      const r = await dbFetch('collection_resources?select=count');
+      if (r.ok && Array.isArray(r.body)) {
+        info.junctionRows = (r.body as { count: number }[])[0]?.count ?? 0;
       }
     } catch {}
   }

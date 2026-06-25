@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { Star, BookOpen, Film, Wrench, FileText, Image, Package, Link as LinkIcon, Calendar, FolderOpen } from 'lucide-react'
 import type { Resource } from '@/lib/types'
 import { RESOURCE_TYPE_LABELS } from '@/lib/constants/navigation'
+import SmartImage from '@/components/shared/SmartImage'
 
 const typeIcon: Record<string, React.ReactNode> = {
   link: <LinkIcon className="size-3.5" />,
@@ -50,11 +51,12 @@ export default function ResourceCard({ resource, coverHeight = 200 }: { resource
         <div className="relative overflow-hidden" style={{ height: `${coverHeight}px` }}>
           {resource.cover_image_url ? (
             <>
-              <img
+              <SmartImage
                 src={resource.cover_image_url}
                 alt={resource.title}
-                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                loading="lazy"
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
               />
               {/* 底部渐变遮罩 — 确保标签可读 */}
               <div

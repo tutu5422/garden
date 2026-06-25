@@ -10,8 +10,10 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useMusic, type Track, type LoopMode } from '@/lib/music/MusicContext'
 import { searchAndCacheLyrics, setLyrics, hideLyrics, parseFilename } from '@/lib/music/lyrics-store'
+import { resolveStorageUrl } from '@/lib/storage-url'
+import { MAX_FILE_SIZE } from '@/lib/constants/config'
 
-const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
+const MAX_SIZE = MAX_FILE_SIZE // 50 MB
 
 const loopIcons: Record<LoopMode, React.ReactNode> = {
   none: <Repeat className="size-3.5 opacity-30" />,
@@ -138,7 +140,7 @@ export default function MiniPlayer() {
     const toImport = importFiles.filter(f => selectedIds.has(f.id))
     let imported = 0
     for (const f of toImport) {
-      const url = f.url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/minitu-garden/${f.storagePath}`
+      const url = f.url || resolveStorageUrl(f.storagePath)
       const ext = f.name.split('.').pop()?.toLowerCase() || ''
       if (!url) continue
       const parsed = parseFilename(f.name.replace(/\.[^.]+$/, ''))

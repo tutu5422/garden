@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
+import {
+  SERVICE_KEY,
+  SUPABASE_URL,
+  storageHeaders,
+  storageObjectUrl,
+  storagePublicUrl,
+  vpsStorageEnabled,
+  vpsStorageUrl,
+  vpsUpload,
+} from '@/lib/supabase-admin';
+
+const BUCKET = 'minitu-garden';
 
 async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: string): Promise<true | { ok: false; status: number; detail: string }> {
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  if (!serviceKey || !rawUrl) return { ok: false, status: 500, detail: 'Missing Supabase config' };
-  const baseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+  if (!SERVICE_KEY || !SUPABASE_URL) return { ok: false, status: 500, detail: 'Missing Supabase config' };
 
   // Upload to Supabase Storage — POST raw binary (most compatible)
-  const url = `${baseUrl}/storage/v1/object/minitu-garden/${path}`;
+  const url = storageObjectUrl(BUCKET, path);
   const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'apikey': serviceKey,
-      'Authorization': `Bearer ${serviceKey}`,
+    headers: storageHeaders({
       'Content-Type': contentType || 'application/octet-stream',
       'x-upsert': 'true',
-    },
+    }),
     body: buffer,
   });
 
@@ -53,7 +60,27 @@ export async function POST(req: NextRequest) {
     const ext = file.name.split('.').pop() || 'bin';
     const safeName = `${id}.${ext}`;
     const storagePath = `${id}/${safeName}`;
-    const result = await uploadToSupabase(storagePath, buffer, file.type || 'application/octet-stream');
+    const contentType = file.type || 'application/octet-stream';
+
+    // VPS storage takes priority when enabled; otherwise fall back to Supabase.
+    if (vpsStorageEnabled()) {
+      const vpsResult = await vpsUpload(storagePath, buffer, contentType);
+      if (!vpsResult.ok) {
+        return NextResponse.json({
+          error: '上传到 VPS 存储失败',
+          detail: vpsResult.error,
+          debug: { fileName, fileSize: buffer.byteLength, fileType: file.type },
+        }, { status: 500 });
+      }
+      return NextResponse.json({
+        ok: true,
+        storagePath,
+        publicUrl: vpsStorageUrl(storagePath),
+        originalName: file.name,
+      });
+    }
+
+    const result = await uploadToSupabase(storagePath, buffer, contentType);
 
     if (result !== true) {
       return NextResponse.json({
@@ -66,11 +93,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       storagePath,
-      publicUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/minitu-garden/${storagePath}`,
+      publicUrl: storagePublicUrl(BUCKET, storagePath),
       originalName: file.name,
     });
   } catch (e: any) {
-    console.error('Upload error:', e);
+    console.error('Upload error:', e?.message || e);
     return NextResponse.json({ error: e.message || '上传异常' }, { status: 500 });
   }
 }

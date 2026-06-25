@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AUTH_TOKEN_TTL_MS } from '@/lib/constants/config';
 
 /**
  * Shared auth helpers.
@@ -14,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 
 export const AUTH_COOKIE = 'minitu_auth';
-const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const TOKEN_TTL_MS = AUTH_TOKEN_TTL_MS;
 
 /** Returns the configured password, or null if SITE_PASSWORD is unset/empty. */
 export function getPass(): string | null {

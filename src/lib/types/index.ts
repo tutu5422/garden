@@ -1,4 +1,21 @@
-export type { ResourceType, ResourceStatus, Profile, Category, Resource, Tag, ResourceTag, Collection, Note, ResourceFilters, Database } from './database'
+export type {
+  ResourceType,
+  ResourceStatus,
+  Profile,
+  Category,
+  Resource,
+  Tag,
+  ResourceTag,
+  Collection,
+  Note,
+  ResourceFilters,
+  Database,
+  ResourceRow,
+  ResourceMetadata,
+  MusicTrack,
+  CollectionRow,
+  CollectionResourceRow,
+} from './database'
 
 export interface NavItem {
   label: string

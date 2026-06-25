@@ -6,6 +6,7 @@ import { Library, Calendar, Layers, FileText, Home } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import LyricsMarquee from "@/components/music/LyricsMarquee"
+import SyncStatus from "@/components/shared/SyncStatus"
 
 const navItems = [
   { href: "/notes", icon: Library, label: "笔记" },
@@ -88,7 +89,8 @@ export default function Nav() {
           </div>
 
           {/* Lyrics area — fills space, right-aligned */}
-          <div className="flex-1 flex justify-end items-center min-w-0">
+          <div className="flex-1 flex justify-end items-center gap-3 min-w-0">
+            <SyncStatus />
             <LyricsMarquee className="max-w-[320px]" />
           </div>
         </div>

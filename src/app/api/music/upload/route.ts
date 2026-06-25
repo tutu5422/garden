@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
+import {
+  SERVICE_KEY,
+  SUPABASE_URL,
+  storageHeaders,
+  storageObjectUrl,
+  storagePublicUrl,
+  vpsStorageEnabled,
+  vpsStorageUrl,
+  vpsUpload,
+} from '@/lib/supabase-admin';
+
+const BUCKET = 'minitu-garden';
 
 async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: string): Promise<boolean> {
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  if (!serviceKey || !rawUrl) return false;
-  const baseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+  if (!SERVICE_KEY || !SUPABASE_URL) return false;
 
   // Upload to Supabase Storage — POST raw binary (most compatible)
-  const url = `${baseUrl}/storage/v1/object/minitu-garden/${path}`;
+  const url = storageObjectUrl(BUCKET, path);
   const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'apikey': serviceKey,
-      'Authorization': `Bearer ${serviceKey}`,
+    headers: storageHeaders({
       'Content-Type': contentType || 'audio/mpeg',
       'x-upsert': 'true',
-    },
+    }),
     body: buffer,
   });
 
@@ -52,17 +59,33 @@ export async function POST(req: NextRequest) {
     const ext = file.name.split('.').pop() || 'mp3';
     const safeName = `${id}.${ext}`;
     const storagePath = `music/${id}/${safeName}`;
-    const ok = await uploadToSupabase(storagePath, buffer, file.type || 'audio/mpeg');
+    const contentType = file.type || 'audio/mpeg';
+
+    // VPS storage takes priority when enabled; otherwise fall back to Supabase.
+    if (vpsStorageEnabled()) {
+      const vpsResult = await vpsUpload(storagePath, buffer, contentType);
+      if (!vpsResult.ok) {
+        return NextResponse.json({ error: '上传到 VPS 存储失败', detail: vpsResult.error }, { status: 500 });
+      }
+      return NextResponse.json({
+        ok: true,
+        storagePath,
+        publicUrl: vpsStorageUrl(storagePath),
+        originalName: file.name,
+      });
+    }
+
+    const ok = await uploadToSupabase(storagePath, buffer, contentType);
 
     if (!ok) {
       return NextResponse.json({ error: '上传到存储失败' }, { status: 500 });
     }
 
-    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/minitu-garden/${storagePath}`;
+    const publicUrl = storagePublicUrl(BUCKET, storagePath);
 
     return NextResponse.json({ ok: true, storagePath, publicUrl, originalName: file.name });
   } catch (e: any) {
-    console.error('Music upload error:', e);
+    console.error('Music upload error:', e?.message || e);
     return NextResponse.json({ error: e.message || '上传异常' }, { status: 500 });
   }
 }

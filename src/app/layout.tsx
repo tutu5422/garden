@@ -3,6 +3,7 @@ import ThemeProvider from "@/components/theme/SkinProvider";
 import { MusicProvider } from "@/lib/music/MusicContext";
 import Nav from "@/components/Nav";
 import MiniPlayerLoader from "@/components/layout/MiniPlayerLoader";
+import SyncStatus from "@/components/shared/SyncStatus";
 import "./globals.css";
 
 export const metadata: Metadata = { title: "迷你兔", description: "个人数字花园", manifest: "/manifest.json", icons: { icon: "/favicon.ico" } };
@@ -17,6 +18,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <Nav />
             {children}
             <MiniPlayerLoader />
+            {/* Mobile floating sync badge (desktop shows it in the top nav) */}
+            <div className="md:hidden fixed bottom-16 right-3 z-40">
+              <SyncStatus />
+            </div>
           </MusicProvider>
         </ThemeProvider>
       </body>

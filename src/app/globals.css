@@ -3,6 +3,20 @@
 /* ============================================================
    迷你兔 · 编辑狂想 — Editorial Rave
    时尚杂志 · 大胆色块 · 几何切割 · 立体光影
+   ============================================================
+
+   CSS 架构说明（M9 主题污染隔离）：
+   - 主题变量定义在 `:root`（fallback）+ `applyTheme()` 运行时覆盖。
+     变量前缀 `--skin-*` 为本应用专属，shadcn/ui 变量（`--card`、
+     `--primary` 等）由 `applyTheme()` 同步设置，不在此文件重复定义。
+   - `@theme inline` 将 `--skin-*` 映射到 Tailwind v4 的 `--color-*` 命名
+     空间，使 `bg-background`、`text-foreground` 等 utility 可用。
+   - 组件类（`.card`、`.btn`、`.tag` 等）使用应用专属前缀，与 shadcn/ui
+     的 Tailwind utility 类不冲突。如需新增组件类，请保持前缀一致性。
+   - `transition` 只声明具体属性（transform/box-shadow/border-color 等），
+     不使用 `transition: all`，避免对 display/position 等产生意外过渡。
+   - 全局伪元素（`::selection`、`::-webkit-scrollbar`）是有意全局的，
+     不需要作用域隔离。
    ============================================================ */
 
 /* === CSS 变量层 (fallback) === */
@@ -108,7 +122,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
   background: var(--skin-surface);
   border: none;
   box-shadow: var(--shadow-md), 0 1px 0 rgba(255,255,255,0.6) inset, 0 -1px 0 rgba(0,0,0,0.04) inset;
-  transition: all 0.4s var(--ease-magazine);
+  transition: transform 0.4s var(--ease-magazine), box-shadow 0.4s var(--ease-magazine);
   position: relative;
   overflow: hidden;
 }
@@ -173,7 +187,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
   color: #fff;
   position: relative;
   overflow: hidden;
-  transition: all 0.4s var(--ease-magazine);
+  transition: transform 0.4s var(--ease-magazine), box-shadow 0.4s var(--ease-magazine);
 }
 
 .card-block::after {
@@ -210,7 +224,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
   background: var(--skin-primary);
   color: #fff;
   box-shadow: var(--shadow-sm);
-  transition: all 0.3s var(--ease-spring);
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring), filter 0.3s var(--ease-spring);
   white-space: nowrap;
   letter-spacing: 0.02em;
 }
@@ -249,7 +263,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
 
 .input-filled {
   background: var(--skin-muted); border: 1.5px solid var(--skin-border);
-  border-radius: 0.5rem; padding: 0.6rem 0.85rem; transition: all 0.3s var(--ease-out-expo);
+  border-radius: 0.5rem; padding: 0.6rem 0.85rem; transition: border-color 0.3s var(--ease-out-expo), box-shadow 0.3s var(--ease-out-expo);
 }
 .input-filled:focus {
   border-color: var(--skin-primary);
@@ -264,7 +278,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
   border-radius: 9999px; font-size: 0.625rem; font-weight: 700; letter-spacing: 0.04em;
   text-transform: uppercase; border: 1.5px solid var(--skin-border);
   background: var(--skin-muted); color: var(--skin-text-secondary); white-space: nowrap;
-  transition: all 0.2s var(--ease-out-expo);
+  transition: border-color 0.2s var(--ease-out-expo), color 0.2s var(--ease-out-expo), background 0.2s var(--ease-out-expo), box-shadow 0.2s var(--ease-out-expo);
 }
 .tag:hover { border-color: var(--skin-primary); color: var(--skin-primary); }
 .tag-active { background: var(--skin-primary); color: #fff; border-color: var(--skin-primary); box-shadow: var(--shadow-colored); }

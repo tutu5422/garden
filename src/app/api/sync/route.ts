@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth } from '@/lib/auth';
-
-const LOCAL_USER_ID = process.env.SUPABASE_LOCAL_USER_ID || '';
-
-const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-// Ensure protocol prefix — critical: Vercel may set URL without https://
-const SUPABASE_URL = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+import {
+  LOCAL_USER_ID,
+  dbConfigOk,
+  dbFetch,
+  dbUpsertOwned,
+  resolveStorageUrl,
+} from '@/lib/supabase-admin';
+import { syncPostSchema } from '@/lib/sync-schema';
+import { SYNC_PAGE_LIMIT, NOTE_DESCRIPTION_MAX_LENGTH } from '@/lib/constants/config';
+import type {
+  ResourceRow,
+  CollectionRow,
+  CollectionResourceRow,
+  MusicTrack,
+} from '@/lib/types';
 
 // Music playlist resource ID — deterministic UUID v5 derived from LOCAL_USER_ID
 // Pre-computed: crypto.createHash('md5').update('garden-music-' + LOCAL_USER_ID).digest('hex') → UUID
@@ -20,43 +28,10 @@ function mapResourceType(type: string): string | null {
   return null; // store in metadata instead
 }
 
-async function supabaseFetch(path: string, options: RequestInit): Promise<{ ok: boolean; status: number; error?: string }> {
-  const url = `${SUPABASE_URL}/rest/v1/${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SERVICE_KEY,
-      'Authorization': `Bearer ${SERVICE_KEY}`,
-      'Prefer': 'return=minimal',
-      ...(options.headers || {}),
-    },
-  });
-  if (!res.ok) {
-    const err = await res.text().catch(() => '');
-    console.error(`Supabase ${path}:`, res.status, err.substring(0, 300));
-    return { ok: false, status: res.status, error: `${res.status}: ${err.substring(0, 200)}` };
-  }
-  return { ok: true, status: res.status };
-}
-
-// POST-first upsert: POST to create, PATCH on duplicate conflict
-async function supabaseUpsert(table: string, data: Record<string, any>): Promise<{ ok: boolean; error?: string }> {
-  const id = data.id;
-  const postResult = await supabaseFetch(table, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-  if (postResult.ok) return { ok: true };
-  if (postResult.status === 409) {
-    const patchResult = await supabaseFetch(`${table}?id=eq.${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-    return { ok: patchResult.ok, error: patchResult.error };
-  }
-  return { ok: false, error: postResult.error || `POST returned ${postResult.status}` };
-}
+// ---------------------------------------------------------------------------
+// Data-source dispatch: when VPS_DB_URL is set, route all DB calls through the
+// VPS PostgREST instance; otherwise fall back to the existing Supabase logic.
+// ---------------------------------------------------------------------------
 
 // GET: Pull all cloud data for the user (uses service key, bypasses RLS)
 export async function GET(req: NextRequest) {
@@ -64,52 +39,51 @@ export async function GET(req: NextRequest) {
   if (!(await isAuth(req))) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
-  if (!SERVICE_KEY || !SUPABASE_URL || !LOCAL_USER_ID) {
+  if (!dbConfigOk()) {
     return NextResponse.json({ error: '服务端配置缺失' }, { status: 500 });
   }
 
   try {
-    // Parallelize all Supabase queries
+    // Parallelize all DB queries (VPS PostgREST or Supabase REST).
+    // All `resources`/`collections` queries are scoped to LOCAL_USER_ID as
+    // app-layer RLS defense-in-depth (the service key bypasses DB-level RLS).
     const [musicRes, notesRes, resRes, filesRes, colRes] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/resources?id=eq.${MUSIC_PLAYLIST_ID}&select=metadata`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      }),
-      fetch(`${SUPABASE_URL}/rest/v1/resources?select=*&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=200`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      }),
-      fetch(`${SUPABASE_URL}/rest/v1/resources?select=*&or=(metadata->>is_note.is.null,metadata->>is_note.eq.false)&order=updated_at.desc&limit=200`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      }),
-      fetch(`${SUPABASE_URL}/rest/v1/resources?select=*&metadata->>is_file=eq.true&order=updated_at.desc&limit=200`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      }),
-      fetch(`${SUPABASE_URL}/rest/v1/collections?select=*&user_id=eq.${LOCAL_USER_ID}&order=updated_at.desc`, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      }),
+      dbFetch(`resources?id=eq.${MUSIC_PLAYLIST_ID}&user_id=eq.${LOCAL_USER_ID}&select=metadata`),
+      dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=${SYNC_PAGE_LIMIT}`),
+      dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&or=(metadata->>is_note.is.null,metadata->>is_note.eq.false)&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
+      dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&metadata->>is_file=eq.true&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
+      dbFetch(`collections?select=*&user_id=eq.${LOCAL_USER_ID}&order=updated_at.desc`),
     ]);
 
-    let musicPlaylist: any[] = [];
+    let musicPlaylist: MusicTrack[] = [];
     if (musicRes.ok) {
-      const musicData = await musicRes.json();
+      const musicData = musicRes.body as Pick<ResourceRow, 'metadata'>[] | undefined;
       if (musicData?.[0]?.metadata?.tracks) {
-        musicPlaylist = musicData[0].metadata.tracks;
+        // Rewrite each track's `url` from its `storagePath` at runtime so the
+        // client always receives a URL pointing at the currently active storage
+        // backend (VPS or Supabase). A stored absolute `url` is kept as a cache
+        // but only trusted when no `storagePath` is present.
+        musicPlaylist = musicData[0].metadata.tracks.map((t: MusicTrack) => {
+          if (!t) return t;
+          const resolved = t.storagePath ? resolveStorageUrl(t.storagePath) : t.url;
+          return resolved ? { ...t, url: resolved } : t;
+        });
       }
     }
 
-    const notes = notesRes.ok ? await notesRes.json() : [];
-    const resources = resRes.ok ? await resRes.json() : [];
-    const cloudFiles = filesRes.ok ? await filesRes.json() : [];
-    const collections = colRes.ok ? await colRes.json() : [];
+    const notes = notesRes.ok ? ((notesRes.body as ResourceRow[]) || []) : [];
+    const resources = resRes.ok ? ((resRes.body as ResourceRow[]) || []) : [];
+    const cloudFiles = filesRes.ok ? ((filesRes.body as ResourceRow[]) || []) : [];
+    const collections = colRes.ok ? ((colRes.body as CollectionRow[]) || []) : [];
 
     // Pull collection_resources junctions
-    let junctions: any[] = [];
+    let junctions: CollectionResourceRow[] = [];
     if (collections.length > 0) {
-      const colIds = collections.map((c: any) => c.id);
-      const juncUrl = `${SUPABASE_URL}/rest/v1/collection_resources?select=collection_id,resource_id&collection_id=in.(${colIds.join(',')})`;
-      const juncRes = await fetch(juncUrl, {
-        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-      });
-      if (juncRes.ok) junctions = await juncRes.json();
+      const colIds = collections.map((c: CollectionRow) => c.id);
+      const juncRes = await dbFetch(
+        `collection_resources?select=collection_id,resource_id&collection_id=in.(${colIds.join(',')})`,
+      );
+      if (juncRes.ok) junctions = (juncRes.body as CollectionResourceRow[]) || [];
     }
 
     // Map resource IDs to collections
@@ -121,7 +95,7 @@ export async function GET(req: NextRequest) {
 
     const response = NextResponse.json({
       musicPlaylist: musicPlaylist || [],
-      notes: (notes || []).map((r: any) => ({
+      notes: (notes || []).map((r: ResourceRow) => ({
         id: r.id,
         title: r.title,
         content: r.metadata?.content || '',
@@ -133,7 +107,7 @@ export async function GET(req: NextRequest) {
         image: r.metadata?.image || undefined,
         imageThumb: r.metadata?.imageThumb || undefined,
       })),
-      resources: (resources || []).map((r: any) => ({
+      resources: (resources || []).map((r: ResourceRow) => ({
         id: r.id,
         title: r.title,
         description: r.description,
@@ -150,17 +124,22 @@ export async function GET(req: NextRequest) {
         created_at: r.created_at,
         updated_at: r.updated_at,
       })),
-      files: (cloudFiles || []).map((r: any) => ({
-        id: r.id,
-        name: r.title || '',
-        size: r.metadata?.fileSize || '0 B',
-        sizeBytes: r.metadata?.fileSizeBytes || 0,
-        type: r.metadata?.fileType || '',
-        category: r.metadata?.fileCategory || '',
-        createdAt: r.created_at,
-        storagePath: r.metadata?.storagePath || '',
-      })),
-      collections: (collections || []).map((c: any) => ({
+      files: (cloudFiles || []).map((r: ResourceRow) => {
+        const storagePath = r.metadata?.storagePath || '';
+        return {
+          id: r.id,
+          name: r.title || '',
+          size: r.metadata?.fileSize || '0 B',
+          sizeBytes: r.metadata?.fileSizeBytes || 0,
+          type: r.metadata?.fileType || '',
+          category: r.metadata?.fileCategory || '',
+          createdAt: r.created_at,
+          storagePath,
+          // Resolve at runtime so the client gets a URL for the active backend.
+          url: resolveStorageUrl(storagePath) || undefined,
+        };
+      }),
+      collections: (collections || []).map((c: CollectionRow) => ({
         id: c.id,
         title: c.title,
         description: c.description,
@@ -173,7 +152,7 @@ export async function GET(req: NextRequest) {
     response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
     return response;
   } catch (e: any) {
-    console.error('Sync GET error:', e);
+    console.error('Sync GET error:', e?.message || e);
     return NextResponse.json({ error: e.message || '获取数据失败' }, { status: 500 });
   }
 }
@@ -184,12 +163,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
-  if (!SERVICE_KEY || !SUPABASE_URL || !LOCAL_USER_ID) {
+  if (!dbConfigOk()) {
     return NextResponse.json({ error: '服务端配置缺失' }, { status: 500 });
   }
 
+  let payload;
   try {
-    const { table, action, data } = await req.json();
+    const raw = await req.json();
+    const parsed = syncPostSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: '入参校验失败', detail: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') },
+        { status: 400 },
+      );
+    }
+    payload = parsed.data;
+  } catch (e: any) {
+    return NextResponse.json({ error: '请求体解析失败', detail: e.message }, { status: 400 });
+  }
+
+  try {
+    const { table, action, data } = payload;
 
     if (action === 'upsert') {
       if (table === 'resources') {
@@ -212,13 +206,14 @@ export async function POST(req: NextRequest) {
             ...(resource.metadata || {}),
             actual_resource_type: !supabaseType && resource.resource_type ? resource.resource_type : undefined,
             collection_name: resource.metadata?.collectionName || undefined,
-            tags: resource.resource_tags?.map((rt: any) => rt.tag?.name || rt.tag) || [],
+            tags: resource.resource_tags?.map((rt: { tag?: { name?: string } | string }) =>
+              typeof rt.tag === 'string' ? rt.tag : rt.tag?.name) || [],
           },
           created_at: resource.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const { ok, error } = await supabaseUpsert('resources', supabaseData);
-        if (!ok) return NextResponse.json({ error: '同步资源失败', detail: error, url: SUPABASE_URL }, { status: 500 });
+        const { ok, error } = await dbUpsertOwned('resources', supabaseData);
+        if (!ok) return NextResponse.json({ error: '同步资源失败', detail: error }, { status: 500 });
       } else if (table === 'music_playlist') {
         // Store playlist as a resource row — use deterministic UUID derived from user_id
         const playlistId = MUSIC_PLAYLIST_ID;
@@ -233,7 +228,7 @@ export async function POST(req: NextRequest) {
           created_at: data.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const { ok: ok2, error: err2 } = await supabaseUpsert('resources', supabaseData);
+        const { ok: ok2, error: err2 } = await dbUpsertOwned('resources', supabaseData);
         if (!ok2) return NextResponse.json({ error: '同步播放列表失败', detail: err2 }, { status: 500 });
       } else if (table === 'notes') {
         // Store note as a resource row with resource_type='article'
@@ -242,7 +237,7 @@ export async function POST(req: NextRequest) {
         const supabaseData = {
           id: note.id,
           title: note.title || '',
-          description: note.content ? note.content.substring(0, 500) : null,
+          description: note.content ? note.content.substring(0, NOTE_DESCRIPTION_MAX_LENGTH) : null,
           resource_type: 'article',
           user_id: LOCAL_USER_ID,
           status: 'active',
@@ -259,7 +254,7 @@ export async function POST(req: NextRequest) {
           created_at: note.createdAt || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const { ok: noteOk, error: noteErr } = await supabaseUpsert('resources', supabaseData);
+        const { ok: noteOk, error: noteErr } = await dbUpsertOwned('resources', supabaseData);
         if (!noteOk) return NextResponse.json({ error: '同步笔记失败', detail: noteErr, debug_data_keys: Object.keys(supabaseData) }, { status: 500 });
       } else if (table === 'collections') {
         const col = data;
@@ -275,19 +270,19 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         };
         // Upsert collection
-        const { ok: ok3, error: err3 } = await supabaseUpsert('collections', supabaseData);
-        if (!ok3) return NextResponse.json({ error: '同步合集失败', detail: err3, url: SUPABASE_URL }, { status: 500 });
+        const { ok: ok3, error: err3 } = await dbUpsertOwned('collections', supabaseData);
+        if (!ok3) return NextResponse.json({ error: '同步合集失败', detail: err3 }, { status: 500 });
         // Sync resource associations via junction table
         const resourceIds: string[] = col.resourceIds || [];
         // Delete old associations
-        await supabaseFetch(`collection_resources?collection_id=eq.${col.id}`, { method: 'DELETE' });
+        await dbFetch(`collection_resources?collection_id=eq.${col.id}`, { method: 'DELETE' });
         // Insert new associations
         if (resourceIds.length > 0) {
           const rows = resourceIds.map((rid: string) => ({
             collection_id: col.id,
             resource_id: rid,
           }));
-          await supabaseFetch('collection_resources', {
+          await dbFetch('collection_resources', {
             method: 'POST',
             body: JSON.stringify(rows),
           });
@@ -313,27 +308,29 @@ export async function POST(req: NextRequest) {
           created_at: file.createdAt || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const { ok: fileOk, error: fileErr } = await supabaseUpsert('resources', supabaseData);
+        const { ok: fileOk, error: fileErr } = await dbUpsertOwned('resources', supabaseData);
         if (!fileOk) return NextResponse.json({ error: '同步文件失败', detail: fileErr }, { status: 500 });
       }
     } else if (action === 'delete') {
       if (table === 'resources' || table === 'notes') {
-        const result = await supabaseFetch(`resources?id=eq.${data.id}`, { method: 'DELETE' });
+        // Scope by user_id so a leaked/forged id can't delete another user's row.
+        const result = await dbFetch(`resources?id=eq.${data.id}&user_id=eq.${LOCAL_USER_ID}`, { method: 'DELETE' });
         if (!result.ok) return NextResponse.json({ error: '删除失败', detail: result.error }, { status: 500 });
       } else if (table === 'collections') {
-        // Delete junction table entries first
-        await supabaseFetch(`collection_resources?collection_id=eq.${data.id}`, { method: 'DELETE' });
-        const result = await supabaseFetch(`collections?id=eq.${data.id}`, { method: 'DELETE' });
+        // Delete junction table entries first (scoped via collection_id, which
+        // is itself user-owned; the collections delete below enforces ownership).
+        await dbFetch(`collection_resources?collection_id=eq.${data.id}`, { method: 'DELETE' });
+        const result = await dbFetch(`collections?id=eq.${data.id}&user_id=eq.${LOCAL_USER_ID}`, { method: 'DELETE' });
         if (!result.ok) return NextResponse.json({ error: '删除合集失败', detail: result.error }, { status: 500 });
       } else if (table === 'files') {
-        const result = await supabaseFetch(`resources?id=eq.${data.id}`, { method: 'DELETE' });
+        const result = await dbFetch(`resources?id=eq.${data.id}&user_id=eq.${LOCAL_USER_ID}`, { method: 'DELETE' });
         if (!result.ok) return NextResponse.json({ error: '删除文件失败', detail: result.error }, { status: 500 });
       }
     }
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    console.error('Sync error:', e);
+    console.error('Sync error:', e?.message || e);
     return NextResponse.json({ error: e.message || '同步异常' }, { status: 500 });
   }
 }

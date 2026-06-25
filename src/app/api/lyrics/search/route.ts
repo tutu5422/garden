@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { apiBadRequest, apiNotFound, apiServerError } from '@/lib/api-error'
+import { LYRICS_FETCH_TIMEOUT_MS } from '@/lib/constants/config'
 
 // 使用 lrclib.net 免费歌词 API
 // 文档: https://lrclib.net/docs
@@ -13,14 +15,14 @@ interface LrcLibResult {
 }
 
 const UA = 'MiniTu/1.0 (personal music player)'
-const FETCH_TIMEOUT = 8000
+const FETCH_TIMEOUT = LYRICS_FETCH_TIMEOUT_MS
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')
   const artist = req.nextUrl.searchParams.get('artist')
 
   if (!q) {
-    return NextResponse.json({ error: 'Missing query' }, { status: 400 })
+    return apiBadRequest('Missing query parameter: q')
   }
 
   try {
@@ -39,7 +41,7 @@ export async function GET(req: NextRequest) {
       if (searchResult) {
         return NextResponse.json(searchResult)
       }
-      return NextResponse.json({ error: 'No lyrics found' }, { status: 404 })
+      return apiNotFound('歌词')
     }
 
     // 策略 2：不带歌手（仅无artist时使用）
@@ -54,10 +56,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(searchResult)
     }
 
-    return NextResponse.json({ error: 'No lyrics found' }, { status: 404 })
-  } catch (err) {
-    console.error('Lyrics search error:', err)
-    return NextResponse.json({ error: 'Search failed' }, { status: 500 })
+    return apiNotFound('歌词')
+  } catch (err: any) {
+    console.error('Lyrics search error:', err?.message || err)
+    return apiServerError(err?.message || 'Search failed')
   }
 }
 

@@ -143,7 +143,7 @@ async function loadPlaylistFromCloud(): Promise<Track[]> {
 
     // 把云端歌词还原到 lyric store localStorage
     try {
-      const lyricsStore: Record<string, any> = JSON.parse(localStorage.getItem('minitu_lyrics') || '{}')
+      const lyricsStore: Record<string, unknown> = JSON.parse(localStorage.getItem('minitu_lyrics') || '{}')
       let updated = false
       for (const t of tracks) {
         if (t.lyrics && !lyricsStore[t.id]) {

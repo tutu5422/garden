@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
+import { storageHeaders, storageObjectUrl, supabaseConfigOk, vpsDelete, vpsStorageEnabled } from '@/lib/supabase-admin';
+
+const BUCKET = 'minitu-garden';
 
 export async function POST(req: NextRequest) {
   if (!getPass()) return configMissingResponse();
@@ -19,20 +22,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '非法存储路径' }, { status: 400 });
     }
 
-    const serviceKey = process.env.SUPABASE_SERVICE_KEY;
-    const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    if (!serviceKey || !rawUrl) {
+    // VPS storage takes priority when enabled; otherwise fall back to Supabase.
+    if (vpsStorageEnabled()) {
+      const ok = await vpsDelete(storagePath);
+      if (!ok) {
+        return NextResponse.json({ error: '删除失败' }, { status: 500 });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    if (!supabaseConfigOk()) {
       return NextResponse.json({ error: '服务端配置缺失' }, { status: 500 });
     }
-    const baseUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
 
-    const url = `${baseUrl}/storage/v1/object/minitu-garden/${storagePath}`;
+    const url = storageObjectUrl(BUCKET, storagePath);
     const res = await fetch(url, {
       method: 'DELETE',
-      headers: {
-        'apikey': serviceKey,
-        'Authorization': `Bearer ${serviceKey}`,
-      },
+      headers: storageHeaders(),
     });
 
     if (!res.ok) {
@@ -43,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    console.error('Music delete error:', e);
+    console.error('Music delete error:', e?.message || e);
     return NextResponse.json({ error: e.message || '删除异常' }, { status: 500 });
   }
 }

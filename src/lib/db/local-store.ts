@@ -39,9 +39,18 @@ function uid(): string {
   return crypto.randomUUID?.() || 'u-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
-// Fire-and-forget sync to Supabase (non-blocking)
-async function syncToCloud(table: string, action: string, data: any) {
+// Fire-and-forget sync to cloud (non-blocking). On failure or offline, the
+// write is enqueued in the offline queue (IndexedDB) and replayed later.
+async function syncToCloud(table: string, action: string, data: unknown) {
   if (typeof window === 'undefined') return;
+  // Extract a short id prefix for log correlation (data shape varies by table).
+  const logId = (data as { id?: string })?.id?.substring(0, 12) || '?';
+  // If already offline, skip the doomed fetch and enqueue immediately.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    const { enqueue } = await import('@/lib/offline-queue');
+    void enqueue(table, action, data);
+    return;
+  }
   try {
     const res = await fetch('/api/sync', {
       method: 'POST',
@@ -50,12 +59,24 @@ async function syncToCloud(table: string, action: string, data: any) {
     });
     if (!res.ok) {
       const err = await res.text().catch(() => '');
-      console.warn('[syncToCloud]', table, action, data.id?.substring(0,12), '→', res.status, err.substring(0, 200));
+      console.warn('[syncToCloud]', table, action, logId, '→', res.status, err.substring(0, 200));
+      // 4xx (except 401/429) are likely permanent (bad payload) — don't retry
+      // forever. 5xx and network errors are transient → enqueue for replay.
+      if (res.status >= 500 || res.status === 401 || res.status === 429) {
+        const { enqueue } = await import('@/lib/offline-queue');
+        void enqueue(table, action, data);
+      }
     } else {
-      console.log('[syncToCloud]', table, action, data.id?.substring(0,12), '✅');
+      console.log('[syncToCloud]', table, action, logId, '✅');
+      // Best-effort: drain any backlog that may have accumulated.
+      const { flush } = await import('@/lib/offline-queue');
+      void flush();
     }
   } catch (e: any) {
     console.error('[syncToCloud] network error:', table, action, e.message);
+    // Network error (offline / DNS / CORS) → enqueue for later replay.
+    const { enqueue } = await import('@/lib/offline-queue');
+    void enqueue(table, action, data);
   }
 }
 

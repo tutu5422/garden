@@ -6,6 +6,7 @@ import { ChevronLeft, Pencil, ExternalLink, Calendar } from 'lucide-react'
 import { getResourceHybrid, getResourceCached } from '@/lib/db/supabase-queries'
 import { getLocalCategories } from '@/lib/db/local-store'
 import type { Resource } from '@/lib/types'
+import SmartImage from '@/components/shared/SmartImage'
 
 export default function ResourceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -38,8 +39,14 @@ export default function ResourceDetailPage({ params }: { params: Promise<{ id: s
 
       {/* 封面图 */}
       {resource.cover_image_url && (
-        <div className="rounded-2xl overflow-hidden glass shadow-3d mb-6">
-          <img src={resource.cover_image_url} alt="" className="w-full max-h-72 object-cover" />
+        <div className="rounded-2xl overflow-hidden glass shadow-3d mb-6 relative h-72">
+          <SmartImage
+            src={resource.cover_image_url}
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 800px"
+            className="object-cover"
+          />
         </div>
       )}
 

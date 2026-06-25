@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth'
+import { supabaseAdmin, supabaseConfigOk, storagePublicUrl, vpsStorageEnabled, vpsStorageUrl } from '@/lib/supabase-admin'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || ''
+const BUCKET = 'minitu-garden'
 
 /**
  * Generate a presigned upload URL.
  * Client calls this → gets signed URL → uploads directly to Supabase (bypasses Vercel 4.5MB limit)
+ *
+ * When VPS storage is enabled (VPS_STORAGE_URL present), returns a direct VPS
+ * PUT URL instead. The client must PUT the file to this URL with the
+ * `x-storage-key` header set to VPS_STORAGE_KEY.
  */
 export async function POST(req: NextRequest) {
   if (!getPass()) return configMissingResponse()
   if (!(await isAuth(req))) {
     return NextResponse.json({ error: '未登录' }, { status: 401 })
-  }
-
-  if (!SERVICE_KEY || !SUPABASE_URL) {
-    return NextResponse.json({ error: '服务端配置缺失' }, { status: 500 })
   }
 
   try {
@@ -38,13 +37,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '非法路径参数' }, { status: 400 })
     }
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    // VPS storage: return a direct PUT URL. The client uploads via HTTP PUT
+    // (Nginx accepts anonymous PUT for the storage location).
+    if (vpsStorageEnabled()) {
+      return NextResponse.json({
+        ok: true,
+        signedUrl: vpsStorageUrl(storagePath),
+        storagePath,
+        publicUrl: vpsStorageUrl(storagePath),
+        vps: true,
+      })
+    }
+
+    if (!supabaseConfigOk()) {
+      return NextResponse.json({ error: '服务端配置缺失' }, { status: 500 })
+    }
 
     // Generate signed upload URL (valid for 60 seconds)
-    const { data, error } = await supabase.storage
-      .from('minitu-garden')
+    const { data, error } = await supabaseAdmin()
+      .storage
+      .from(BUCKET)
       .createSignedUploadUrl(storagePath)
 
     if (error) {
@@ -52,7 +64,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '生成上传链接失败', detail: error.message }, { status: 500 })
     }
 
-    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/minitu-garden/${storagePath}`
+    const publicUrl = storagePublicUrl(BUCKET, storagePath)
 
     return NextResponse.json({
       ok: true,
@@ -61,7 +73,7 @@ export async function POST(req: NextRequest) {
       publicUrl,
     })
   } catch (e: any) {
-    console.error('Presign error:', e)
+    console.error('Presign error:', e?.message || e)
     return NextResponse.json({ error: e.message || '生成上传链接异常' }, { status: 500 })
   }
 }

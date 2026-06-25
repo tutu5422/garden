@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, File, Trash2, Download, FileText, Music, Image, Archive, Film, Search, X, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { resolveStorageUrl } from "@/lib/storage-url";
+import { MAX_FILE_SIZE } from "@/lib/constants/config";
 
 declare global {
   interface WindowEventMap {
@@ -9,8 +11,7 @@ declare global {
   }
 }
 
-// Max file size: 50 MB
-const MAX_SIZE = 50 * 1024 * 1024;
+const MAX_SIZE = MAX_FILE_SIZE;
 
 /** Pull file metadata from cloud and merge into localStorage */
 async function pullFilesFromCloud(): Promise<void> {
@@ -201,7 +202,7 @@ export default function Files() {
   };
 
   const handleDownload = async (f: MyFile) => {
-    const url = f.url || `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/minitu-garden/${f.storagePath}`;
+    const url = f.url || resolveStorageUrl(f.storagePath);
     if (url) {
       const a = document.createElement("a");
       a.href = url; a.download = f.name; a.target = "_blank";
