@@ -1,6 +1,10 @@
-echo .vercel/
+.vercel/
 node_modules/
 .next/
 .vercel
 .env*
 scripts/
+cookie.txt
+cookies.txt
+*.tsbuildinfo
+notes-rendered.html

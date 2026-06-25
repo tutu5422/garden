@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const PASS = process.env.SITE_PASSWORD || '123';
-const COOKIE = 'minitu_auth';
-
-// Verify the user is authenticated
-function isAuth(req: NextRequest): boolean {
-  return req.cookies.get(COOKIE)?.value === PASS;
-}
+import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
 
 async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: string): Promise<true | { ok: false; status: number; detail: string }> {
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
@@ -35,7 +28,8 @@ async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: 
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAuth(req)) {
+  if (!getPass()) return configMissingResponse();
+  if (!(await isAuth(req))) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
@@ -46,6 +40,11 @@ export async function POST(req: NextRequest) {
 
     if (!file || !id) {
       return NextResponse.json({ error: '缺少文件或 ID' }, { status: 400 });
+    }
+
+    // Path traversal protection: id is used to build the storage path
+    if (!isSafePath(String(id))) {
+      return NextResponse.json({ error: '非法 ID 参数' }, { status: 400 });
     }
 
     const buffer = await file.arrayBuffer();

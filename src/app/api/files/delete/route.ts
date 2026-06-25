@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const PASS = process.env.SITE_PASSWORD || '123';
-const COOKIE = 'minitu_auth';
+import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
-  // Verify auth
-  if (req.cookies.get(COOKIE)?.value !== PASS) {
+  if (!getPass()) return configMissingResponse();
+  if (!(await isAuth(req))) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
@@ -13,6 +11,11 @@ export async function POST(req: NextRequest) {
     const { storagePath } = await req.json();
     if (!storagePath) {
       return NextResponse.json({ error: '缺少文件路径' }, { status: 400 });
+    }
+
+    // Path traversal protection
+    if (!isSafePath(String(storagePath))) {
+      return NextResponse.json({ error: '非法文件路径' }, { status: 400 });
     }
 
     const serviceKey = process.env.SUPABASE_SERVICE_KEY;

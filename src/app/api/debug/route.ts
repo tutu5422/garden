@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const PASS = process.env.SITE_PASSWORD || '123';
-const COOKIE_NAME = 'minitu_auth';
+import { configMissingResponse, getPass, isAuth } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
-  if (req.cookies.get(COOKIE_NAME)?.value !== PASS) {
+  if (!getPass()) return configMissingResponse();
+  if (!(await isAuth(req))) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
