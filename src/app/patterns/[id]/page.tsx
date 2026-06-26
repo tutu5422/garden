@@ -472,8 +472,8 @@ export default function PatternDetailPage() {
               >
                 <FilePdfOutlined style={{ fontSize: 64, opacity: 0.4 }} />
                 <p>暂无 PDF 文件</p>
-                <Link href="/patterns/upload">
-                  <Button type="primary" icon={<LinkOutlined />}>上传图解</Button>
+                <Link href="/patterns">
+                  <Button type="primary" icon={<LinkOutlined />}>前往图解列表导入</Button>
                 </Link>
               </div>
             )}

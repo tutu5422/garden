@@ -2,7 +2,6 @@
 
 import { Button, Input, Tag } from 'antd'
 import { SearchOutlined, CheckSquareOutlined, ImportOutlined, CloseOutlined } from '@ant-design/icons'
-import { useRouter } from 'next/navigation'
 
 interface PatternHeaderProps {
   search: string
@@ -12,6 +11,7 @@ interface PatternHeaderProps {
   onExitBatchMode: () => void
   filterLabel: string
   selectedCategoryName?: string | null
+  onImportClick?: () => void
 }
 
 export default function PatternHeader({
@@ -22,8 +22,8 @@ export default function PatternHeader({
   onExitBatchMode,
   filterLabel,
   selectedCategoryName,
+  onImportClick,
 }: PatternHeaderProps) {
-  const router = useRouter()
 
   return (
     <div className="patterns-header warm-antd">
@@ -72,7 +72,7 @@ export default function PatternHeader({
           <Button
             type="primary"
             icon={<ImportOutlined />}
-            onClick={() => router.push('/patterns/upload')}
+            onClick={onImportClick}
           >
             导入图解
           </Button>

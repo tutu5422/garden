@@ -42,6 +42,8 @@ async function getPdfPageCount(pdfBuffer: ArrayBuffer): Promise<number | undefin
  *   - difficulty: 难度（可选: beginner/easy/intermediate/advanced/expert）
  *   - patternType: 类型（可选，逗号分隔）
  *   - craftType: 编织方式 knit/crochet/both（可选，默认 knit）
+ *   - categoryId: 目标分类 ID（可选）
+ *   - hash: 文件 SHA-256 哈希（可选，用于去重）
  *
  * 封面缩略图策略：
  *   优先使用上传的 cover 图片（前端渲染方案），
@@ -71,6 +73,8 @@ export async function POST(req: NextRequest) {
     const difficulty = (form.get('difficulty') as string)?.trim() || 'beginner';
     const patternTypeStr = (form.get('patternType') as string)?.trim() || '';
     const craftType = (form.get('craftType') as string)?.trim() || 'knit';
+    const categoryId = (form.get('categoryId') as string)?.trim() || '';
+    const hash = (form.get('hash') as string)?.trim() || '';
 
     // 生成 VPS 存储路径
     const year = new Date().getFullYear();
@@ -150,6 +154,7 @@ export async function POST(req: NextRequest) {
       status: 'active',
       url: resolveStorageUrl(storagePath) || pdfUrl,
       cover_image_url: coverUrl || undefined,
+      category_id: categoryId || null,
       metadata: {
         is_pattern: true,
         patternBrand: brand,
@@ -164,6 +169,7 @@ export async function POST(req: NextRequest) {
         patternThumbnailPath: coverUrl ? thumbPath : undefined,
         patternUsageCount: 0,
         patternLastUsedAt: new Date().toISOString(),
+        patternHash: hash || undefined,
       },
       created_at: new Date().toISOString(),
     };

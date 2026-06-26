@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Button, Checkbox, Popconfirm, message, Space, Modal, Select, Empty } from 'antd'
 import { InboxOutlined, DeleteOutlined, SwapOutlined, ImportOutlined } from '@ant-design/icons'
-import { useRouter } from 'next/navigation'
 import PatternCardV2 from './PatternCardV2'
 import type { Resource, Category } from '@/lib/types'
 
@@ -20,6 +19,7 @@ interface PatternGridProps {
   onWishlist: (id: string, currentStatus: string) => void
   onDelete: (id: string) => void
   selectedCategoryName?: string | null
+  onImportClick?: () => void
 }
 
 export default function PatternGrid({
@@ -35,8 +35,8 @@ export default function PatternGrid({
   onWishlist,
   onDelete,
   selectedCategoryName,
+  onImportClick,
 }: PatternGridProps) {
-  const router = useRouter()
   const [moveModalVisible, setMoveModalVisible] = useState(false)
   const [moveTargetId, setMoveTargetId] = useState('')
 
@@ -49,7 +49,7 @@ export default function PatternGrid({
         <Button
           type="primary"
           icon={<ImportOutlined />}
-          onClick={() => router.push('/patterns/upload')}
+          onClick={onImportClick}
           size="large"
         >
           导入图解

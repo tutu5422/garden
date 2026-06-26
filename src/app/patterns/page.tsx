@@ -5,6 +5,7 @@ import { message } from 'antd'
 import PatternSidebar from '@/components/patterns/PatternSidebar'
 import PatternHeader from '@/components/patterns/PatternHeader'
 import PatternGrid from '@/components/patterns/PatternGrid'
+import ImportDialog from '@/components/patterns/ImportDialog'
 import type { Resource, Category, Tag } from '@/lib/types'
 import {
   getPatterns,
@@ -32,6 +33,9 @@ export default function PatternsPage() {
   // 批量管理
   const [batchMode, setBatchMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  // 导入对话框
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   // 加载所有图解
   const loadPatterns = useCallback(async () => {
@@ -272,6 +276,7 @@ export default function PatternsPage() {
           onExitBatchMode={handleExitBatchMode}
           filterLabel={filterLabel}
           selectedCategoryName={selectedCategoryName}
+          onImportClick={() => setImportDialogOpen(true)}
         />
 
         {loading ? (
@@ -304,9 +309,16 @@ export default function PatternsPage() {
             onWishlist={handleWishlist}
             onDelete={handleDelete}
             selectedCategoryName={selectedCategoryName}
+            onImportClick={() => setImportDialogOpen(true)}
           />
         )}
       </div>
+
+      <ImportDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onImported={() => void loadPatterns()}
+      />
     </div>
   )
 }

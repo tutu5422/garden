@@ -49,6 +49,22 @@ export async function getPattern(id: string): Promise<Resource | null> {
   return data[0] || null
 }
 
+/**
+ * 通过文件哈希查询是否已存在图解（用于导入去重）。
+ * 一次可传多个哈希，返回已存在的哈希集合。
+ */
+export async function findExistingPatternHashes(hashes: string[]): Promise<Set<string>> {
+  if (hashes.length === 0) return new Set()
+  const params = new URLSearchParams()
+  params.set('select', 'metadata->>patternHash')
+  params.set('metadata->>is_pattern', 'eq.true')
+  params.set('metadata->>patternHash', `in.(${hashes.join(',')})`)
+  const res = await dbFetch(`resources?${params.toString()}`)
+  if (!res.ok) return new Set()
+  const rows = (res.body as { patternHash?: string }[]) || []
+  return new Set(rows.map((r) => r.patternHash).filter(Boolean) as string[])
+}
+
 /** 创建图解 */
 export async function createPattern(data: {
   title: string
