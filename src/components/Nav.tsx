@@ -2,18 +2,26 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Library, Calendar, Layers, FileText, Home } from "lucide-react"
+import { Library, Calendar, Grid3x3, Layers, FileText, Home } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import LyricsMarquee from "@/components/music/LyricsMarquee"
 import SyncStatus from "@/components/shared/SyncStatus"
+import { mainNavItems } from "@/lib/constants/navigation"
 
-const navItems = [
-  { href: "/notes", icon: Library, label: "笔记" },
-  { href: "/collections", icon: Layers, label: "合集" },
-  { href: "/timeline", icon: Calendar, label: "时间线" },
-  { href: "/files", icon: FileText, label: "文件" },
-]
+const iconMap: Record<string, React.ReactNode> = {
+  Library: <Library className="size-4" />,
+  Layers: <Layers className="size-4" />,
+  Calendar: <Calendar className="size-4" />,
+  FileText: <FileText className="size-4" />,
+  Grid3x3: <Grid3x3 className="size-4" />,
+}
+
+const navItems = mainNavItems.map(item => ({
+  href: item.href,
+  icon: iconMap[item.icon] || <FileText className="size-4" />,
+  label: item.label,
+}))
 
 const authPaths = ["/login", "/signup", "/callback"]
 
@@ -80,7 +88,7 @@ export default function Nav() {
                         : {}
                     }
                   >
-                    <item.icon className="size-4" />
+                    {item.icon}
                     <span>{item.label}</span>
                   </Link>
                 )
@@ -146,7 +154,7 @@ export default function Nav() {
                     : {}
                 }
               >
-                <item.icon className="size-5 transition-transform duration-200" />
+                {item.icon}
                 <span>{item.label}</span>
               </Link>
             )

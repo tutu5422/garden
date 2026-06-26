@@ -15,6 +15,7 @@ export type {
   MusicTrack,
   CollectionRow,
   CollectionResourceRow,
+  PatternNoteRow,
 } from './database'
 
 export interface NavItem {

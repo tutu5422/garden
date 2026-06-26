@@ -46,6 +46,26 @@ export interface ResourceMetadata {
   fileCategory?: string;
   tracks?: MusicTrack[];
   updated_at?: string;
+  // 图解（pattern）字段 — 用 metadata.is_pattern 标记，不修改 resource_type 枚举
+  is_pattern?: true;
+  patternBrand?: string;
+  patternYarn?: string;
+  patternYarnWeight?: string;
+  patternDifficulty?: string;
+  patternType?: string[];
+  patternCraftType?: 'knit' | 'crochet' | 'both';
+  patternStatus?: string; // 'not-started' | 'in-progress' | 'completed' | 'paused' | 'abandoned' | 'wishlist'
+  patternProgress?: number; // 0-100
+  patternPages?: number;
+  patternStoragePath?: string;
+  patternThumbnailPath?: string;
+  patternLastUsedAt?: string;
+  patternUsageCount?: number;
+  patternRelatedNoteIds?: string[]; // 冗余缓存
+  // BGM（可选）
+  patternBgmTrackId?: string;
+  patternBgmTrackTitle?: string;
+  patternBgmTrackArtist?: string;
   [key: string]: unknown;
 }
 
@@ -163,6 +183,14 @@ export interface Note {
   user_id: string
 }
 
+/** `pattern_notes` junction table row. */
+export interface PatternNoteRow {
+  id: string;
+  pattern_id: string;
+  note_id: string;
+  created_at: string;
+}
+
 export interface ResourceFilters {
   search?: string
   type?: ResourceType
@@ -187,6 +215,7 @@ export interface Database {
       collection_resources: { Row: { collection_id: string; resource_id: string; sort_order: number }; Insert: { collection_id: string; resource_id: string; sort_order?: number }; Update: { sort_order?: number } }
       notes: { Row: Note; Insert: Omit<Note, 'id' | 'created_at' | 'updated_at'>; Update: Partial<Omit<Note, 'id'>> }
       note_links: { Row: { source_note_id: string; target_note_id: string; link_text: string | null; created_at: string }; Insert: { source_note_id: string; target_note_id: string; link_text?: string }; Update: Partial<{ link_text: string }> }
+      pattern_notes: { Row: PatternNoteRow; Insert: Pick<PatternNoteRow, 'pattern_id' | 'note_id'>; Update: never }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

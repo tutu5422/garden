@@ -1,7 +1,7 @@
 // 本地浏览器存储 — 数据库未配置时的临时方案
 // 数据存在 localStorage，刷新页面后仍在
 
-import type { Resource, Category, Tag } from '@/lib/types'
+import type { Resource, Category, Tag, PatternNoteRow } from '@/lib/types'
 
 const RESOURCES_KEY = 'garden_resources'
 const CATEGORIES_KEY = 'garden_categories'
@@ -14,6 +14,15 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-3', name: '影视', slug: 'movies', description: '电影与剧集', icon: '🎬', color: '#F59E0B', sort_order: 3, created_at: '', updated_at: '' },
   { id: 'cat-4', name: '音乐', slug: 'music', description: '歌曲与专辑', icon: '🎵', color: '#EF4444', sort_order: 4, created_at: '', updated_at: '' },
   { id: 'cat-5', name: '设计', slug: 'design', description: 'UI与品牌', icon: '🎨', color: '#EC4899', sort_order: 5, created_at: '', updated_at: '' },
+  // 编织分类
+  { id: 'cat-6', name: '毛衣', slug: 'sweater', description: '毛衣编织', icon: '🧶', color: '#8B5CF6', sort_order: 6, created_at: '', updated_at: '' },
+  { id: 'cat-7', name: '帽子', slug: 'hat', description: '帽子编织', icon: '🧢', color: '#F43F5E', sort_order: 7, created_at: '', updated_at: '' },
+  { id: 'cat-8', name: '围巾', slug: 'scarf', description: '围巾编织', icon: '🧣', color: '#F97316', sort_order: 8, created_at: '', updated_at: '' },
+  { id: 'cat-9', name: '袜子', slug: 'socks', description: '袜子编织', icon: '🧦', color: '#06B6D4', sort_order: 9, created_at: '', updated_at: '' },
+  { id: 'cat-10', name: '玩偶', slug: 'doll', description: '玩偶编织', icon: '🧸', color: '#D946EF', sort_order: 10, created_at: '', updated_at: '' },
+  { id: 'cat-11', name: '毯子', slug: 'blanket', description: '毯子编织', icon: '🛏️', color: '#22C55E', sort_order: 11, created_at: '', updated_at: '' },
+  { id: 'cat-12', name: '配饰', slug: 'accessory', description: '配饰编织', icon: '💍', color: '#EAB308', sort_order: 12, created_at: '', updated_at: '' },
+  { id: 'cat-13', name: '其他', slug: 'other-craft', description: '其他编织', icon: '📦', color: '#A1A1AA', sort_order: 13, created_at: '', updated_at: '' },
 ]
 
 // ========== 工具函数 ==========
@@ -445,4 +454,48 @@ export function getResourcesForCollection(collectionId: string): Resource[] {
   if (!col) return []
   const allResources = getLocalResources()
   return col.resourceIds.map(id => allResources.find(r => r.id === id)).filter(Boolean) as Resource[]
+}
+
+// ========== 图解-笔记关联（pattern_notes） ==========
+
+const PATTERN_NOTES_KEY = 'garden_pattern_notes'
+
+export function getLocalPatternNotes(): PatternNoteRow[] {
+  if (typeof window === 'undefined') return []
+  const raw = localStorage.getItem(PATTERN_NOTES_KEY)
+  return raw ? JSON.parse(raw) : []
+}
+
+export function saveLocalPatternNotes(notes: PatternNoteRow[]) {
+  localStorage.setItem(PATTERN_NOTES_KEY, JSON.stringify(notes))
+}
+
+export function linkPatternNoteLocally(patternId: string, noteId: string): PatternNoteRow {
+  const notes = getLocalPatternNotes()
+  const existing = notes.find(n => n.pattern_id === patternId && n.note_id === noteId)
+  if (existing) return existing
+  const link: PatternNoteRow = {
+    id: uid(),
+    pattern_id: patternId,
+    note_id: noteId,
+    created_at: new Date().toISOString(),
+  }
+  notes.push(link)
+  saveLocalPatternNotes(notes)
+  syncToCloud('pattern_notes', 'upsert', link)
+  return link
+}
+
+export function unlinkPatternNoteLocally(patternId: string, noteId: string) {
+  const notes = getLocalPatternNotes()
+  const target = notes.find(n => n.pattern_id === patternId && n.note_id === noteId)
+  const filtered = notes.filter(n => !(n.pattern_id === patternId && n.note_id === noteId))
+  saveLocalPatternNotes(filtered)
+  if (target) {
+    syncToCloud('pattern_notes', 'delete', { id: target.id })
+  }
+}
+
+export function getPatternNotesForPattern(patternId: string): PatternNoteRow[] {
+  return getLocalPatternNotes().filter(n => n.pattern_id === patternId)
 }

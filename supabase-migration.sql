@@ -129,6 +129,17 @@ CREATE TABLE note_links (
   PRIMARY KEY (source_note_id, target_note_id)
 );
 
+-- pattern_notes（图解-笔记关联，多对多）
+CREATE TABLE pattern_notes (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pattern_id  UUID NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+  note_id     UUID NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(pattern_id, note_id)
+);
+CREATE INDEX idx_pattern_notes_pattern ON pattern_notes(pattern_id);
+CREATE INDEX idx_pattern_notes_note    ON pattern_notes(note_id);
+
 -- 4. 索引
 -- ============================================================
 CREATE INDEX idx_resources_user     ON resources(user_id);
@@ -191,6 +202,7 @@ ALTER TABLE collections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE collection_resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE note_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pattern_notes ENABLE ROW LEVEL SECURITY;
 
 -- profiles: 用户可读写自己的
 CREATE POLICY "Users own profiles" ON profiles
@@ -230,4 +242,12 @@ CREATE POLICY "Users own notes" ON notes
 CREATE POLICY "Users own note_links" ON note_links
   FOR ALL USING (
     auth.uid() IN (SELECT user_id FROM notes WHERE id = source_note_id)
+  );
+
+-- pattern_notes: 关联 resources 或 notes 的所有者
+CREATE POLICY "Users own pattern_notes" ON pattern_notes
+  FOR ALL USING (
+    auth.uid() IN (SELECT user_id FROM resources WHERE id = pattern_id)
+    OR
+    auth.uid() IN (SELECT user_id FROM resources WHERE id = note_id)
   );

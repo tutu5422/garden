@@ -85,6 +85,13 @@ const fileUpsertDataSchema = z.object({
   createdAt: isoString.optional(),
 });
 
+const patternNoteUpsertDataSchema = z.object({
+  id: idSchema.optional(),
+  pattern_id: idSchema,
+  note_id: idSchema,
+  created_at: isoString.optional(),
+});
+
 // ----- Delete data shape -------------------------------------------------
 
 const deleteDataSchema = z.object({
@@ -93,8 +100,8 @@ const deleteDataSchema = z.object({
 
 // ----- Top-level payload -------------------------------------------------
 
-export const SYNC_TABLES_UPSERT = ['resources', 'music_playlist', 'notes', 'collections', 'files'] as const;
-export const SYNC_TABLES_DELETE = ['resources', 'notes', 'collections', 'files'] as const;
+export const SYNC_TABLES_UPSERT = ['resources', 'music_playlist', 'notes', 'collections', 'files', 'pattern_notes'] as const;
+export const SYNC_TABLES_DELETE = ['resources', 'notes', 'collections', 'files', 'pattern_notes'] as const;
 export const SYNC_ACTIONS = ['upsert', 'delete'] as const;
 
 const upsertPayloadSchema = z.discriminatedUnion('table', [
@@ -103,6 +110,7 @@ const upsertPayloadSchema = z.discriminatedUnion('table', [
   z.object({ table: z.literal('notes'), action: z.literal('upsert'), data: noteUpsertDataSchema }),
   z.object({ table: z.literal('collections'), action: z.literal('upsert'), data: collectionUpsertDataSchema }),
   z.object({ table: z.literal('files'), action: z.literal('upsert'), data: fileUpsertDataSchema }),
+  z.object({ table: z.literal('pattern_notes'), action: z.literal('upsert'), data: patternNoteUpsertDataSchema }),
 ]);
 
 const deletePayloadSchema = z.object({
@@ -122,3 +130,4 @@ export type NoteUpsertData = z.infer<typeof noteUpsertDataSchema>;
 export type CollectionUpsertData = z.infer<typeof collectionUpsertDataSchema>;
 export type FileUpsertData = z.infer<typeof fileUpsertDataSchema>;
 export type MusicPlaylistUpsertData = z.infer<typeof musicPlaylistUpsertDataSchema>;
+export type PatternNoteUpsertData = z.infer<typeof patternNoteUpsertDataSchema>;

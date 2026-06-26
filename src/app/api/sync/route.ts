@@ -14,6 +14,7 @@ import type {
   CollectionRow,
   CollectionResourceRow,
   MusicTrack,
+  PatternNoteRow,
 } from '@/lib/types';
 
 // Music playlist resource ID — deterministic UUID v5 derived from LOCAL_USER_ID
@@ -47,12 +48,17 @@ export async function GET(req: NextRequest) {
     // Parallelize all DB queries (VPS PostgREST or Supabase REST).
     // All `resources`/`collections` queries are scoped to LOCAL_USER_ID as
     // app-layer RLS defense-in-depth (the service key bypasses DB-level RLS).
-    const [musicRes, notesRes, resRes, filesRes, colRes] = await Promise.all([
+    // `pattern_notes` has no user_id column, so it is fetched separately after
+    // we know the user's pattern IDs (see below) — fetching it unscoped here
+    // would leak other users' associations because the service key bypasses
+    // the RLS policy that normally filters via the `resources` owner.
+    const [musicRes, notesRes, resRes, filesRes, colRes, patternRes] = await Promise.all([
       dbFetch(`resources?id=eq.${MUSIC_PLAYLIST_ID}&user_id=eq.${LOCAL_USER_ID}&select=metadata`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=${SYNC_PAGE_LIMIT}`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&or=(metadata->>is_note.is.null,metadata->>is_note.eq.false)&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&metadata->>is_file=eq.true&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
       dbFetch(`collections?select=*&user_id=eq.${LOCAL_USER_ID}&order=updated_at.desc`),
+      dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&metadata->>is_pattern=eq.true&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
     ]);
 
     let musicPlaylist: MusicTrack[] = [];
@@ -75,6 +81,24 @@ export async function GET(req: NextRequest) {
     const resources = resRes.ok ? ((resRes.body as ResourceRow[]) || []) : [];
     const cloudFiles = filesRes.ok ? ((filesRes.body as ResourceRow[]) || []) : [];
     const collections = colRes.ok ? ((colRes.body as CollectionRow[]) || []) : [];
+    const patterns = patternRes.ok ? ((patternRes.body as ResourceRow[]) || []) : [];
+
+    // Fetch pattern_notes scoped to the current user's patterns. The
+    // `pattern_notes` junction has no user_id column, so we filter by
+    // `pattern_id IN (user's pattern ids)` — mirroring how
+    // `collection_resources` is scoped by the user's collection ids below.
+    // This is the app-layer RLS defense-in-depth: even though the service key
+    // bypasses DB-level RLS, this guarantees no cross-user association rows
+    // are returned. When the user has no patterns we skip the call entirely
+    // (an empty `in.()` filter would be a syntax error in PostgREST).
+    let patternNotes: PatternNoteRow[] = [];
+    if (patterns.length > 0) {
+      const patternIds = patterns.map((p: ResourceRow) => p.id);
+      const pnRes = await dbFetch(
+        `pattern_notes?select=*&pattern_id=in.(${patternIds.join(',')})`,
+      );
+      if (pnRes.ok) patternNotes = (pnRes.body as PatternNoteRow[]) || [];
+    }
 
     // Pull collection_resources junctions
     let junctions: CollectionResourceRow[] = [];
@@ -147,6 +171,23 @@ export async function GET(req: NextRequest) {
         resourceIds: resourceMap[c.id] || [],
         createdAt: c.created_at,
         updatedAt: c.updated_at,
+      })),
+      patterns: (patterns || []).map((r: ResourceRow) => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        status: r.status,
+        category_id: r.category_id,
+        metadata: r.metadata || {},
+        pinned: r.pinned,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+      })),
+      patternNotes: (patternNotes || []).map((pn: PatternNoteRow) => ({
+        id: pn.id,
+        pattern_id: pn.pattern_id,
+        note_id: pn.note_id,
+        created_at: pn.created_at,
       })),
     });
     response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
@@ -310,6 +351,31 @@ export async function POST(req: NextRequest) {
         };
         const { ok: fileOk, error: fileErr } = await dbUpsertOwned('resources', supabaseData);
         if (!fileOk) return NextResponse.json({ error: '同步文件失败', detail: fileErr }, { status: 500 });
+      } else if (table === 'pattern_notes') {
+        // 同步图解-笔记关联（pattern_notes 无 user_id 列）。
+        // 幂等性：pattern_notes 上有 UNIQUE(pattern_id, note_id) 约束，但
+        // dbUpsert 走 POST-first → 409 → PATCH ?id=eq.<id>，当客户端没传 id
+        // 时回退的 PATCH 没有主键可匹配会失败。这里改用 PostgREST 原生
+        // upsert：POST + `Prefer: resolution=merge-duplicates` + `On-Conflict`
+        // 指定 (pattern_id, note_id)，让数据库在冲突时按唯一约束合并，
+        // 无论客户端是否传 id 都幂等。
+        const pn = data;
+        const upsertData: Record<string, unknown> = {
+          pattern_id: pn.pattern_id,
+          note_id: pn.note_id,
+          created_at: pn.created_at || new Date().toISOString(),
+        };
+        // 仅在客户端显式传入 id 时带上，避免覆盖数据库已生成的主键。
+        if (pn.id) upsertData.id = pn.id;
+        const pnRes = await dbFetch('pattern_notes', {
+          method: 'POST',
+          body: JSON.stringify(upsertData),
+          headers: {
+            Prefer: 'return=minimal, resolution=merge-duplicates',
+            'On-Conflict': 'pattern_id,note_id',
+          },
+        });
+        if (!pnRes.ok) return NextResponse.json({ error: '同步图解笔记关联失败', detail: pnRes.error }, { status: 500 });
       }
     } else if (action === 'delete') {
       if (table === 'resources' || table === 'notes') {
@@ -325,6 +391,9 @@ export async function POST(req: NextRequest) {
       } else if (table === 'files') {
         const result = await dbFetch(`resources?id=eq.${data.id}&user_id=eq.${LOCAL_USER_ID}`, { method: 'DELETE' });
         if (!result.ok) return NextResponse.json({ error: '删除文件失败', detail: result.error }, { status: 500 });
+      } else if (table === 'pattern_notes') {
+        const result = await dbFetch(`pattern_notes?id=eq.${data.id}`, { method: 'DELETE' });
+        if (!result.ok) return NextResponse.json({ error: '删除图解笔记关联失败', detail: result.error }, { status: 500 });
       }
     }
 

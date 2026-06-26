@@ -9,3 +9,5 @@ cookie.txt
 cookies.txt
 *.tsbuildinfo
 notes-rendered.html
+proposals/
+.hermes/

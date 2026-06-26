@@ -2,15 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Library, Calendar, Layers, FileText } from 'lucide-react'
+import { Library, Calendar, Layers, FileText, Grid3x3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { mobileNavItems } from '@/lib/constants/navigation'
 
-const navItems = [
-  { label: '笔记', href: '/notes', icon: Library },
-  { label: '合集', href: '/collections', icon: Layers },
-  { label: '时间线', href: '/timeline', icon: Calendar },
-  { label: '文件', href: '/files', icon: FileText },
-]
+const iconMap: Record<string, React.ReactNode> = {
+  Library: <Library className="size-5" />,
+  Layers: <Layers className="size-5" />,
+  Calendar: <Calendar className="size-5" />,
+  FileText: <FileText className="size-5" />,
+  Grid3x3: <Grid3x3 className="size-5" />,
+}
 
 export default function MobileBottomNav() {
   const pathname = usePathname()
@@ -19,9 +21,8 @@ export default function MobileBottomNav() {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t-2 border-[var(--skin-border)] safe-area-bottom"
          style={{ backgroundColor: 'var(--skin-surface)' }}>
       <div className="flex items-center justify-around h-14">
-        {navItems.map((item) => {
+        {mobileNavItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href)
-          const Icon = item.icon
           return (
             <Link
               key={item.href}
@@ -38,7 +39,7 @@ export default function MobileBottomNav() {
                 marginTop: '-2px',
               } : {}}
             >
-              <Icon className="size-5 transition-transform duration-200" />
+              {iconMap[item.icon] || <FileText className="size-5" />}
               <span>{item.label}</span>
             </Link>
           )

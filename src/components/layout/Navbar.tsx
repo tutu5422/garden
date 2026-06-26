@@ -10,6 +10,7 @@ import {
   Layers,
   Calendar,
   FileText,
+  Grid3X3,
   Menu,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -21,6 +22,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Layers: <Layers className="size-4" />,
   Calendar: <Calendar className="size-4" />,
   FileText: <FileText className="size-4" />,
+  Grid3X3: <Grid3X3 className="size-4" />,
 }
 
 export default function Navbar() {
