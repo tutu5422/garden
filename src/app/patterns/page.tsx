@@ -1,257 +1,312 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Search, Heart } from 'lucide-react'
-import PatternCard from '@/components/patterns/PatternCard'
-import type { Resource } from '@/lib/types'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { message } from 'antd'
+import PatternSidebar from '@/components/patterns/PatternSidebar'
+import PatternHeader from '@/components/patterns/PatternHeader'
+import PatternGrid from '@/components/patterns/PatternGrid'
+import type { Resource, Category, Tag } from '@/lib/types'
+import {
+  getPatterns,
+  deletePattern,
+  updatePattern,
+  getCategories,
+  getTags,
+} from '@/lib/api/patterns-api'
 
-const STATUS_FILTERS = [
-  { label: '全部', value: '' },
-  { label: '❤️ 心愿单', value: 'wishlist' },
-  { label: '未开始', value: 'not-started' },
-  { label: '进行中', value: 'in-progress' },
-  { label: '已完成', value: 'completed' },
-  { label: '暂停', value: 'paused' },
-]
-
-const DIFFICULTY_FILTERS = [
-  { label: '全部难度', value: '' },
-  { label: '★ 初学', value: 'beginner' },
-  { label: '★★ 简单', value: 'easy' },
-  { label: '★★★ 中级', value: 'intermediate' },
-  { label: '★★★★ 高级', value: 'advanced' },
-  { label: '★★★★★ 大师', value: 'expert' },
-]
+type FilterMode = 'all' | 'category' | 'wishlist' | 'status' | 'tag'
 
 export default function PatternsPage() {
-  const [patterns, setPatterns] = useState<Resource[]>([])
-  const [count, setCount] = useState(0)
+  const [allPatterns, setAllPatterns] = useState<Resource[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [difficultyFilter, setDifficultyFilter] = useState('')
-  const [page, setPage] = useState(1)
-  const pageSize = 12
 
+  // 筛选状态
+  const [filterMode, setFilterMode] = useState<FilterMode>('all')
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [tagFilterId, setTagFilterId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+
+  // 批量管理
+  const [batchMode, setBatchMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  // 加载所有图解
   const loadPatterns = useCallback(async () => {
     setLoading(true)
     try {
-      // 图解数据存储在 localStorage（garden_resources），客户端过滤
-      const localRaw = localStorage.getItem('garden_resources')
-      if (localRaw) {
-        let all: Resource[] = JSON.parse(localRaw)
-        all = all.filter((r) => (r.metadata as any)?.is_pattern)
-
-        if (statusFilter) {
-          all = all.filter((r) => (r.metadata as any)?.patternStatus === statusFilter)
-        }
-        if (difficultyFilter) {
-          all = all.filter((r) => (r.metadata as any)?.patternDifficulty === difficultyFilter)
-        }
-        if (search) {
-          const q = search.toLowerCase()
-          all = all.filter(
-            (r) =>
-              r.title.toLowerCase().includes(q) ||
-              ((r.metadata as any)?.patternBrand || '').toLowerCase().includes(q),
-          )
-        }
-
-        all.sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
-        setCount(all.length)
-        setPatterns(all.slice((page - 1) * pageSize, page * pageSize))
-      } else {
-        setCount(0)
-        setPatterns([])
-      }
+      const all = await getPatterns()
+      all.sort(
+        (a, b) =>
+          new Date(b.updated_at || b.created_at).getTime() -
+          new Date(a.updated_at || a.created_at).getTime(),
+      )
+      setAllPatterns(all)
     } catch (e) {
       console.error('加载图解列表失败:', e)
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter, difficultyFilter, page])
+  }, [])
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const cats = await getCategories()
+      setCategories(cats.sort((a, b) => a.sort_order - b.sort_order))
+    } catch (e) {
+      console.error('加载分类失败:', e)
+    }
+  }, [])
+
+  const loadTags = useCallback(async () => {
+    try {
+      setTags(await getTags())
+    } catch (e) {
+      console.error('加载标签失败:', e)
+    }
+  }, [])
 
   useEffect(() => {
-    loadPatterns()
-  }, [loadPatterns])
+    void loadPatterns()
+    void loadCategories()
+    void loadTags()
+  }, [loadPatterns, loadCategories, loadTags])
+
+  // 筛选后的图解
+  const filteredPatterns = useMemo(() => {
+    let list = allPatterns
+
+    if (filterMode === 'wishlist') {
+      list = list.filter((p) => (p.metadata as Record<string, unknown>)?.patternStatus === 'wishlist')
+    } else if (filterMode === 'status' && statusFilter) {
+      list = list.filter((p) => (p.metadata as Record<string, unknown>)?.patternStatus === statusFilter)
+    } else if (filterMode === 'category' && selectedCategoryId) {
+      list = list.filter((p) => p.category_id === selectedCategoryId)
+    } else if (filterMode === 'tag' && tagFilterId) {
+      list = list.filter((p) =>
+        p.resource_tags?.some((rt) => rt.tag.id === tagFilterId),
+      )
+    }
+
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          ((p.metadata as Record<string, unknown>)?.patternBrand as string || '').toLowerCase().includes(q),
+      )
+    }
+
+    return list
+  }, [allPatterns, filterMode, statusFilter, selectedCategoryId, tagFilterId, search])
+
+  // 筛选标签
+  const filterLabel = useMemo(() => {
+    if (filterMode === 'wishlist') return '心愿单'
+    if (filterMode === 'status' && statusFilter) {
+      const map: Record<string, string> = {
+        'not-started': '未开始',
+        'in-progress': '进行中',
+        completed: '已完成',
+      }
+      return map[statusFilter] || statusFilter
+    }
+    if (filterMode === 'category' && selectedCategoryId) {
+      return categories.find((c) => c.id === selectedCategoryId)?.name || '分类'
+    }
+    if (filterMode === 'tag' && tagFilterId) {
+      return tags.find((t) => t.id === tagFilterId)?.name || '标签'
+    }
+    return '全部图解'
+  }, [filterMode, statusFilter, selectedCategoryId, tagFilterId, categories, tags])
+
+  const selectedCategoryName = useMemo(() => {
+    if (filterMode === 'category' && selectedCategoryId) {
+      return categories.find((c) => c.id === selectedCategoryId)?.name || null
+    }
+    return null
+  }, [filterMode, selectedCategoryId, categories])
+
+  // 筛选操作
+  const handleSelectAll = () => {
+    setFilterMode('all')
+    setSelectedCategoryId(null)
+    setStatusFilter(null)
+    setTagFilterId(null)
+  }
+
+  const handleSelectWishlist = () => {
+    setFilterMode('wishlist')
+    setSelectedCategoryId(null)
+    setStatusFilter(null)
+    setTagFilterId(null)
+  }
+
+  const handleSelectCategory = (id: string | null) => {
+    setFilterMode(id ? 'category' : 'all')
+    setSelectedCategoryId(id)
+    setStatusFilter(null)
+    setTagFilterId(null)
+  }
+
+  const handleSelectStatus = (status: string) => {
+    setFilterMode('status')
+    setStatusFilter(status)
+    setSelectedCategoryId(null)
+    setTagFilterId(null)
+  }
+
+  const handleSelectTag = (tagId: string) => {
+    setFilterMode('tag')
+    setTagFilterId(tagId)
+    setSelectedCategoryId(null)
+    setStatusFilter(null)
+  }
 
   // 心愿单切换
   const handleWishlist = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'wishlist' ? 'not-started' : 'wishlist'
-    let updated: Resource | null = null
-    // 更新本地存储
-    const localRaw = localStorage.getItem('garden_resources')
-    if (localRaw) {
-      const all: Resource[] = JSON.parse(localRaw)
-      const idx = all.findIndex((r) => r.id === id)
-      if (idx !== -1) {
-        const meta = (all[idx].metadata || {}) as any
-        meta.patternStatus = newStatus
-        meta.patternLastUsedAt = new Date().toISOString()
-        all[idx].metadata = meta
-        all[idx].updated_at = new Date().toISOString()
-        localStorage.setItem('garden_resources', JSON.stringify(all))
-        updated = all[idx]
-        loadPatterns()
-      }
-    }
-    // 同步完整资源到服务端（避免只发部分 metadata 覆盖掉其它 pattern 字段）
-    if (updated) {
-      try {
-        await fetch('/api/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            table: 'resources',
-            action: 'upsert',
-            data: updated,
-          }),
-        })
-      } catch {}
+    const target = allPatterns.find((r) => r.id === id)
+    if (!target) return
+    const meta = { ...((target.metadata || {}) as Record<string, unknown>) }
+    meta.patternStatus = newStatus
+    meta.patternLastUsedAt = new Date().toISOString()
+    try {
+      await updatePattern(id, { metadata: meta })
+      void loadPatterns()
+    } catch (e) {
+      console.error('更新心愿单失败:', e)
+      message.error('更新失败')
     }
   }
 
-  const totalPages = Math.ceil(count / pageSize)
+  // 删除单个
+  const handleDelete = async (id: string) => {
+    try {
+      await deletePattern(id)
+      message.success('已删除')
+      void loadPatterns()
+    } catch (e) {
+      console.error('删除失败:', e)
+      message.error('删除失败')
+    }
+  }
+
+  // 批量操作
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleSelectAllIds = (ids: string[]) => {
+    setSelectedIds(new Set(ids))
+  }
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set())
+  }
+
+  const handleBatchDelete = async (ids: string[]) => {
+    try {
+      await Promise.all(ids.map((id) => deletePattern(id)))
+      handleClearSelection()
+      void loadPatterns()
+    } catch (e) {
+      console.error('批量删除失败:', e)
+      message.error('部分删除失败')
+    }
+  }
+
+  const handleBatchMove = async (ids: string[], targetCategoryId: string) => {
+    try {
+      await Promise.all(
+        ids.map((id) => updatePattern(id, { category_id: targetCategoryId })),
+      )
+      handleClearSelection()
+      void loadPatterns()
+    } catch (e) {
+      console.error('批量移动失败:', e)
+      message.error('部分移动失败')
+    }
+  }
+
+  const handleToggleBatchMode = () => {
+    setBatchMode(true)
+    handleClearSelection()
+  }
+
+  const handleExitBatchMode = () => {
+    setBatchMode(false)
+    handleClearSelection()
+  }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 space-y-6">
-      {/* 页面标题 */}
-      <div className="flex items-center gap-3">
-        <div
-          className="size-10 rounded-xl flex items-center justify-center text-lg"
-          style={{ background: 'rgba(59,130,246,0.1)' }}
-        >
-          🧶
-        </div>
-        <div>
-          <h1 className="text-xl font-black tracking-wider" style={{ color: 'var(--foreground)' }}>
-            织集
-          </h1>
-          <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-            {count > 0 ? `${count} 个编织图解` : '你的编织作品集'}
-          </p>
-        </div>
-        {/* 心愿单快捷入口 */}
-        <a
-          href="/patterns/wishlist"
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:scale-105"
-          style={{ background: 'rgba(236,72,153,0.1)', color: '#EC4899' }}
-        >
-          <Heart className="size-3.5" />
-          心愿单
-        </a>
-      </div>
+    <div className="patterns-layout warm-antd">
+      <PatternSidebar
+        patterns={allPatterns}
+        filterMode={filterMode}
+        selectedCategoryId={selectedCategoryId}
+        statusFilter={statusFilter}
+        tagFilterId={tagFilterId}
+        onSelectAll={handleSelectAll}
+        onSelectWishlist={handleSelectWishlist}
+        onSelectCategory={handleSelectCategory}
+        onSelectStatus={handleSelectStatus}
+        onSelectTag={handleSelectTag}
+        onCategoriesChange={loadCategories}
+        onTagsChange={loadTags}
+      />
 
-      {/* 搜索栏 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: 'var(--muted-foreground)' }} />
-        <input
-          type="text"
-          placeholder="搜索图解名称、品牌..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all"
-          style={{
-            background: 'rgba(254,255,255,0.55)',
-            border: '1px solid rgba(175,200,218,0.3)',
-            color: 'var(--foreground)',
-            backdropFilter: 'blur(12px)',
-          }}
+      <div className="patterns-main">
+        <PatternHeader
+          search={search}
+          onSearchChange={setSearch}
+          batchMode={batchMode}
+          onToggleBatchMode={handleToggleBatchMode}
+          onExitBatchMode={handleExitBatchMode}
+          filterLabel={filterLabel}
+          selectedCategoryName={selectedCategoryName}
         />
-      </div>
 
-      {/* 筛选行 */}
-      <div className="flex flex-wrap gap-2">
-        {/* 状态筛选 */}
-        <div className="flex flex-wrap gap-1">
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => { setStatusFilter(f.value); setPage(1) }}
-              className="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
-              style={{
-                background: statusFilter === f.value ? 'var(--skin-primary)' : 'rgba(254,255,255,0.55)',
-                color: statusFilter === f.value ? '#fff' : 'var(--muted-foreground)',
-                border: statusFilter === f.value ? 'none' : '1px solid rgba(175,200,218,0.3)',
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        {/* 难度筛选 */}
-        <select
-          value={difficultyFilter}
-          onChange={(e) => { setDifficultyFilter(e.target.value); setPage(1) }}
-          className="px-2.5 py-1 rounded-full text-xs font-medium outline-none"
-          style={{
-            background: 'rgba(254,255,255,0.55)',
-            color: difficultyFilter ? 'var(--foreground)' : 'var(--muted-foreground)',
-            border: '1px solid rgba(175,200,218,0.3)',
-          }}
-        >
-          {DIFFICULTY_FILTERS.map((f) => (
-            <option key={f.value} value={f.value}>{f.label}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* 图解卡片网格 */}
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-2xl animate-pulse"
-              style={{ height: '320px', background: 'rgba(175,200,218,0.1)' }}
-            />
-          ))}
-        </div>
-      ) : patterns.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-5xl mb-4">🧶</div>
-          <p className="text-sm font-medium" style={{ color: 'var(--muted-foreground)' }}>
-            {search || statusFilter || difficultyFilter ? '没有匹配的图解' : '还没有图解，开始上传你的第一个编织图解吧'}
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {patterns.map((pattern) => (
-              <PatternCard
-                key={pattern.id}
-                pattern={pattern}
-                onWishlist={handleWishlist}
-              />
+        {loading ? (
+          <div className="pattern-grid">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="warm-card"
+                style={{ height: 300, opacity: 0.4 }}
+              >
+                <div className="warm-card-cover" style={{ height: 220 }} />
+                <div className="warm-card-body">
+                  <div style={{ height: 14, background: '#F0E0DA', borderRadius: 4, marginBottom: 8 }} />
+                  <div style={{ height: 10, width: 60, background: '#F0E0DA', borderRadius: 4 }} />
+                </div>
+              </div>
             ))}
           </div>
-
-          {/* 分页 */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 pt-4">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
-                style={{ background: 'rgba(254,255,255,0.55)', border: '1px solid rgba(175,200,218,0.3)' }}
-              >
-                上一页
-              </button>
-              <span className="px-3 py-1.5 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {page} / {totalPages}
-              </span>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage(page + 1)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-30"
-                style={{ background: 'rgba(254,255,255,0.55)', border: '1px solid rgba(175,200,218,0.3)' }}
-              >
-                下一页
-              </button>
-            </div>
-          )}
-        </>
-      )}
+        ) : (
+          <PatternGrid
+            patterns={filteredPatterns}
+            categories={categories}
+            batchMode={batchMode}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onSelectAll={handleSelectAllIds}
+            onClearSelection={handleClearSelection}
+            onBatchDelete={handleBatchDelete}
+            onBatchMove={handleBatchMove}
+            onWishlist={handleWishlist}
+            onDelete={handleDelete}
+            selectedCategoryName={selectedCategoryName}
+          />
+        )}
+      </div>
     </div>
   )
 }

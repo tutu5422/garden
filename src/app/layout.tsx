@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
 import ThemeProvider from "@/components/theme/SkinProvider";
 import { MusicProvider } from "@/lib/music/MusicContext";
 import Nav from "@/components/Nav";
@@ -13,17 +14,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="min-h-screen antialiased pb-14 md:pb-0 transition-colors duration-300" style={{ backgroundColor: 'var(--skin-bg)', color: 'var(--skin-text)' }}>
-        <ThemeProvider>
-          <MusicProvider>
-            <Nav />
-            {children}
-            <MiniPlayerLoader />
-            {/* Mobile floating sync badge (desktop shows it in the top nav) */}
-            <div className="md:hidden fixed bottom-16 right-3 z-40">
-              <SyncStatus />
-            </div>
-          </MusicProvider>
-        </ThemeProvider>
+        <AntdRegistry>
+          <ThemeProvider>
+            <MusicProvider>
+              <Nav />
+              {children}
+              <MiniPlayerLoader />
+              {/* Mobile floating sync badge (desktop shows it in the top nav) */}
+              <div className="md:hidden fixed bottom-16 right-3 z-40">
+                <SyncStatus />
+              </div>
+            </MusicProvider>
+          </ThemeProvider>
+        </AntdRegistry>
       </body>
     </html>
   );

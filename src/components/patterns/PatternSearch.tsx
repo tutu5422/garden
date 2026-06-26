@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Search, X, Loader2 } from 'lucide-react'
 import SmartImage from '@/components/shared/SmartImage'
 import type { Resource } from '@/lib/types'
+import { getPatterns } from '@/lib/api/patterns-api'
 
 interface PatternSearchProps {
   selectedIds: string[]
@@ -19,39 +20,42 @@ export default function PatternSearch({ selectedIds, onToggle }: PatternSearchPr
   const [results, setResults] = useState<Resource[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  // 缓存全量图解，避免每次按键都打 API
+  const allPatternsRef = useRef<Resource[]>([])
+  const loadedRef = useRef(false)
 
-  const search = useCallback(async (q: string) => {
-    setQuery(q)
+  const loadAll = useCallback(async () => {
+    if (loadedRef.current) return
     setLoading(true)
     try {
-      // 客户端过滤 localStorage（图解数据存储在 garden_resources）
-      const allRes = localStorage.getItem('garden_resources')
-      if (allRes) {
-        const all: Resource[] = JSON.parse(allRes).filter(
-          (r: Resource) => (r.metadata as any)?.is_pattern,
-        )
-        if (!q.trim()) {
-          // 空查询时返回全部，确保已选图解 chip 始终可见
-          setResults(all)
-        } else {
-          const ql = q.toLowerCase()
-          setResults(
-            all.filter(
-              (r) =>
-                r.title.toLowerCase().includes(ql) ||
-                ((r.metadata as any)?.patternBrand || '').toLowerCase().includes(ql),
-            ),
-          )
-        }
-      } else {
-        setResults([])
-      }
+      const all = await getPatterns()
+      allPatternsRef.current = all
+      loadedRef.current = true
     } catch {
-      setResults([])
+      allPatternsRef.current = []
     } finally {
       setLoading(false)
     }
   }, [])
+
+  const search = useCallback(async (q: string) => {
+    setQuery(q)
+    await loadAll()
+    const all = allPatternsRef.current
+    if (!q.trim()) {
+      // 空查询时返回全部，确保已选图解 chip 始终可见
+      setResults(all)
+      return
+    }
+    const ql = q.toLowerCase()
+    setResults(
+      all.filter(
+        (r) =>
+          r.title.toLowerCase().includes(ql) ||
+          ((r.metadata as Record<string, unknown>)?.patternBrand as string || '').toLowerCase().includes(ql),
+      ),
+    )
+  }, [loadAll])
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(175,200,218,0.4)' }}>

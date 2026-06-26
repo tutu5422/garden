@@ -4,6 +4,12 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Upload, X, Check, Loader2 } from 'lucide-react'
+import PatternSearch from '@/components/patterns/PatternSearch'
+import {
+  linkPatternNote,
+  unlinkPatternNote,
+  getPatternsForNote,
+} from '@/lib/api/patterns-api'
 
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[]
@@ -49,6 +55,10 @@ function EditForm() {
   const [uploading, setUploading] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  // 关联图解
+  const [selectedPatternIds, setSelectedPatternIds] = useState<string[]>([])
+  const [initialPatternIds, setInitialPatternIds] = useState<string[]>([])
+  const patternIdParam = sp.get('patternId')
 
   useEffect(() => {
     try { setCollections(JSON.parse(localStorage.getItem('garden_collections') || '[]')) } catch {}
@@ -65,10 +75,25 @@ function EditForm() {
           })
           if (note.image || note.imageThumb) setImagePreview(note.imageThumb || note.image || null)
         }
+        // 加载已关联的图解（异步走 API）
+        void (async () => {
+          try {
+            const linked = await getPatternsForNote(noteId)
+            const pIds = linked.map((p) => p.id)
+            setSelectedPatternIds(pIds)
+            setInitialPatternIds(pIds)
+          } catch (e) {
+            console.error('加载关联图解失败:', e)
+          }
+        })()
       } catch {}
+    } else if (patternIdParam) {
+      // 从图解详情页跳转来新建笔记，预选该图解
+      setSelectedPatternIds([patternIdParam])
+      setInitialPatternIds([])
     }
     setLoaded(true)
-  }, [noteId])
+  }, [noteId, patternIdParam])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f || !f.type.startsWith('image/')) return
@@ -88,6 +113,8 @@ function EditForm() {
         try { const c = await compressImage(imageFile, 1200, 0.7); image = c.full; imageThumb = c.thumb } catch {}
       }
 
+      let savedNoteId = noteId
+
       if (isNew) {
         const note: Note = {
           id: crypto.randomUUID?.() || 'n-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
@@ -98,6 +125,7 @@ function EditForm() {
           collectionName: col?.title,
           createdAt: new Date().toISOString(), image, imageThumb,
         }
+        savedNoteId = note.id
         localStorage.setItem('minitu_notes', JSON.stringify([note, ...notes]))
         // Sync to cloud
         fetch('/api/sync', {
@@ -129,8 +157,35 @@ function EditForm() {
           }).catch(() => {})
         }
       }
+
+      // 同步图解关联（对比初始和当前选中，异步走 API）
+      if (savedNoteId) {
+        const initial = new Set(initialPatternIds)
+        const current = new Set(selectedPatternIds)
+        // 新增的关联
+        await Promise.all(
+          selectedPatternIds
+            .filter((pid) => !initial.has(pid))
+            .map((pid) => linkPatternNote(pid, savedNoteId).catch((e) => console.error('关联失败:', e))),
+        )
+        // 移除的关联
+        await Promise.all(
+          initialPatternIds
+            .filter((pid) => !current.has(pid))
+            .map((pid) => unlinkPatternNote(pid, savedNoteId).catch((e) => console.error('取消关联失败:', e))),
+        )
+      }
+
       router.push('/notes')
     } catch {} finally { setUploading(false) }
+  }
+
+  const handleTogglePattern = (patternId: string) => {
+    setSelectedPatternIds(prev =>
+      prev.includes(patternId)
+        ? prev.filter(id => id !== patternId)
+        : [...prev, patternId]
+    )
   }
 
   if (!loaded) return null
@@ -200,6 +255,12 @@ function EditForm() {
             </div>
           )}
         </div>
+
+        {/* 关联图解 */}
+        <PatternSearch
+          selectedIds={selectedPatternIds}
+          onToggle={handleTogglePattern}
+        />
 
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-2">

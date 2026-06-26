@@ -621,3 +621,397 @@ h1, h2, h3, h4, h5, h6, .display-font {
   }
   .dark .mobile-nav { box-shadow: 0 -4px 20px rgba(0,0,0,0.3); }
 }
+
+/* ============================================================
+   织集（Patterns）— CCDS 暖色调设计系统
+   陶土珊瑚 #C17F6B · 亚麻底 #F5F0E8 · 深棕侧栏 #3D3228
+   ============================================================ */
+
+:root {
+  --warm-bg: #F5F0E8;
+  --warm-surface: #FFFBF5;
+  --warm-sidebar: #3D3228;
+  --warm-accent: #C17F6B;
+  --warm-accent-hover: #A86855;
+  --warm-text: #3D3228;
+  --warm-text-light: #8B7D72;
+  --warm-border: #E8DED0;
+  --warm-shadow: rgba(61,50,40,0.12);
+  --warm-card-shadow: 0 1px 3px rgba(61,50,40,0.08),0 4px 12px rgba(61,50,40,0.06),0 8px 24px rgba(61,50,40,0.04);
+  --warm-card-shadow-hover: 0 2px 6px rgba(61,50,40,0.10),0 8px 24px rgba(61,50,40,0.10),0 16px 40px rgba(61,50,40,0.08);
+  --warm-cover-bg: linear-gradient(135deg,#F5EDE4 0%,#EDE0D4 100%);
+  --warm-card-body-bg: linear-gradient(180deg,#FFFBF5 0%,#FFF8F0 100%);
+  --warm-card-title: #3D3228;
+  --warm-sidebar-text: #D0C8BA;
+  --warm-sidebar-title: #E8D5C0;
+  --warm-sidebar-subtitle: #9B8E80;
+  --warm-sidebar-active-bg: rgba(193,127,107,0.25);
+  --warm-sidebar-active-color: #E8D5C0;
+  --warm-sidebar-item: #C0B5A5;
+  --warm-divider: rgba(255,255,255,0.08);
+  --warm-card-radius: 16px;
+  --warm-cover-height: 290px;
+  --warm-header-border: #E8DED0;
+}
+
+/* 织集页面容器 — 三栏布局 */
+.patterns-layout {
+  display: flex;
+  min-height: calc(100vh - 3.5rem);
+  background: linear-gradient(175deg,#F5F0E8 0%,#EDE4D8 40%,#F0E8DC 100%);
+}
+
+@media (max-width: 767px) {
+  .patterns-layout {
+    flex-direction: column;
+    min-height: calc(100vh - 7rem);
+  }
+}
+
+/* 深色侧边栏 */
+.patterns-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--warm-sidebar);
+  color: var(--warm-sidebar-text);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 3.5rem;
+  height: calc(100vh - 3.5rem);
+  overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .patterns-sidebar {
+    position: relative;
+    top: 0;
+    width: 100%;
+    height: auto;
+    max-height: 50vh;
+  }
+}
+
+.patterns-sidebar-header {
+  padding: 20px 16px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--warm-divider);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);
+}
+
+.patterns-sidebar-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--warm-sidebar-title);
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.patterns-sidebar-header p {
+  font-size: 11px;
+  color: var(--warm-sidebar-subtitle);
+  margin: 4px 0 0;
+  letter-spacing: 1px;
+}
+
+.patterns-sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 8px;
+}
+
+/* 侧栏滚动条 */
+.patterns-sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.patterns-sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* 侧栏菜单项 */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 3px;
+  transition: all 0.2s;
+  user-select: none;
+  font-size: 13px;
+}
+
+.sidebar-item:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.sidebar-item-active {
+  background: var(--warm-sidebar-active-bg);
+  color: var(--warm-sidebar-active-color);
+  font-weight: 600;
+}
+
+.sidebar-item-wishlist-active {
+  background: #FFE8E5;
+  color: #FFAAA5;
+  font-weight: 600;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--warm-divider);
+  margin: 8px 12px;
+}
+
+.sidebar-section-label {
+  font-size: 11px;
+  color: var(--warm-sidebar-subtitle);
+  margin-bottom: 6px;
+  padding-left: 8px;
+}
+
+/* 主内容区 */
+.patterns-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 顶栏 */
+.patterns-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: var(--warm-surface);
+  border-bottom: 1px solid var(--warm-header-border);
+  flex-shrink: 0;
+}
+
+/* 卡片网格 */
+.pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  padding: 24px;
+}
+
+@media (max-width: 767px) {
+  .pattern-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    padding: 16px;
+  }
+}
+
+/* 立体卡片 */
+.warm-card {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--warm-card-radius);
+  overflow: hidden;
+  background: var(--warm-surface);
+  box-shadow: var(--warm-card-shadow);
+  border: 1px solid var(--warm-border);
+  position: relative;
+}
+
+.warm-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--warm-card-shadow-hover);
+}
+
+.warm-card-cover {
+  height: 220px;
+  overflow: hidden;
+  background: var(--warm-cover-bg);
+  position: relative;
+}
+
+@media (max-width: 767px) {
+  .warm-card-cover { height: 160px; }
+}
+
+.warm-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.warm-card:hover .warm-card-cover img { transform: scale(1.06); }
+
+.warm-card-body {
+  padding: 12px 14px 14px;
+  background: var(--warm-card-body-bg);
+}
+
+.warm-card-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--warm-card-title);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.warm-card-tag {
+  display: inline-block;
+  font-size: 11px;
+  background: #FFF8F5;
+  color: #A09088;
+  border: 1px solid #F0E0DA;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-top: 6px;
+}
+
+/* 卡片悬浮操作按钮 */
+.card-action-btn {
+  position: absolute;
+  top: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 5;
+}
+
+.card-action-btn:hover { transform: scale(1.1); }
+
+/* 空状态 */
+.patterns-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+  flex: 1;
+}
+
+.patterns-empty-icon {
+  font-size: 64px;
+  color: var(--warm-text-light);
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.patterns-empty h3 {
+  font-size: 18px;
+  color: var(--warm-text-light);
+  margin-bottom: 8px;
+}
+
+.patterns-empty p {
+  font-size: 14px;
+  color: var(--warm-text-light);
+  opacity: 0.7;
+  margin-bottom: 24px;
+}
+
+/* 详情页 */
+.pattern-detail-layout {
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+  min-height: calc(100vh - 3.5rem);
+}
+
+@media (max-width: 767px) {
+  .pattern-detail-layout {
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+  }
+}
+
+.pattern-detail-sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+@media (max-width: 767px) {
+  .pattern-detail-sidebar {
+    width: 100%;
+    overflow: visible;
+  }
+}
+
+.pattern-detail-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pattern-detail-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(61,50,40,0.06);
+}
+
+.cover-preview {
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 8px var(--warm-shadow), 0 8px 24px var(--warm-shadow);
+}
+
+.cover-preview img {
+  width: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* PDF 查看器容器 */
+.pdf-viewer-wrap {
+  flex: 1;
+  background: var(--warm-bg);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 4px var(--warm-shadow);
+  min-height: 400px;
+}
+
+.pdf-viewer-wrap iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 10px;
+  min-height: 600px;
+}
+
+/* 批量操作栏 */
+.batch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background: #FFF5F3;
+  border-bottom: 1px solid #FFE8E5;
+  flex-shrink: 0;
+}
+
+/* antd 暖色调覆盖 — 织集页面 */
+.warm-antd .ant-btn-primary {
+  background: var(--warm-accent);
+  border-color: var(--warm-accent);
+}
+
+.warm-antd .ant-btn-primary:hover {
+  background: var(--warm-accent-hover);
+  border-color: var(--warm-accent-hover);
+}
+
+.warm-antd .ant-tag {
+  border-radius: 4px;
+}
