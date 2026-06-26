@@ -11,7 +11,7 @@ import {
   WarningOutlined,
 } from '@ant-design/icons'
 import type { Category } from '@/lib/types'
-import { getCategories, findExistingPatternHashes } from '@/lib/api/patterns-api'
+import { getCategories, findExistingPatternHashes, ensureUncategorized } from '@/lib/api/patterns-api'
 
 type Step = 'select-files' | 'choose-category' | 'importing' | 'done'
 type ImportMode = 'pdf' | 'folder'
@@ -84,6 +84,8 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
     if (!open) return
     void (async () => {
       try {
+        // 确保"未分类"存在
+        await ensureUncategorized()
         const cats = await getCategories()
         cats.sort((a, b) => a.sort_order - b.sort_order)
         setCategories(cats)

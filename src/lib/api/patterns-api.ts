@@ -113,8 +113,38 @@ export async function getCategories(): Promise<Category[]> {
   return (res.body as Category[]) || []
 }
 
+/**
+ * 确保 "未分类" 分类存在，不存在时自动创建
+ */
+export async function ensureUncategorized(): Promise<Category | null> {
+  try {
+    const cats = await getCategories()
+    let uncat: Category | null = cats.find((c: Category) => c.name === '未分类') || null
+    if (!uncat) {
+      // 创建默认未分类
+      const res = await dbUpsert('categories', {
+        name: '未分类',
+        slug: 'uncategorized',
+        color: '#C0B0A8',
+        icon: '📁',
+        sort_order: 999,
+      })
+      if (!res.ok) throw new Error(res.error || '创建默认分类失败')
+      const updated = await getCategories()
+      uncat = updated.find((c: Category) => c.name === '未分类') ?? null
+    }
+    return uncat
+  } catch (e) {
+    console.error('ensureUncategorized:', e)
+    return null
+  }
+}
+
 export async function createCategory(name: string, color?: string, icon?: string): Promise<Category | null> {
-  const slug = name.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '')
+  // 使用随机后缀避免 slug 冲突
+  const suffix = Math.random().toString(36).substring(2, 8)
+  const baseSlug = name.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '')
+  const slug = baseSlug ? `${baseSlug}-${suffix}` : `cat-${suffix}`
   const payload: Record<string, unknown> = {
     name,
     slug,
@@ -149,7 +179,10 @@ export async function getTags(): Promise<Tag[]> {
 }
 
 export async function createTag(name: string, color?: string): Promise<Tag | null> {
-  const slug = name.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '')
+  // 使用随机后缀避免 slug 冲突
+  const suffix = Math.random().toString(36).substring(2, 8)
+  const baseSlug = name.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '')
+  const slug = baseSlug ? `${baseSlug}-${suffix}` : `tag-${suffix}`
   const payload: Record<string, unknown> = { name, slug, color: color || '#8FA88A' }
   const res = await dbUpsert('tags', payload)
   if (!res.ok) throw new Error(res.error || '创建标签失败')

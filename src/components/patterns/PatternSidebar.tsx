@@ -16,6 +16,7 @@ import {
 import type { Resource, Category, Tag } from '@/lib/types'
 import {
   getCategories,
+  ensureUncategorized,
   createCategory,
   updateCategory,
   deleteCategory,
@@ -77,13 +78,14 @@ export default function PatternSidebar({
 
   const loadCategories = async () => {
     try {
+      await ensureUncategorized()
       const cats = await getCategories()
-      setCategories(cats.sort((a, b) => a.sort_order - b.sort_order))
+      cats.sort((a, b) => a.sort_order - b.sort_order)
+      setCategories(cats)
     } catch (e) {
       console.error('加载分类失败:', e)
     }
   }
-
   const loadTags = async () => {
     try {
       setTags(await getTags())
@@ -124,13 +126,14 @@ export default function PatternSidebar({
         await createCategory(catName.trim(), catColor)
         message.success('分类已创建')
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('保存分类失败:', e)
-      message.error('保存失败')
+      message.error(e?.message || '保存失败')
     }
     setModalVisible(false)
     setCatName('')
     setEditId(null)
+    // 仍然刷新分类列表（即使保存失败，也可能部分成功）
     await loadCategories()
     onCategoriesChange()
   }
