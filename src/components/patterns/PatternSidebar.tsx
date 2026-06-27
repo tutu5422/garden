@@ -47,6 +47,8 @@ interface PatternSidebarProps {
   onSelectTag: (tagId: string) => void
   onCategoriesChange: () => void
   onTagsChange?: () => void
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
 export default function PatternSidebar({
@@ -62,6 +64,8 @@ export default function PatternSidebar({
   onSelectTag,
   onCategoriesChange,
   onTagsChange,
+  mobileOpen,
+  onMobileClose,
 }: PatternSidebarProps) {
   const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<Tag[]>([])
@@ -237,10 +241,15 @@ export default function PatternSidebar({
   ]
 
   return (
-    <div className="patterns-sidebar warm-antd">
+    <div className={`patterns-sidebar warm-antd${mobileOpen !== undefined ? ' patterns-sidebar-mobile' : ''}${mobileOpen ? ' patterns-sidebar-mobile-open' : ''}`}>
       <div className="patterns-sidebar-header">
         <h1>🧶 编织图解</h1>
         <p>织集管理器</p>
+        {onMobileClose && (
+          <button className="patterns-sidebar-close" onClick={onMobileClose}>
+            ✕
+          </button>
+        )}
       </div>
 
       <div className="patterns-sidebar-scroll">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { message } from 'antd'
+import { MenuOutlined } from '@ant-design/icons'
 import PatternSidebar from '@/components/patterns/PatternSidebar'
 import PatternHeader from '@/components/patterns/PatternHeader'
 import PatternGrid from '@/components/patterns/PatternGrid'
@@ -36,6 +37,9 @@ export default function PatternsPage() {
 
   // 导入对话框
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+
+  // 手机端侧栏控制
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   // 加载所有图解
   const loadPatterns = useCallback(async () => {
@@ -274,9 +278,26 @@ export default function PatternsPage() {
         onSelectTag={handleSelectTag}
         onCategoriesChange={loadCategories}
         onTagsChange={loadTags}
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
       />
 
+      {/* 手机端遮罩 */}
+      {mobileSidebarOpen && (
+        <div className="patterns-mobile-overlay" onClick={() => setMobileSidebarOpen(false)} />
+      )}
+
       <div className="patterns-main">
+        {/* 手机端菜单按钮 */}
+        <div className="patterns-mobile-bar">
+          <button
+            className="patterns-mobile-menu-btn"
+            onClick={() => setMobileSidebarOpen(true)}
+          >
+            <MenuOutlined />
+          </button>
+          <span className="patterns-mobile-title">{filterLabel}</span>
+        </div>
         <PatternHeader
           search={search}
           onSearchChange={setSearch}
