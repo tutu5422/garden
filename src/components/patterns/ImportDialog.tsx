@@ -198,18 +198,13 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
       }
 
       try {
-        // 提取封面
-        let coverBlob: Blob | null = null
-        if (ab.byteLength > 0) {
-          coverBlob = await renderCoverBlob(ab)
-        }
-
+        // 跳过封面渲染（客户端 pdfjs-dist 渲染太慢，影响批量导入体验）
+        // 封面后续可通过 /api/patterns/upload 的 cover 字段或手动上传补充
         const formData = new FormData()
         formData.append('file', file)
         formData.append('title', file.name.replace(/\.pdf$/i, ''))
         formData.append('categoryId', targetCategoryId)
         if (hash) formData.append('hash', hash)
-        if (coverBlob) formData.append('cover', coverBlob, 'cover.jpg')
 
         const res = await fetch('/api/patterns/upload', {
           method: 'POST',
