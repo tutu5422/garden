@@ -1001,7 +1001,12 @@ h1, h2, h3, h4, h5, h6, .display-font {
   flex-shrink: 0;
 }
 
-/* antd 暖色调覆盖 — 织集页面 */
+/* antd 按钮统一 — 织集页面 */
+.warm-antd .ant-btn {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .warm-antd .ant-btn-primary {
   background: var(--warm-accent);
   border-color: var(--warm-accent);
