@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { message } from 'antd'
-import { MenuOutlined } from '@ant-design/icons'
 import PatternSidebar from '@/components/patterns/PatternSidebar'
 import PatternHeader from '@/components/patterns/PatternHeader'
 import PatternGrid from '@/components/patterns/PatternGrid'
@@ -288,16 +287,6 @@ export default function PatternsPage() {
       )}
 
       <div className="patterns-main">
-        {/* 手机端菜单按钮 */}
-        <div className="patterns-mobile-bar">
-          <button
-            className="patterns-mobile-menu-btn"
-            onClick={() => setMobileSidebarOpen(true)}
-          >
-            <MenuOutlined />
-          </button>
-          <span className="patterns-mobile-title">{filterLabel}</span>
-        </div>
         <PatternHeader
           search={search}
           onSearchChange={setSearch}
@@ -307,6 +296,7 @@ export default function PatternsPage() {
           filterLabel={filterLabel}
           selectedCategoryName={selectedCategoryName}
           onImportClick={() => setImportDialogOpen(true)}
+          onMenuToggle={() => setMobileSidebarOpen(true)}
         />
 
         {loading ? (
