@@ -241,6 +241,16 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
           // 批量导入跳过服务端 pdfjs 页数计算，显著提速
           formData.append('skipPageCount', '1');
 
+          // 客户端渲染 PDF 首页作为封面缩略图（不阻塞导入）
+          try {
+            const coverBlob = await renderCoverBlob(await hf.file.arrayBuffer());
+            if (coverBlob) {
+              formData.append('cover', coverBlob, 'cover.jpg');
+            }
+          } catch {
+            // 封面提取失败不阻塞导入
+          }
+
           const res = await fetch('/api/patterns/upload', {
             method: 'POST',
             body: formData,
