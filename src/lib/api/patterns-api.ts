@@ -47,12 +47,13 @@ export async function getPatternCount(): Promise<number> {
 }
 
 /** 获取最近导入的 N 个图解（首页展示用） */
-export async function getRecentPatterns(limit: number = 4): Promise<Resource[]> {
+export async function getRecentPatterns(limit: number = 4, status?: string): Promise<Resource[]> {
   const params = new URLSearchParams()
   params.set('select', '*,category:categories(*)')
   params.set('metadata->>is_pattern', 'eq.true')
   params.set('order', 'created_at.desc')
   params.set('limit', String(limit))
+  if (status) params.set('metadata->>patternStatus', `eq.${status}`)
   const qs = params.toString()
   const data = await dbRequest(`resources?${qs}`, 'fetch', { method: 'GET' })
   return (data as Resource[]) || []

@@ -43,7 +43,8 @@ export default function Home() {
   const [collectionPreviews, setCollectionPreviews] = useState<{id:string;title:string;count:number}[]>([]);
   const [recentNotes, setRecentNotes] = useState<NoteItem[]>([]);
   const [patternCount, setPatternCount] = useState(0)
-  const [recentPatterns, setRecentPatterns] = useState<Resource[]>([])
+  const [inProgressPatterns, setInProgressPatterns] = useState<Resource[]>([])
+  const [wishlistPatterns, setWishlistPatterns] = useState<Resource[]>([])
   const [patternsLoaded, setPatternsLoaded] = useState(false)
 
   useEffect(() => {
@@ -82,7 +83,13 @@ export default function Home() {
       })));
       // 加载织集数据
       getPatternCount().then(setPatternCount).catch(() => {})
-      getRecentPatterns(6).then(setRecentPatterns).catch(() => {}).finally(() => setPatternsLoaded(true))
+      Promise.all([
+        getRecentPatterns(6, 'in-progress'),
+        getRecentPatterns(6, 'wishlist'),
+      ]).then(([inProg, wish]) => {
+        setInProgressPatterns(inProg)
+        setWishlistPatterns(wish)
+      }).catch(() => {}).finally(() => setPatternsLoaded(true))
     } catch {}
   }, []);
 
@@ -106,6 +113,9 @@ export default function Home() {
       </span>
     );
   }
+
+  // 首页织集展示：在织排前，心愿单排后，最多 6 个
+  const displayPatterns = [...inProgressPatterns, ...wishlistPatterns].slice(0, 6)
 
   return (
     <div className="min-h-screen" style={{ background: "var(--skin-bg)" }}>
@@ -263,10 +273,104 @@ export default function Home() {
         </section>
 
         {/* ════════════════════════════════════════════════════════
-            SECTION 2 — 四宫格：笔记 / 时间线 / 合集 / 文件
+            SECTION 2 — 织集 · 在织 &amp; 心愿单
            ════════════════════════════════════════════════════════ */}
         <section className="section-gap-sm">
-          <SectionHead num="02" label="探索" />
+          <SectionHead num="02" label={'织集 · 在织 & 心愿单'} />
+
+          {!patternsLoaded || displayPatterns.length === 0 ? (
+            <div className="text-center py-16 rounded-2xl"
+                 style={{ background: "var(--skin-muted)" }}>
+              <Grid3x3 className="size-10 mx-auto mb-4 text-[var(--skin-text-secondary)] opacity-20" />
+              <p className="text-sm font-medium text-[var(--skin-text-secondary)]">
+                {patternsLoaded ? '还没有进行中或心愿单的图解' : '加载中...'}
+              </p>
+              <Link href="/patterns"
+                className="inline-block mt-4 text-xs font-bold tracking-wider uppercase"
+                style={{ color: "var(--skin-primary)" }}>
+                {patternsLoaded ? '去织集看看 →' : ''}
+              </Link>
+            </div>
+          ) : (
+            <div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+                {displayPatterns.map((p) => {
+                  const meta = (p.metadata || {}) as Record<string, unknown>
+                  const brand = (meta.patternBrand as string) || ''
+                  const pStatus = (meta.patternStatus as string) || ''
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/patterns/${p.id}`}
+                      className="group block rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg"
+                      style={{ background: 'var(--skin-surface)', border: '1px solid var(--skin-border)', position: 'relative' }}
+                    >
+                      {/* 状态标记 */}
+                      <div style={{ position: 'absolute', top: 6, left: 6, zIndex: 2 }}>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold tracking-wider uppercase"
+                              style={{
+                                background: pStatus === 'in-progress' ? `${C.teal}dd` : `${C.clay}dd`,
+                                color: '#fff',
+                              }}>
+                          {pStatus === 'in-progress' ? '在织' : '心愿'}
+                        </span>
+                      </div>
+                      {/* 封面 */}
+                      <div className="aspect-[3/4] relative overflow-hidden" style={{ background: 'var(--skin-muted)' }}>
+                        {p.cover_image_url ? (
+                          <img
+                            src={p.cover_image_url}
+                            alt={p.title}
+                            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Grid3x3 className="size-8 opacity-30" style={{ color: C.clay }} />
+                          </div>
+                        )}
+                      </div>
+                      {/* 信息 */}
+                      <div className="p-2.5 sm:p-3">
+                        <h4 className="text-xs sm:text-sm font-semibold leading-snug line-clamp-2 transition-colors group-hover:text-[var(--skin-primary)]"
+                            style={{ color: 'var(--skin-text)' }}>
+                          {p.title}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          {p.category && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+                                  style={{ background: `${C.clay}15`, color: C.clay }}>
+                              {p.category.name}
+                            </span>
+                          )}
+                          {brand && (
+                            <span className="text-[9px] text-[var(--skin-text-secondary)] opacity-60 truncate">
+                              {brand}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+
+              <div className="mt-6 text-center">
+                <Link href="/patterns"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase transition-all hover:gap-2"
+                  style={{ color: C.clay }}>
+                  浏览全部 {patternCount} 个图解 <ArrowUpRight className="size-3.5" />
+                </Link>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ════════════════════════════════════════════════════════
+            SECTION 3 — 四宫格：笔记 / 时间线 / 合集 / 文件
+           ════════════════════════════════════════════════════════ */}
+        <section className="section-gap-sm">
+          <SectionHead num="03" label="探索" />
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
             {/* 笔记 */}
@@ -347,10 +451,10 @@ export default function Home() {
         </section>
 
         {/* ════════════════════════════════════════════════════════
-            SECTION 3 — 音乐 & 文件（电脑端）
+            SECTION 4 — 音乐 & 文件（电脑端）
            ════════════════════════════════════════════════════════ */}
         <section className="section-gap-sm">
-          <SectionHead num="03" label="音乐 &amp; 文件" />
+          <SectionHead num="04" label="音乐 &amp; 文件" />
           {/* 手机端：仅音乐全宽；电脑端：音乐左 + 文件右 */}
           <div className="flex flex-col sm:grid sm:grid-cols-[2fr_1fr] gap-2 sm:gap-5">
             <div className="block-gloss rounded-2xl p-4 sm:p-8 flex flex-col justify-center min-h-[160px] sm:min-h-[200px]"
@@ -382,93 +486,10 @@ export default function Home() {
         </section>
 
         {/* ════════════════════════════════════════════════════════
-            SECTION 4 — 织集 · 最新图解
-           ════════════════════════════════════════════════════════ */}
-        <section className="section-gap-sm">
-          <SectionHead num="04" label={'织集 · 最新图解'} />
-
-          {!patternsLoaded || recentPatterns.length === 0 ? (
-            <div className="text-center py-16 rounded-2xl"
-                 style={{ background: "var(--skin-muted)" }}>
-              <Grid3x3 className="size-10 mx-auto mb-4 text-[var(--skin-text-secondary)] opacity-20" />
-              <p className="text-sm font-medium text-[var(--skin-text-secondary)]">
-                {patternsLoaded ? '还没有导入任何图解' : '加载中...'}
-              </p>
-              <Link href="/patterns"
-                className="inline-block mt-4 text-xs font-bold tracking-wider uppercase"
-                style={{ color: "var(--skin-primary)" }}>
-                {patternsLoaded ? '导入图解 →' : ''}
-              </Link>
-            </div>
-          ) : (
-            <div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
-                {recentPatterns.map((p) => {
-                  const meta = (p.metadata || {}) as Record<string, unknown>
-                  const brand = (meta.patternBrand as string) || ''
-                  return (
-                    <Link
-                      key={p.id}
-                      href={`/patterns/${p.id}`}
-                      className="group block rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg"
-                      style={{ background: 'var(--skin-surface)', border: '1px solid var(--skin-border)' }}
-                    >
-                      {/* 封面 */}
-                      <div className="aspect-[3/4] relative overflow-hidden" style={{ background: 'var(--skin-muted)' }}>
-                        {p.cover_image_url ? (
-                          <img
-                            src={p.cover_image_url}
-                            alt={p.title}
-                            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Grid3x3 className="size-8 opacity-30" style={{ color: C.clay }} />
-                          </div>
-                        )}
-                      </div>
-                      {/* 信息 */}
-                      <div className="p-2.5 sm:p-3">
-                        <h4 className="text-xs sm:text-sm font-semibold leading-snug line-clamp-2 transition-colors group-hover:text-[var(--skin-primary)]"
-                            style={{ color: 'var(--skin-text)' }}>
-                          {p.title}
-                        </h4>
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                          {p.category && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-                                  style={{ background: `${C.clay}15`, color: C.clay }}>
-                              {p.category.name}
-                            </span>
-                          )}
-                          {brand && (
-                            <span className="text-[9px] text-[var(--skin-text-secondary)] opacity-60 truncate">
-                              {brand}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-
-              <div className="mt-6 text-center">
-                <Link href="/patterns"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase transition-all hover:gap-2"
-                  style={{ color: C.clay }}>
-                  浏览全部 {patternCount} 个图解 <ArrowUpRight className="size-3.5" />
-                </Link>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* ════════════════════════════════════════════════════════
             SECTION 5 — 最近动态 (全宽提要)
            ════════════════════════════════════════════════════════ */}
         <section className="section-gap-sm">
-          <SectionHead num="05" label="最近动态" />
+          <SectionHead num="04" label="最近动态" />
 
           {recentMemos.length === 0 ? (
             <div className="text-center py-16 rounded-2xl"
