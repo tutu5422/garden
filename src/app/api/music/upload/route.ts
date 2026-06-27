@@ -1,38 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
-import {
-  SERVICE_KEY,
-  SUPABASE_URL,
-  storageHeaders,
-  storageObjectUrl,
-  storagePublicUrl,
-  vpsStorageEnabled,
-  vpsStorageUrl,
-  vpsUpload,
-} from '@/lib/supabase-admin';
-
-const BUCKET = 'minitu-garden';
-
-async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: string): Promise<boolean> {
-  if (!SERVICE_KEY || !SUPABASE_URL) return false;
-
-  // Upload to Supabase Storage — POST raw binary (most compatible)
-  const url = storageObjectUrl(BUCKET, path);
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: storageHeaders({
-      'Content-Type': contentType || 'audio/mpeg',
-      'x-upsert': 'true',
-    }),
-    body: buffer,
-  });
-
-  if (res.ok || res.status === 200) return true;
-
-  const text = await res.text().catch(() => '');
-  console.warn('Music upload failed:', res.status, text.substring(0, 200));
-  return false;
-}
+import { vpsStorageEnabled, vpsStorageUrl, vpsUpload } from '@/lib/supabase-admin';
 
 export async function POST(req: NextRequest) {
   if (!getPass()) return configMissingResponse();
@@ -54,36 +22,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '非法 ID 参数' }, { status: 400 });
     }
 
+    if (!vpsStorageEnabled()) {
+      return NextResponse.json({ error: 'VPS 存储未配置' }, { status: 500 });
+    }
+
     const buffer = await file.arrayBuffer();
-    // Use safe filename to avoid Unicode/encoding issues with Supabase Storage
     const ext = file.name.split('.').pop() || 'mp3';
     const safeName = `${id}.${ext}`;
     const storagePath = `music/${id}/${safeName}`;
     const contentType = file.type || 'audio/mpeg';
 
-    // VPS storage takes priority when enabled; otherwise fall back to Supabase.
-    if (vpsStorageEnabled()) {
-      const vpsResult = await vpsUpload(storagePath, buffer, contentType);
-      if (!vpsResult.ok) {
-        return NextResponse.json({ error: '上传到 VPS 存储失败', detail: vpsResult.error }, { status: 500 });
-      }
-      return NextResponse.json({
-        ok: true,
-        storagePath,
-        publicUrl: vpsStorageUrl(storagePath),
-        originalName: file.name,
-      });
+    const vpsResult = await vpsUpload(storagePath, buffer, contentType);
+    if (!vpsResult.ok) {
+      return NextResponse.json({ error: '上传到 VPS 存储失败', detail: vpsResult.error }, { status: 500 });
     }
-
-    const ok = await uploadToSupabase(storagePath, buffer, contentType);
-
-    if (!ok) {
-      return NextResponse.json({ error: '上传到存储失败' }, { status: 500 });
-    }
-
-    const publicUrl = storagePublicUrl(BUCKET, storagePath);
-
-    return NextResponse.json({ ok: true, storagePath, publicUrl, originalName: file.name });
+    return NextResponse.json({
+      ok: true,
+      storagePath,
+      publicUrl: vpsStorageUrl(storagePath),
+      originalName: file.name,
+    });
   } catch (e: any) {
     console.error('Music upload error:', e?.message || e);
     return NextResponse.json({ error: e.message || '上传异常' }, { status: 500 });

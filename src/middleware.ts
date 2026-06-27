@@ -64,6 +64,18 @@ export default async function proxy(req: NextRequest) {
     return r;
   }
 
+  if (pathname === "/api/logout" && req.method === "POST") {
+    const r = NextResponse.json({ ok: true });
+    r.cookies.set(AUTH_COOKIE, "", {
+      httpOnly: true,
+      secure: !isDev,
+      sameSite: "lax",
+      maxAge: 0,
+      path: "/",
+    });
+    return r;
+  }
+
   if (pathname.startsWith("/api/")) {
     const now = Date.now();
     const times = RL.get(ip) || [];

@@ -10,8 +10,6 @@
  * into a playable/downloadable URL that follows the currently active backend.
  */
 
-const SUPABASE_BUCKET = 'minitu-garden';
-
 /** True when the client bundle sees a VPS storage base URL. */
 export function clientVpsStorageEnabled(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_VPS_STORAGE_URL);
@@ -26,6 +24,5 @@ export function resolveStorageUrl(storagePath: string | undefined | null): strin
   if (!storagePath) return '';
   const vpsBase = (process.env.NEXT_PUBLIC_VPS_STORAGE_URL || '').replace(/\/+$/, '');
   if (vpsBase) return `${vpsBase}/${storagePath}`;
-  const supaUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/+$/, '');
-  return `${supaUrl}/storage/v1/object/public/${SUPABASE_BUCKET}/${storagePath}`;
+  return '';
 }

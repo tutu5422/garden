@@ -5,18 +5,9 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
 import { createLocalCategory, updateLocalCategory, deleteLocalCategory, getLocalCategories } from '@/lib/db/local-store'
 import type { Category } from '@/lib/types'
 import { toast } from 'sonner'
-
-function isSupabaseReady() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  return url && !url.includes('placeholder')
-}
-function isUUID(id: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-}
 
 const EMOJI_OPTIONS = ['🧶', '💻', '📚', '🎬', '🎵', '🎨', '📷', '✈️', '🍳', '⚽', '🎮', '📝', '🧘', '🌱', '🐶', '💡', '🧵', '🪡']
 
@@ -40,12 +31,6 @@ export default function CategoryManager({ initialCategories, onRefresh }: Props)
     if (!newName.trim()) { toast.error('请输入分类名称'); return }
     if (getLocalCategories().some(c => c.name === newName.trim())) { toast.error('分类已存在'); return }
     createLocalCategory(newName.trim(), newIcon)
-    if (isSupabaseReady()) {
-      const supabase = createClient()
-      supabase.from('categories').insert({ name: newName.trim(), slug: newName.trim().toLowerCase().replace(/[^a-z0-9一-龥]+/g, '-'), icon: newIcon, sort_order: categories.length } as any).then(({ error }) => {
-        if (error) console.error('云端分类同步失败:', error.message)
-      })
-    }
     toast.success('分类已添加')
     setNewName(''); setNewIcon('📂'); setAdding(false)
     refresh()
@@ -53,12 +38,6 @@ export default function CategoryManager({ initialCategories, onRefresh }: Props)
 
   const handleEdit = (id: string) => {
     updateLocalCategory(id, { name: editName.trim(), icon: editIcon })
-    if (isSupabaseReady() && isUUID(id)) {
-      const supabase = createClient()
-      supabase.from('categories').update({ name: editName.trim(), icon: editIcon } as any).eq('id', id).then(({ error }) => {
-        if (error) console.error('云端分类更新失败:', error.message)
-      })
-    }
     toast.success('分类已更新')
     setEditingId(null)
     refresh()
@@ -66,12 +45,6 @@ export default function CategoryManager({ initialCategories, onRefresh }: Props)
 
   const handleDelete = (id: string, name: string) => {
     deleteLocalCategory(id)
-    if (isSupabaseReady() && isUUID(id)) {
-      const supabase = createClient()
-      supabase.from('categories').delete().eq('id', id).then(({ error }) => {
-        if (error) console.error('云端分类删除失败:', error.message)
-      })
-    }
     toast.success(`"${name}" 已删除`)
     refresh()
   }

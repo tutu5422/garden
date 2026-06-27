@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth } from '@/lib/auth';
 import {
   LOCAL_USER_ID,
-  RAW_URL,
-  SERVICE_KEY,
-  SUPABASE_URL,
   dbFetch,
   vpsDbEnabled,
   vpsDbUrl,
@@ -18,20 +15,15 @@ export async function GET(req: NextRequest) {
   }
 
   const info: Record<string, unknown> = {
-    supabaseUrl_raw: RAW_URL,
-    supabaseUrl_fixed: SUPABASE_URL,
-    hasServiceKey: SERVICE_KEY.length > 0,
-    serviceKeyLen: SERVICE_KEY.length,
     localUserId: LOCAL_USER_ID,
-    // VPS dispatch status
     vpsDbEnabled: vpsDbEnabled(),
     vpsStorageEnabled: vpsStorageEnabled(),
     vpsDbUrl: vpsDbUrl() || '(not set)',
     vpsStorageUrl: (process.env.VPS_STORAGE_URL || '(not set)').replace(/\/+$/, ''),
   };
 
-  if (SERVICE_KEY && SUPABASE_URL) {
-    // Test direct note insert (same format as /api/sync notes handler)
+  if (vpsDbEnabled()) {
+    // Test direct note insert
     const testNoteId = crypto.randomUUID();
     try {
       const noteData = {
@@ -63,7 +55,7 @@ export async function GET(req: NextRequest) {
       }
     } catch (e: any) { info.noteDirectInsert = { error: e.message }; }
 
-    // Test read with service key (scoped to LOCAL_USER_ID for defense-in-depth)
+    // Test read (scoped to LOCAL_USER_ID for defense-in-depth)
     try {
       const r = await dbFetch(`resources?limit=3&user_id=eq.${LOCAL_USER_ID}&select=id,title,resource_type,metadata`);
       const serviceRead: Record<string, unknown> = { status: r.status, ok: r.ok };

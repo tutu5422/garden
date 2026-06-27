@@ -1,38 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
-import {
-  SERVICE_KEY,
-  SUPABASE_URL,
-  storageHeaders,
-  storageObjectUrl,
-  storagePublicUrl,
-  vpsStorageEnabled,
-  vpsStorageUrl,
-  vpsUpload,
-} from '@/lib/supabase-admin';
-
-const BUCKET = 'minitu-garden';
-
-async function uploadToSupabase(path: string, buffer: ArrayBuffer, contentType: string): Promise<true | { ok: false; status: number; detail: string }> {
-  if (!SERVICE_KEY || !SUPABASE_URL) return { ok: false, status: 500, detail: 'Missing Supabase config' };
-
-  // Upload to Supabase Storage — POST raw binary (most compatible)
-  const url = storageObjectUrl(BUCKET, path);
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: storageHeaders({
-      'Content-Type': contentType || 'application/octet-stream',
-      'x-upsert': 'true',
-    }),
-    body: buffer,
-  });
-
-  if (res.ok || res.status === 200) return true;
-
-  const text = await res.text().catch(() => '');
-  console.warn('Supabase upload failed', res.status, text.substring(0, 400));
-  return { ok: false, status: res.status, detail: text.substring(0, 200) };
-}
+import { vpsStorageEnabled, vpsStorageUrl, vpsUpload } from '@/lib/supabase-admin';
 
 export async function POST(req: NextRequest) {
   if (!getPass()) return configMissingResponse();
@@ -54,46 +22,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '非法 ID 参数' }, { status: 400 });
     }
 
+    if (!vpsStorageEnabled()) {
+      return NextResponse.json({ error: 'VPS 存储未配置' }, { status: 500 });
+    }
+
     const buffer = await file.arrayBuffer();
     const fileName = file.name;
-    // Use safe filename to avoid Unicode/encoding issues with Supabase Storage
     const ext = file.name.split('.').pop() || 'bin';
     const safeName = `${id}.${ext}`;
     const storagePath = `${id}/${safeName}`;
     const contentType = file.type || 'application/octet-stream';
 
-    // VPS storage takes priority when enabled; otherwise fall back to Supabase.
-    if (vpsStorageEnabled()) {
-      const vpsResult = await vpsUpload(storagePath, buffer, contentType);
-      if (!vpsResult.ok) {
-        return NextResponse.json({
-          error: '上传到 VPS 存储失败',
-          detail: vpsResult.error,
-          debug: { fileName, fileSize: buffer.byteLength, fileType: file.type },
-        }, { status: 500 });
-      }
+    const vpsResult = await vpsUpload(storagePath, buffer, contentType);
+    if (!vpsResult.ok) {
       return NextResponse.json({
-        ok: true,
-        storagePath,
-        publicUrl: vpsStorageUrl(storagePath),
-        originalName: file.name,
-      });
-    }
-
-    const result = await uploadToSupabase(storagePath, buffer, contentType);
-
-    if (result !== true) {
-      return NextResponse.json({
-        error: '上传到存储失败',
-        detail: typeof result === 'object' ? result : 'unknown',
+        error: '上传到 VPS 存储失败',
+        detail: vpsResult.error,
         debug: { fileName, fileSize: buffer.byteLength, fileType: file.type },
       }, { status: 500 });
     }
-
     return NextResponse.json({
       ok: true,
       storagePath,
-      publicUrl: storagePublicUrl(BUCKET, storagePath),
+      publicUrl: vpsStorageUrl(storagePath),
       originalName: file.name,
     });
   } catch (e: any) {

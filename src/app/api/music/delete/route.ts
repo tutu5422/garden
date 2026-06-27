@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
-import { storageHeaders, storageObjectUrl, supabaseConfigOk, vpsDelete, vpsStorageEnabled } from '@/lib/supabase-admin';
-
-const BUCKET = 'minitu-garden';
+import { vpsDelete, vpsStorageEnabled } from '@/lib/supabase-admin';
 
 export async function POST(req: NextRequest) {
   if (!getPass()) return configMissingResponse();
@@ -22,31 +20,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '非法存储路径' }, { status: 400 });
     }
 
-    // VPS storage takes priority when enabled; otherwise fall back to Supabase.
-    if (vpsStorageEnabled()) {
-      const ok = await vpsDelete(storagePath);
-      if (!ok) {
-        return NextResponse.json({ error: '删除失败' }, { status: 500 });
-      }
-      return NextResponse.json({ ok: true });
+    if (!vpsStorageEnabled()) {
+      return NextResponse.json({ error: 'VPS 存储未配置' }, { status: 500 });
     }
 
-    if (!supabaseConfigOk()) {
-      return NextResponse.json({ error: '服务端配置缺失' }, { status: 500 });
-    }
-
-    const url = storageObjectUrl(BUCKET, storagePath);
-    const res = await fetch(url, {
-      method: 'DELETE',
-      headers: storageHeaders(),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      console.warn('Music delete failed:', res.status, text.substring(0, 200));
+    const ok = await vpsDelete(storagePath);
+    if (!ok) {
       return NextResponse.json({ error: '删除失败' }, { status: 500 });
     }
-
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error('Music delete error:', e?.message || e);

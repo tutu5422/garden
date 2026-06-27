@@ -1,5 +1,4 @@
-import { createServerSupabase, isPlaceholder } from '@/lib/supabase/server'
-import { getLocalTags, getOrCreateTag as localGetOrCreate, getLocalCategory } from '@/lib/db/local-store'
+import { getLocalTags } from '@/lib/db/local-store'
 import type { Tag } from '@/lib/types'
 
 const MOCK_TAGS = [
@@ -9,17 +8,12 @@ const MOCK_TAGS = [
 ]
 
 export async function getTags(): Promise<Tag[]> {
-  if (isPlaceholder()) return getLocalTags().length ? getLocalTags() : MOCK_TAGS as Tag[]
-  const supabase = await createServerSupabase()
-  const { data } = await supabase.from('tags').select('*').order('name')
-  return (data?.length ? data : MOCK_TAGS) as unknown as Tag[]
+  const local = getLocalTags()
+  return local.length ? local : MOCK_TAGS as Tag[]
 }
 
 export async function getTag(slug: string): Promise<Tag | null> {
-  if (isPlaceholder()) return getLocalTags().find(t => t.slug === slug) || MOCK_TAGS.find(t => t.slug === slug) as Tag || null
-  const supabase = await createServerSupabase()
-  const { data } = await supabase.from('tags').select('*').eq('slug', slug).single()
-  return (data || MOCK_TAGS.find(t => t.slug === slug)) as Tag | null
+  return getLocalTags().find(t => t.slug === slug) || (MOCK_TAGS.find(t => t.slug === slug) as Tag) || null
 }
 
 export async function getTagCloud() {

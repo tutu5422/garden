@@ -24,8 +24,9 @@ import {
   updatePattern as apiUpdatePattern,
   getCategories as apiGetCategories,
   getTags as apiGetTags,
+  getNotesForPattern as apiGetNotesForPattern,
+  setResourceTags as apiSetResourceTags,
 } from '@/lib/api/patterns-api'
-import { dbFetch, dbUpsert } from '@/lib/supabase-admin'
 
 const statusOptions: { value: string; label: string; color: string }[] = [
   { value: 'not-started', label: '未开始', color: '#C0B0A8' },
@@ -68,19 +69,16 @@ export default function PatternDetailPage() {
       setAllTags(tags)
 
       // 加载关联笔记
-      const notesRes = await dbFetch(`pattern_notes?select=note_id&pattern_id=eq.${patternId}`)
-      if (notesRes.ok && notesRes.body) {
-        const links = notesRes.body as { note_id: string }[]
-        const noteIds = links.map(l => l.note_id)
-        // 从 notes 表查询关联笔记
-        if (noteIds.length > 0) {
-          const notesRes2 = await dbFetch(`notes?in=id.(${noteIds.join(',')})&order=created_at.desc`)
-          if (notesRes2.ok && notesRes2.body) {
-            setNotes((notesRes2.body as any[]) || [])
-          }
+      try {
+        const links = await apiGetNotesForPattern(patternId)
+        if (links.length > 0) {
+          setNotes(links.map((l: any) => l.note).filter(Boolean))
         } else {
           setNotes([])
         }
+      } catch (e) {
+        console.error('加载关联笔记失败:', e)
+        setNotes([])
       }
     } catch (e) {
       console.error('加载图解详情失败:', e)
@@ -138,10 +136,7 @@ export default function PatternDetailPage() {
     if (!pattern) return
     try {
       // 通过 API 更新 resource_tags
-      await dbFetch(`resource_tags?resource_id=eq.${patternId}`, { method: 'DELETE' })
-      for (const tagId of tagIds) {
-        await dbUpsert('resource_tags', { resource_id: patternId, tag_id: tagId })
-      }
+      await apiSetResourceTags(patternId, tagIds)
       setPatternTagIds(tagIds)
       await loadData()
     } catch (e) {

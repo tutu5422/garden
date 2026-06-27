@@ -1,4 +1,3 @@
-import { createServerSupabase, isPlaceholder } from '@/lib/supabase/server'
 import type { Resource, PatternNoteRow } from '@/lib/types'
 
 export interface PatternFilters {
@@ -13,245 +12,60 @@ export interface PatternFilters {
 }
 
 /**
- * 查询图解列表 — 过滤 metadata->>is_pattern = true
+ * 查询图解列表 — 仅本地 localStorage。
+ * 云端图解请使用 @/lib/api/patterns-api（通过 /api/db 代理走 VPS PostgREST）。
  */
 export async function getPatterns(filters: PatternFilters = {}): Promise<{ data: Resource[]; count: number }> {
-  if (isPlaceholder()) {
-    return getLocalPatternsFiltered(filters)
-  }
-
-  const supabase = await createServerSupabase()
-
-  const {
-    search, status, difficulty, brand, category,
-    sort = 'newest', page = 1, pageSize = 12,
-  } = filters
-
-  let query = supabase
-    .from('resources')
-    .select('*, category:categories(*), resource_tags(tag:tags(*))', { count: 'exact' })
-    .filter('metadata->>is_pattern', 'eq', 'true')
-
-  if (status) query = query.filter('metadata->>patternStatus', 'eq', status)
-  if (difficulty) query = query.filter('metadata->>patternDifficulty', 'eq', difficulty)
-  if (brand) query = query.ilike('metadata->>patternBrand', `%${brand}%`)
-  if (search) query = query.ilike('title', `%${search}%`)
-  if (category) {
-    const { data: cat } = await supabase.from('categories').select('id').eq('slug', category).single()
-    if (cat) query = query.eq('category_id', (cat as { id: string }).id)
-  }
-
-  if (sort === 'oldest') query = query.order('created_at', { ascending: true })
-  else if (sort === 'title') query = query.order('title', { ascending: true })
-  else if (sort === 'updated') query = query.order('updated_at', { ascending: false })
-  else query = query.order('created_at', { ascending: false })
-
-  const from = (page - 1) * pageSize
-  query = query.range(from, from + pageSize - 1)
-
-  const { data, error, count } = await query
-  if (error) { console.error('getPatterns 错误:', error); return { data: [], count: 0 } }
-  return { data: (data || []) as unknown as Resource[], count: count || 0 }
+  return getLocalPatternsFiltered(filters)
 }
 
 /**
- * 单个图解详情
+ * 单个图解详情 — 仅本地。
  */
 export async function getPatternById(id: string): Promise<Resource | null> {
-  if (isPlaceholder()) {
-    return getLocalPattern(id)
-  }
-
-  const supabase = await createServerSupabase()
-  const { data, error } = await supabase
-    .from('resources')
-    .select('*, category:categories(*), resource_tags(tag:tags(*))')
-    .eq('id', id)
-    .filter('metadata->>is_pattern', 'eq', 'true')
-    .single()
-
-  if (error) return null
-  return data as unknown as Resource
+  return getLocalPattern(id)
 }
 
 /**
- * 笔记关联的图解列表
+ * 笔记关联的图解列表 — 仅本地。
  */
 export async function getPatternsForNote(noteId: string): Promise<Resource[]> {
-  if (isPlaceholder()) {
-    return getLocalPatternsForNote(noteId)
-  }
-
-  const supabase = await createServerSupabase()
-
-  // 先查出关联的 pattern_ids
-  const { data: links, error: linkErr } = await supabase
-    .from('pattern_notes')
-    .select('pattern_id')
-    .eq('note_id', noteId)
-
-  if (linkErr || !links?.length) return []
-
-  const patternIds = links.map(l => (l as { pattern_id: string }).pattern_id)
-  const { data, error } = await supabase
-    .from('resources')
-    .select('*, category:categories(*), resource_tags(tag:tags(*))')
-    .in('id', patternIds)
-    .filter('metadata->>is_pattern', 'eq', 'true')
-
-  if (error) return []
-  return (data || []) as unknown as Resource[]
+  return getLocalPatternsForNote(noteId)
 }
 
 /**
- * 图解关联的笔记列表
+ * 图解关联的笔记列表 — 仅本地。
  */
 export async function getNotesForPattern(patternId: string): Promise<any[]> {
-  if (isPlaceholder()) {
-    return getLocalNotesForPattern(patternId)
-  }
-
-  const supabase = await createServerSupabase()
-
-  const { data: links, error: linkErr } = await supabase
-    .from('pattern_notes')
-    .select('note_id')
-    .eq('pattern_id', patternId)
-
-  if (linkErr || !links?.length) return []
-
-  const noteIds = links.map(l => (l as { note_id: string }).note_id)
-  const { data, error } = await supabase
-    .from('notes')
-    .select('*')
-    .in('id', noteIds)
-
-  if (error) return []
-  return data || []
+  return getLocalNotesForPattern(patternId)
 }
 
 /**
- * 建立图解-笔记关联
+ * 建立图解-笔记关联 — 仅本地。
  */
 export async function linkPatternNote(patternId: string, noteId: string): Promise<boolean> {
-  if (isPlaceholder()) {
-    return linkLocalPatternNote(patternId, noteId)
-  }
-
-  const supabase = await createServerSupabase()
-  const { error } = await supabase
-    .from('pattern_notes')
-    .insert({ pattern_id: patternId, note_id: noteId })
-
-  if (error) {
-    // 唯一约束冲突表示已存在，不算错误
-    if (error.code === '23505') return true
-    console.error('linkPatternNote 错误:', error)
-    return false
-  }
-  return true
+  return linkLocalPatternNote(patternId, noteId)
 }
 
 /**
- * 取消图解-笔记关联
+ * 取消图解-笔记关联 — 仅本地。
  */
 export async function unlinkPatternNote(patternId: string, noteId: string): Promise<boolean> {
-  if (isPlaceholder()) {
-    return unlinkLocalPatternNote(patternId, noteId)
-  }
-
-  const supabase = await createServerSupabase()
-  const { error } = await supabase
-    .from('pattern_notes')
-    .delete()
-    .eq('pattern_id', patternId)
-    .eq('note_id', noteId)
-
-  if (error) {
-    console.error('unlinkPatternNote 错误:', error)
-    return false
-  }
-  return true
+  return unlinkLocalPatternNote(patternId, noteId)
 }
 
 /**
- * 创建图解资源（不包含文件上传，仅 metadata）
+ * 创建图解资源（不包含文件上传，仅 metadata）— 仅本地。
  */
 export async function createPattern(data: { title: string; metadata: any }): Promise<Resource | null> {
-  if (isPlaceholder()) {
-    return createLocalPattern(data)
-  }
-
-  const supabase = await createServerSupabase()
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) throw new Error('请先登录')
-
-  const resourceData = {
-    title: data.title,
-    resource_type: 'other' as const,
-    status: 'active' as const,
-    metadata: {
-      is_pattern: true,
-      patternStatus: 'not-started',
-      patternProgress: 0,
-      ...data.metadata,
-    },
-    user_id: userData.user.id,
-  }
-
-  const { data: created, error } = await supabase
-    .from('resources')
-    .insert(resourceData as any)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('createPattern 错误:', error)
-    return null
-  }
-  return created as unknown as Resource
+  return createLocalPattern(data)
 }
 
 /**
- * 更新图解状态和进度（自动更新 patternLastUsedAt）
+ * 更新图解状态和进度（自动更新 patternLastUsedAt）— 仅本地。
  */
 export async function updatePatternStatus(id: string, status: string, progress?: number): Promise<boolean> {
-  if (isPlaceholder()) {
-    return updateLocalPatternStatus(id, status, progress)
-  }
-
-  const supabase = await createServerSupabase()
-
-  // 先获取当前 metadata
-  const { data: current, error: getErr } = await supabase
-    .from('resources')
-    .select('metadata')
-    .eq('id', id)
-    .single()
-
-  if (getErr || !current) {
-    console.error('updatePatternStatus 查询错误:', getErr)
-    return false
-  }
-
-  const currentMeta = (current as any).metadata || {}
-  const updatedMeta = {
-    ...currentMeta,
-    patternStatus: status,
-    patternProgress: progress !== undefined ? progress : (currentMeta.patternProgress || 0),
-    patternLastUsedAt: new Date().toISOString(),
-  }
-
-  const { error } = await supabase
-    .from('resources')
-    .update({ metadata: updatedMeta, updated_at: new Date().toISOString() } as any)
-    .eq('id', id)
-
-  if (error) {
-    console.error('updatePatternStatus 错误:', error)
-    return false
-  }
-  return true
+  return updateLocalPatternStatus(id, status, progress)
 }
 
 /**
@@ -262,7 +76,7 @@ export async function getWishlistPatterns(): Promise<{ data: Resource[]; count: 
 }
 
 // =============================================================================
-// 本地（localStorage）实现 — 供 isPlaceholder 模式使用
+// 本地（localStorage）实现
 // =============================================================================
 
 function getLocalResourcesFromStore(): Resource[] {

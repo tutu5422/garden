@@ -4,37 +4,18 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Settings2 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { getLocalTags } from '@/lib/db/local-store'
 import TagManager from '@/components/tags/TagManager'
 import type { Tag } from '@/lib/types'
 
-function isSupabaseReady() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  return url && !url.includes('placeholder')
-}
-
 export default function TagsPage() {
   const [tags, setTags] = useState<Tag[]>([])
   const [showManager, setShowManager] = useState(false)
-  const maxCount = 1
 
   useEffect(() => { loadTags() }, [])
 
   const loadTags = async () => {
-    const local = getLocalTags()
-    if (isSupabaseReady()) {
-      try {
-        const supabase = createClient()
-        const { data } = await supabase.from('tags').select('*').order('name')
-        const cloud = (data || []) as unknown as Tag[]
-        const cloudNames = new Set(cloud.map(t => t.name))
-        const localOnly = local.filter(t => !cloudNames.has(t.name))
-        setTags([...cloud, ...localOnly])
-        return
-      } catch {}
-    }
-    setTags(local)
+    setTags(getLocalTags())
   }
 
   const refresh = () => loadTags()

@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { getLocalCategories, getLocalTags, getOrCreateTag } from '@/lib/db/local-store'
 import { createResource, updateResource } from '@/lib/db/resources-client'
 import { writeCache } from '@/lib/db/supabase-queries'
@@ -14,33 +13,11 @@ import SmartImage from '@/components/shared/SmartImage'
 const inputClass = 'w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all'
 const glassInput = `${inputClass} bg-white/40 dark:bg-white/5 border-white/30 dark:border-white/10 text-foreground placeholder:text-muted-foreground/50 focus:ring-[var(--skin-primary)]/30`
 
-function isSupabaseReady() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  return url && !url.includes('placeholder')
-}
-
 export default function SimpleForm({ resource }: { resource?: Resource }) {
   const router = useRouter()
   const isEdit = !!resource
   const [categories, setCategories] = useState<Category[]>(getLocalCategories())
   const allTags = getLocalTags()
-
-  useEffect(() => {
-    if (isSupabaseReady()) {
-      (async () => {
-        try {
-          const supabase = createClient()
-          const { data } = await supabase.from('categories').select('*').order('sort_order')
-          const cloud = (data || []) as unknown as Category[]
-          const local = getLocalCategories()
-          const cloudNames = new Set(cloud.map(c => c.name))
-          const merged = [...cloud, ...local.filter(c => !cloudNames.has(c.name))]
-          setCategories(merged)
-        } catch {}
-      })()
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const [title, setTitle] = useState(resource?.title || '')
   const [body, setBody] = useState(resource?.description || '')
@@ -73,16 +50,7 @@ export default function SimpleForm({ resource }: { resource?: Resource }) {
     setError('')
     setSaving(true)
     try {
-      // 如果是本地 ID 且 Supabase 已配置，尝试按名称匹配云端分类
-      let finalCategoryId = categoryId || undefined
-      if (finalCategoryId && finalCategoryId.startsWith('local-') && isSupabaseReady()) {
-        const localCat = categories.find(c => c.id === finalCategoryId)
-        if (localCat) {
-          const supabase = createClient()
-          const { data } = await supabase.from('categories').select('id').eq('name', localCat.name).maybeSingle()
-          if (data) finalCategoryId = (data as any).id
-        }
-      }
+      const finalCategoryId = categoryId || undefined
 
       const payload = {
         title: title.trim(), description: body.trim(),

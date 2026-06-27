@@ -14,8 +14,6 @@ import ResourceCard from './ResourceCard'
 import ResourceFilters from './ResourceFilters'
 import EmptyState from '@/components/shared/EmptyState'
 
-function isSupabaseReady() { const url = process.env.NEXT_PUBLIC_SUPABASE_URL; return url && !url.includes('placeholder') }
-
 const DEMO: Resource[] = [
   { id: 'demo-1', title: '欢迎来到秘密花园 🌿', description: '在这里记录你的兴趣爱好、学习心得和灵感碎片。点击"写笔记"开始吧！', resource_type: 'article', url: null, cover_image_url: null, author: null, rating: null, status: 'active', category_id: null, metadata: {}, pinned: false, created_at: '2025-01-01T00:00:00.000Z', updated_at: '2025-01-01T00:00:00.000Z', user_id: 'demo', resource_tags: [{ tag: { id: 'dt1', name: '入门', slug: 'guide', color: null, created_at: '' } }] },
   { id: 'demo-2', title: '如何整理你的笔记', description: '使用分类和标签来组织笔记。每个笔记可以有封面图、正文和标签。试试用不同的皮肤配色来切换视觉效果。', resource_type: 'article', url: null, cover_image_url: null, author: null, rating: null, status: 'active', category_id: null, metadata: {}, pinned: false, created_at: '2025-01-02T00:00:00.000Z', updated_at: '2025-01-02T00:00:00.000Z', user_id: 'demo', resource_tags: [{ tag: { id: 'dt2', name: '教程', slug: 'tutorial', color: null, created_at: '' } }] },
@@ -23,10 +21,9 @@ const DEMO: Resource[] = [
 
 export default function ResourcesContent() {
   const searchParams = useSearchParams()
-  const initial = isSupabaseReady() ? [] : DEMO
-  const [resources, setResources] = useState<Resource[]>(initial)
-  const [count, setCount] = useState(initial.length)
-  const [loading, setLoading] = useState(isSupabaseReady())
+  const [resources, setResources] = useState<Resource[]>(DEMO)
+  const [count, setCount] = useState(DEMO.length)
+  const [loading, setLoading] = useState(true)
   const [today, setToday] = useState('')
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -45,7 +42,7 @@ export default function ResourcesContent() {
     }).then(result => {
       const filtered = result.data.filter(r => !deletedIds.has(r.id))
       if (filtered.length > 0) { setResources(filtered); setCount(result.count) }
-      else if (!isSupabaseReady()) { setResources(DEMO); setCount(DEMO.length) }
+      else { setResources(DEMO); setCount(DEMO.length) }
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [searchParams])

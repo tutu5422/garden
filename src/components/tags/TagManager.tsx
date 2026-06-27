@@ -5,18 +5,9 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
 import { getLocalTags, deleteLocalTag, renameLocalTag, getOrCreateTag } from '@/lib/db/local-store'
 import type { Tag } from '@/lib/types'
 import { toast } from 'sonner'
-
-function isSupabaseReady() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  return url && !url.includes('placeholder')
-}
-function isUUID(id: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
-}
 
 interface Props {
   initialTags: Tag[]
@@ -32,38 +23,12 @@ export default function TagManager({ initialTags, onRefresh }: Props) {
 
   const refresh = () => { setTags(getLocalTags()); onRefresh?.() }
 
-  const syncAdd = (tag: Tag) => {
-    if (isSupabaseReady() && isUUID(tag.id)) {
-      const supabase = createClient()
-      supabase.from('tags').insert({ name: tag.name, slug: tag.slug } as any).then(({ error }) => {
-        if (error) console.error('云端标签同步失败:', error.message)
-      })
-    }
-  }
-  const syncRename = (id: string, name: string) => {
-    if (isSupabaseReady() && isUUID(id)) {
-      const supabase = createClient()
-      supabase.from('tags').update({ name, slug: name.toLowerCase().replace(/[^a-z0-9一-龥]+/g, '-') } as any).eq('id', id).then(({ error }) => {
-        if (error) console.error('云端标签更新失败:', error.message)
-      })
-    }
-  }
-  const syncDelete = (id: string) => {
-    if (isSupabaseReady() && isUUID(id)) {
-      const supabase = createClient()
-      supabase.from('tags').delete().eq('id', id).then(({ error }) => {
-        if (error) console.error('云端标签删除失败:', error.message)
-      })
-    }
-  }
-
   const handleAdd = () => {
     if (!newName.trim()) { toast.error('请输入标签名称'); return }
     const localTags = getLocalTags()
     const existing = localTags.find(t => t.name === newName.trim())
     if (existing) { toast.error('标签已存在'); return }
-    const tag = getOrCreateTag(newName.trim())
-    syncAdd(tag)
+    getOrCreateTag(newName.trim())
     toast.success('标签已添加')
     setNewName(''); setAdding(false)
     refresh()
@@ -72,7 +37,6 @@ export default function TagManager({ initialTags, onRefresh }: Props) {
   const handleEdit = (id: string) => {
     if (!editName.trim()) return
     renameLocalTag(id, editName.trim())
-    syncRename(id, editName.trim())
     toast.success('标签已更新')
     setEditingId(null)
     refresh()
@@ -80,7 +44,6 @@ export default function TagManager({ initialTags, onRefresh }: Props) {
 
   const handleDelete = (id: string, name: string) => {
     deleteLocalTag(id)
-    syncDelete(id)
     toast.success(`"${name}" 已删除`)
     refresh()
   }

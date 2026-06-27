@@ -1,4 +1,3 @@
-import { createServerSupabase, isPlaceholder } from '@/lib/supabase/server'
 import { getLocalCategories, getLocalCategory, getLocalCategoryCounts } from '@/lib/db/local-store'
 import type { Category } from '@/lib/types'
 
@@ -11,31 +10,14 @@ const MOCK_CATEGORIES: Category[] = [
 ]
 
 export async function getCategories(): Promise<Category[]> {
-  if (isPlaceholder()) return getLocalCategories()
-  const supabase = await createServerSupabase()
-  const { data } = await supabase.from('categories').select('*').order('sort_order')
-  // 合并本地和云端
-  const cloud = (data || []) as unknown as Category[]
   const local = getLocalCategories()
-  const cloudNames = new Set(cloud.map(c => c.name))
-  const localOnly = local.filter(c => !cloudNames.has(c.name))
-  return [...cloud, ...localOnly]
+  return local.length ? local : MOCK_CATEGORIES
 }
 
 export async function getCategory(slug: string): Promise<Category | null> {
-  if (isPlaceholder()) return getLocalCategory(slug)
-  const supabase = await createServerSupabase()
-  const { data } = await supabase.from('categories').select('*').eq('slug', slug).single()
-  return data ? (data as unknown as Category) : MOCK_CATEGORIES.find(c => c.slug === slug) || null
+  return getLocalCategory(slug) || MOCK_CATEGORIES.find(c => c.slug === slug) || null
 }
 
 export async function getCategoryResourceCounts() {
-  if (isPlaceholder()) return getLocalCategoryCounts()
-  const cats = await getCategories()
-  const supabase = await createServerSupabase()
-  const counts = await Promise.all(cats.map(async cat => {
-    const { count } = await supabase.from('resources').select('*', { count: 'exact', head: true }).eq('category_id', cat.id).eq('status', 'active')
-    return { id: cat.id, name: cat.name, slug: cat.slug, icon: cat.icon, count: count || 0 }
-  }))
-  return counts
+  return getLocalCategoryCounts()
 }
