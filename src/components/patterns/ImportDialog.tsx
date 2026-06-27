@@ -201,12 +201,11 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
           const ab = await file.arrayBuffer();
           const hash = await computeFileHash(ab);
           hashedFiles[i] = { file, displayName, hash };
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : '读取文件失败';
-          hashedFiles[i] = { file, displayName, hash: '', error: msg };
+        } catch {
+          hashedFiles[i] = { file, displayName, hash: '', error: '读取失败' };
         }
       },
-      (done) => setProgress(Math.round((done / total) * 30)), // 哈希阶段占 0-30%
+      (done) => setProgress(Math.round((done / total) * 30)),
     );
 
     // ---------- 阶段 2：一次性批量查重 ----------

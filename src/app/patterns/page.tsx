@@ -42,6 +42,7 @@ export default function PatternsPage() {
     setLoading(true)
     try {
       const all = await getPatterns()
+      console.log('loadPatterns count:', all.length)
       all.sort(
         (a, b) =>
           new Date(b.updated_at || b.created_at).getTime() -
@@ -50,6 +51,7 @@ export default function PatternsPage() {
       setAllPatterns(all)
     } catch (e) {
       console.error('加载图解列表失败:', e)
+      message.error('加载图解列表失败: ' + (e instanceof Error ? e.message : ''))
     } finally {
       setLoading(false)
     }
