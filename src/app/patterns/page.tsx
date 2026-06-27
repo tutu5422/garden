@@ -324,7 +324,7 @@ export default function PatternsPage() {
       <ImportDialog
         open={importDialogOpen}
         onClose={() => setImportDialogOpen(false)}
-        onImported={() => void loadPatterns()}
+        onImported={() => { void loadPatterns(); void loadCategories(); void loadTags(); }}
       />
     </div>
   )
