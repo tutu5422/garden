@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Pencil, Trash2, Calendar, Layers, Tag } from "lucide-react";
+import { getPatternsForNote } from "@/lib/api/patterns-api";
+import type { Resource } from "@/lib/types";
 
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[];
@@ -14,6 +16,7 @@ export default function NoteDetail() {
   const router = useRouter();
   const [note, setNote] = useState<Note | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [linkedPatterns, setLinkedPatterns] = useState<Resource[]>([]);
 
   useEffect(() => {
     try {
@@ -23,6 +26,17 @@ export default function NoteDetail() {
       else setNotFound(true);
     } catch {
       setNotFound(true);
+    }
+    // 加载关联图解（异步走 VPS PostgREST）
+    if (id) {
+      void (async () => {
+        try {
+          const patterns = await getPatternsForNote(id);
+          setLinkedPatterns(patterns);
+        } catch (e) {
+          console.error("加载关联图解失败:", e);
+        }
+      })();
     }
   }, [id]);
 
@@ -139,6 +153,34 @@ export default function NoteDetail() {
           <p className="text-sm text-[var(--skin-text-secondary)] font-bold tracking-wider">
             这篇笔记还没有内容
           </p>
+        </div>
+      )}
+
+      {/* 关联图解 */}
+      {linkedPatterns.length > 0 && (
+        <div className="mt-8 pt-6 border-t-2 border-[var(--skin-border)]">
+          <div className="flex items-center gap-2 mb-4">
+            <Layers className="size-4" style={{ color: "var(--skin-primary)" }} />
+            <h2
+              className="text-sm font-extrabold tracking-wider uppercase"
+              style={{ color: "var(--skin-text)", fontFamily: "var(--font-display)" }}
+            >
+              关联图解
+            </h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {linkedPatterns.map((p) => (
+              <a
+                key={p.id}
+                href={`/patterns/${p.id}`}
+                className="tag inline-flex items-center gap-1.5 transition-all hover:scale-105"
+                style={{ textDecoration: "none" }}
+              >
+                <ArrowLeft className="size-3 rotate-180" />
+                {p.title}
+              </a>
+            ))}
+          </div>
         </div>
       )}
 

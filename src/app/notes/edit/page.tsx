@@ -256,11 +256,17 @@ function EditForm() {
           )}
         </div>
 
-        {/* 关联图解 */}
-        <PatternSearch
-          selectedIds={selectedPatternIds}
-          onToggle={handleTogglePattern}
-        />
+        {/* 关联图解：仅在分类名称包含"编织"时显示 */}
+        {(() => {
+          const col = collections.find(c => c.id === form.collectionId)
+          const isKnitting = !!(col && col.title && col.title.includes('编织'))
+          return isKnitting ? (
+            <PatternSearch
+              selectedIds={selectedPatternIds}
+              onToggle={handleTogglePattern}
+            />
+          ) : null
+        })()}
 
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-2">
