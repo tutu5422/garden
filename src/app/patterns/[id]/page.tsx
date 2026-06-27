@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Button, Select, message, Popconfirm } from 'antd'
+import { Button, Select, message } from 'antd'
 import {
-  DeleteOutlined,
   FilePdfOutlined,
   ArrowLeftOutlined,
   LinkOutlined,
@@ -15,7 +14,6 @@ import PatternTimeline from '@/components/patterns/PatternTimeline'
 import type { Resource, Category, Tag } from '@/lib/types'
 import {
   getPattern as apiGetPattern,
-  deletePattern as apiDeletePattern,
   updatePattern as apiUpdatePattern,
   getCategories as apiGetCategories,
   getTags as apiGetTags,
@@ -125,16 +123,6 @@ export default function PatternDetailPage() {
       await loadData()
     } catch (e) {
       console.error('更新标签失败:', e)
-    }
-  }
-
-  const handleDelete = async () => {
-    try {
-      await apiDeletePattern(patternId)
-      message.success('图解已删除')
-      router.push('/patterns')
-    } catch (e: any) {
-      message.error(e.message || '删除失败')
     }
   }
 
@@ -273,17 +261,6 @@ export default function PatternDetailPage() {
               />
             </div>
 
-            {/* 删除 */}
-            <Popconfirm
-              title="确定删除此图解？"
-              description="删除后记录将被移除，无法恢复"
-              onConfirm={handleDelete}
-              okText="确定删除"
-              cancelText="取消"
-              okButtonProps={{ danger: true }}
-            >
-              <Button danger icon={<DeleteOutlined />} block>删除图解</Button>
-            </Popconfirm>
           </div>
 
           {/* 关联笔记时间线 */}
