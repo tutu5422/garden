@@ -2,21 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Button, Select, message, Popconfirm, Input, Space } from 'antd'
+import { Button, Select, message, Popconfirm } from 'antd'
 import {
   DeleteOutlined,
   FilePdfOutlined,
-  EditOutlined,
-  CheckOutlined,
-  CloseOutlined,
   ArrowLeftOutlined,
-  DownloadOutlined,
   LinkOutlined,
 } from '@ant-design/icons'
 import Link from 'next/link'
 import SmartImage from '@/components/shared/SmartImage'
 import PatternTimeline from '@/components/patterns/PatternTimeline'
-import BgmSelector from '@/components/patterns/BgmSelector'
 import type { Resource, Category, Tag } from '@/lib/types'
 import {
   getPattern as apiGetPattern,
@@ -47,8 +42,6 @@ export default function PatternDetailPage() {
   const [allTags, setAllTags] = useState<Tag[]>([])
   const [patternTagIds, setPatternTagIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [editingNotes, setEditingNotes] = useState(false)
-  const [notesText, setNotesText] = useState('')
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -57,7 +50,6 @@ export default function PatternDetailPage() {
       const p = await apiGetPattern(patternId)
       if (p) {
         setPattern(p)
-        setNotesText(((p.metadata as Record<string, unknown>)?.patternNotes as string) || '')
         // 加载标签
         const ptIds = p.resource_tags?.map((rt: any) => rt.tag?.id).filter(Boolean) || []
         setPatternTagIds(ptIds)
@@ -93,14 +85,6 @@ export default function PatternDetailPage() {
 
   const meta = (pattern?.metadata || {}) as Record<string, unknown>
   const status = (meta.patternStatus as string) || 'not-started'
-  const brand = (meta.patternBrand as string) || ''
-  const yarn = (meta.patternYarn as string) || ''
-  const difficulty = (meta.patternDifficulty as string) || ''
-  const craftType = (meta.patternCraftType as string) || ''
-  const pages = (meta.patternPages as number) || 0
-  const bgmTrackId = meta.patternBgmTrackId as string | undefined
-  const bgmTrackTitle = meta.patternBgmTrackTitle as string | undefined
-  const bgmTrackArtist = meta.patternBgmTrackArtist as string | undefined
 
   // 更新图解字段（通过 API）
   const updatePatternField = async (field: string, value: unknown) => {
@@ -144,12 +128,6 @@ export default function PatternDetailPage() {
     }
   }
 
-  const handleSaveNotes = () => {
-    updatePatternField('patternNotes', notesText)
-    setEditingNotes(false)
-    message.success('备注已保存')
-  }
-
   const handleDelete = async () => {
     try {
       await apiDeletePattern(patternId)
@@ -157,36 +135,6 @@ export default function PatternDetailPage() {
       router.push('/patterns')
     } catch (e: any) {
       message.error(e.message || '删除失败')
-    }
-  }
-
-  const handleBgmSelect = async (trackId: string, title: string, artist?: string) => {
-    if (!pattern) return
-    try {
-      const meta = { ...(pattern.metadata as Record<string, unknown>) } as Record<string, unknown>
-      meta.patternBgmTrackId = trackId
-      meta.patternBgmTrackTitle = title
-      meta.patternBgmTrackArtist = artist || ''
-      meta.patternLastUsedAt = new Date().toISOString()
-      const updated = await apiUpdatePattern(patternId, { metadata: meta } as any)
-      if (updated) setPattern(updated)
-    } catch (e) {
-      console.error('更新BGM失败:', e)
-    }
-  }
-
-  const handleBgmRemove = async () => {
-    if (!pattern) return
-    try {
-      const meta = { ...(pattern.metadata as Record<string, unknown>) } as Record<string, unknown>
-      delete meta.patternBgmTrackId
-      delete meta.patternBgmTrackTitle
-      delete meta.patternBgmTrackArtist
-      meta.patternLastUsedAt = new Date().toISOString()
-      const updated = await apiUpdatePattern(patternId, { metadata: meta } as any)
-      if (updated) setPattern(updated)
-    } catch (e) {
-      console.error('移除BGM失败:', e)
     }
   }
 
@@ -221,14 +169,6 @@ export default function PatternDetailPage() {
         </Link>
       </div>
     )
-  }
-
-  const difficultyLabels: Record<string, string> = {
-    beginner: '★ 初学',
-    easy: '★★ 简单',
-    intermediate: '★★★ 中级',
-    advanced: '★★★★ 高级',
-    expert: '★★★★★ 大师',
   }
 
   return (
@@ -331,95 +271,6 @@ export default function PatternDetailPage() {
                 style={{ width: '100%' }}
                 options={allTags.map((t) => ({ label: t.name, value: t.id }))}
               />
-            </div>
-
-            {/* 元数据 */}
-            {(brand || yarn || difficulty || craftType || pages) && (
-              <div style={{ marginBottom: 16, padding: 12, background: 'var(--skin-muted)', borderRadius: 8, fontSize: 13, color: 'var(--skin-text)' }}>
-                {brand && <div style={{ marginBottom: 4 }}><strong>品牌：</strong>{brand}</div>}
-                {yarn && <div style={{ marginBottom: 4 }}><strong>线材：</strong>{yarn}</div>}
-                {difficulty && <div style={{ marginBottom: 4 }}><strong>难度：</strong>{difficultyLabels[difficulty] || difficulty}</div>}
-                {craftType && <div style={{ marginBottom: 4 }}><strong>编织方式：</strong>{craftType === 'knit' ? '棒针' : craftType === 'crochet' ? '钩针' : '棒针/钩针'}</div>}
-                {pages > 0 && <div><strong>页数：</strong>{pages} 页</div>}
-              </div>
-            )}
-
-            {/* 编织笔记 */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ color: 'var(--skin-text-secondary)', fontSize: 13 }}>编织笔记</span>
-                {!editingNotes ? (
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={() => {
-                      setEditingNotes(true)
-                      setNotesText(((pattern.metadata as Record<string, unknown>)?.patternNotes as string) || '')
-                    }}
-                    style={{ color: 'var(--skin-text-secondary)', padding: '0 4px' }}
-                  />
-                ) : (
-                  <Space size={4}>
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<CheckOutlined />}
-                      onClick={handleSaveNotes}
-                      style={{ color: '#52C41A', padding: '0 4px' }}
-                    />
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<CloseOutlined />}
-                      onClick={() => {
-                        setEditingNotes(false)
-                        setNotesText(((pattern.metadata as Record<string, unknown>)?.patternNotes as string) || '')
-                      }}
-                      style={{ color: '#ff4d4f', padding: '0 4px' }}
-                    />
-                  </Space>
-                )}
-              </div>
-              {editingNotes ? (
-                <Input.TextArea
-                  value={notesText}
-                  onChange={(e) => setNotesText(e.target.value)}
-                  placeholder="记录编织心得、用针、线材等..."
-                  rows={4}
-                  style={{ fontSize: 13 }}
-                />
-              ) : (
-                <div style={{ fontSize: 13, color: notesText ? 'var(--skin-text)' : 'var(--skin-text-secondary)', whiteSpace: 'pre-wrap' }}>
-                  {notesText || '暂无备注，点击编辑图标添加'}
-                </div>
-              )}
-            </div>
-
-            {/* BGM */}
-            <div style={{ marginBottom: 16 }}>
-              <BgmSelector
-                currentTrackId={bgmTrackId}
-                currentTrackTitle={bgmTrackTitle}
-                currentTrackArtist={bgmTrackArtist}
-                onSelect={handleBgmSelect}
-                onRemove={handleBgmRemove}
-              />
-            </div>
-
-            {/* 文件信息 */}
-            <div style={{ fontSize: 13, color: 'var(--skin-text-secondary)', marginBottom: 16 }}>
-              <div>导入时间：{new Date(pattern.created_at).toLocaleDateString('zh-CN')}</div>
-              {pattern.url && (
-                <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <a href={pattern.url} target="_blank" rel="noopener noreferrer">
-                    <Button size="small" icon={<LinkOutlined />}>预览</Button>
-                  </a>
-                  <a href={pattern.url} download>
-                    <Button size="small" icon={<DownloadOutlined />}>下载</Button>
-                  </a>
-                </div>
-              )}
             </div>
 
             {/* 删除 */}
