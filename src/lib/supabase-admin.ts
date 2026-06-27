@@ -99,20 +99,25 @@ export async function supabaseUpsert(
   data: Record<string, unknown>,
 ): Promise<{ ok: boolean; error?: string }> {
   const id = data.id;
-  const postResult = await supabaseFetch(table, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-  if (postResult.ok) return { ok: true };
-  if (postResult.status === 409) {
-    // PATCH 时排除 id（主键），避免 API 报错
+  if (id) {
+    // 有 id → 先 PATCH（更新已存在行）
     const { id: _id, ...patchData } = data;
     const patchResult = await supabaseFetch(`${table}?id=eq.${id}`, {
       method: 'PATCH',
       body: JSON.stringify(patchData),
     });
-    return { ok: patchResult.ok, error: patchResult.error };
+    if (patchResult.status === 204) return { ok: true };
+    if (patchResult.status !== 404) {
+      return { ok: false, error: patchResult.error || `PATCH returned ${patchResult.status}` };
+    }
+    // 404 降级，继续走 POST
   }
+  // 无 id 或 PATCH 404 → POST（插入新行）
+  const postResult = await supabaseFetch(table, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (postResult.ok) return { ok: true };
   return { ok: false, error: postResult.error || `POST returned ${postResult.status}` };
 }
 
@@ -297,20 +302,26 @@ export async function vpsDbUpsert(
   data: Record<string, unknown>,
 ): Promise<{ ok: boolean; error?: string }> {
   const id = data.id;
-  const postResult = await vpsDbFetch(table, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-  if (postResult.ok) return { ok: true };
-  if (postResult.status === 409) {
-    // PATCH 时排除 id（主键），避免 PostgREST 报错
+  if (id) {
+    // 有 id → 先 PATCH（更新已存在的行）。PostgREST 的 PATCH 只更新 body 中提供的字段。
     const { id: _id, ...patchData } = data;
     const patchResult = await vpsDbFetch(`${table}?id=eq.${id}`, {
       method: 'PATCH',
       body: JSON.stringify(patchData),
     });
-    return { ok: patchResult.ok, error: patchResult.error };
+    // 204 = 更新成功，404 = 行不存在（降级为 POST）
+    if (patchResult.status === 204) return { ok: true };
+    if (patchResult.status !== 404) {
+      return { ok: false, error: patchResult.error || `PATCH returned ${patchResult.status}` };
+    }
+    // 404 降级，继续走 POST
   }
+  // 无 id 或 PATCH 404 → POST（插入新行）
+  const postResult = await vpsDbFetch(table, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (postResult.ok) return { ok: true };
   return { ok: false, error: postResult.error || `POST returned ${postResult.status}` };
 }
 
