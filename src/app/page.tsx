@@ -5,10 +5,13 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
   BookOpen, Calendar, Layers, FileText, Settings,
-  ArrowUpRight, Music, Clock, Sparkles, ChevronDown,
+  ArrowUpRight, Music, Clock, Sparkles, ChevronDown, Grid3x3,
 } from "lucide-react";
 
 const HomeMusicPlayer = dynamic(() => import("@/components/music/HomeMusicPlayer"), { ssr: false });
+
+import type { Resource } from '@/lib/types/database'
+import { getRecentPatterns, getPatternCount } from '@/lib/api/patterns-api'
 
 // ===== 色块调色板 — 编辑杂志 8 色系统 =====
 const C = {
@@ -18,6 +21,7 @@ const C = {
   plum:      "#5B2D8E",
   sapphire:  "#1B4F8A",
   crimson:   "#BE185D",
+  clay:      "#C17F6B",
   slate:     "#2D3748",
   dark:      "#1A1D23",
 } as const;
@@ -38,6 +42,9 @@ export default function Home() {
   const [recentMemos, setRecentMemos] = useState<TimelineMemo[]>([]);
   const [collectionPreviews, setCollectionPreviews] = useState<{id:string;title:string;count:number}[]>([]);
   const [recentNotes, setRecentNotes] = useState<NoteItem[]>([]);
+  const [patternCount, setPatternCount] = useState(0)
+  const [recentPatterns, setRecentPatterns] = useState<Resource[]>([])
+  const [patternsLoaded, setPatternsLoaded] = useState(false)
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -73,6 +80,9 @@ export default function Home() {
         title: c.title,
         count: notes.filter((n: NoteItem) => n.collectionId === c.id).length,
       })));
+      // 加载织集数据
+      getPatternCount().then(setPatternCount).catch(() => {})
+      getRecentPatterns(6).then(setRecentPatterns).catch(() => {}).finally(() => setPatternsLoaded(true))
     } catch {}
   }, []);
 
@@ -217,6 +227,7 @@ export default function Home() {
                     { label: "笔记", num: stats.notes,   color: C.teal },
                     { label: "备忘", num: stats.timeline, color: C.plum },
                     { label: "合集", num: stats.collections, color: C.sapphire },
+                    { label: "图解", num: patternCount, color: C.clay },
                     { label: "文件", num: stats.files, color: C.slate },
                   ].map(s => (
                     <div key={s.label} className="flex items-end justify-between group/item">
@@ -257,7 +268,7 @@ export default function Home() {
         <section className="section-gap-sm">
           <SectionHead num="02" label="探索" />
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
             {/* 笔记 */}
             <Link href="/notes"
               className="rounded-2xl p-3 sm:p-6 flex flex-col justify-between cursor-pointer group min-h-[100px] sm:min-h-[180px] transition-all duration-400 hover:shadow-lg"
@@ -299,6 +310,21 @@ export default function Home() {
               </div>
               <div className="flex items-center justify-between mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-[var(--skin-border)]">
                 <span className="text-xl sm:text-3xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.sapphire }}>{stats.collections}</span>
+                <ArrowHint />
+              </div>
+            </Link>
+
+            {/* 织集 */}
+            <Link href="/patterns"
+              className="rounded-2xl p-3 sm:p-6 flex flex-col justify-between cursor-pointer group min-h-[100px] sm:min-h-[180px] transition-all duration-400 hover:shadow-lg"
+              style={{ background: `linear-gradient(180deg, ${C.clay}08, ${C.clay}12)`, border: `1px solid ${C.clay}18` }}>
+              <div>
+                <Grid3x3 className="size-5 sm:size-7 mb-1.5 sm:mb-3" style={{ color: C.clay }} />
+                <h3 className="text-base sm:text-2xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: "var(--skin-text)" }}>织集</h3>
+                <p className="text-[10px] sm:text-xs text-[var(--skin-text-secondary)] leading-relaxed mt-0.5 sm:mt-1 hidden sm:block">编织图解收藏</p>
+              </div>
+              <div className="flex items-center justify-between mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-[var(--skin-border)]">
+                <span className="text-xl sm:text-3xl font-extrabold tracking-tight" style={{ fontFamily: "var(--font-display)", color: C.clay }}>{patternCount}</span>
                 <ArrowHint />
               </div>
             </Link>
@@ -356,10 +382,93 @@ export default function Home() {
         </section>
 
         {/* ════════════════════════════════════════════════════════
-            SECTION 4 — 最近动态 (全宽提要)
+            SECTION 4 — 织集 · 最新图解
            ════════════════════════════════════════════════════════ */}
         <section className="section-gap-sm">
-          <SectionHead num="04" label="最近动态" />
+          <SectionHead num="04" label={'织集 · 最新图解'} />
+
+          {!patternsLoaded || recentPatterns.length === 0 ? (
+            <div className="text-center py-16 rounded-2xl"
+                 style={{ background: "var(--skin-muted)" }}>
+              <Grid3x3 className="size-10 mx-auto mb-4 text-[var(--skin-text-secondary)] opacity-20" />
+              <p className="text-sm font-medium text-[var(--skin-text-secondary)]">
+                {patternsLoaded ? '还没有导入任何图解' : '加载中...'}
+              </p>
+              <Link href="/patterns"
+                className="inline-block mt-4 text-xs font-bold tracking-wider uppercase"
+                style={{ color: "var(--skin-primary)" }}>
+                {patternsLoaded ? '导入图解 →' : ''}
+              </Link>
+            </div>
+          ) : (
+            <div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+                {recentPatterns.map((p) => {
+                  const meta = (p.metadata || {}) as Record<string, unknown>
+                  const brand = (meta.patternBrand as string) || ''
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/patterns/${p.id}`}
+                      className="group block rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg"
+                      style={{ background: 'var(--skin-surface)', border: '1px solid var(--skin-border)' }}
+                    >
+                      {/* 封面 */}
+                      <div className="aspect-[3/4] relative overflow-hidden" style={{ background: 'var(--skin-muted)' }}>
+                        {p.cover_image_url ? (
+                          <img
+                            src={p.cover_image_url}
+                            alt={p.title}
+                            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Grid3x3 className="size-8 opacity-30" style={{ color: C.clay }} />
+                          </div>
+                        )}
+                      </div>
+                      {/* 信息 */}
+                      <div className="p-2.5 sm:p-3">
+                        <h4 className="text-xs sm:text-sm font-semibold leading-snug line-clamp-2 transition-colors group-hover:text-[var(--skin-primary)]"
+                            style={{ color: 'var(--skin-text)' }}>
+                          {p.title}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          {p.category && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+                                  style={{ background: `${C.clay}15`, color: C.clay }}>
+                              {p.category.name}
+                            </span>
+                          )}
+                          {brand && (
+                            <span className="text-[9px] text-[var(--skin-text-secondary)] opacity-60 truncate">
+                              {brand}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+
+              <div className="mt-6 text-center">
+                <Link href="/patterns"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase transition-all hover:gap-2"
+                  style={{ color: C.clay }}>
+                  浏览全部 {patternCount} 个图解 <ArrowUpRight className="size-3.5" />
+                </Link>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ════════════════════════════════════════════════════════
+            SECTION 5 — 最近动态 (全宽提要)
+           ════════════════════════════════════════════════════════ */}
+        <section className="section-gap-sm">
+          <SectionHead num="05" label="最近动态" />
 
           {recentMemos.length === 0 ? (
             <div className="text-center py-16 rounded-2xl"

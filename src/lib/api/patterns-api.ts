@@ -36,6 +36,28 @@ async function dbRequest(table: string, action: 'fetch' | 'upsert' | 'delete', d
 // 图解 CRUD
 // ============================================================
 
+/** 获取图解数量（轻量，仅查 id） */
+export async function getPatternCount(): Promise<number> {
+  const params = new URLSearchParams()
+  params.set('select', 'id')
+  params.set('metadata->>is_pattern', 'eq.true')
+  params.set('limit', '10000')
+  const data = await dbRequest(`resources?${params.toString()}`, 'fetch', { method: 'GET' })
+  return (data as any[] || []).length
+}
+
+/** 获取最近导入的 N 个图解（首页展示用） */
+export async function getRecentPatterns(limit: number = 4): Promise<Resource[]> {
+  const params = new URLSearchParams()
+  params.set('select', '*,category:categories(*)')
+  params.set('metadata->>is_pattern', 'eq.true')
+  params.set('order', 'created_at.desc')
+  params.set('limit', String(limit))
+  const qs = params.toString()
+  const data = await dbRequest(`resources?${qs}`, 'fetch', { method: 'GET' })
+  return (data as Resource[]) || []
+}
+
 /** 获取图解列表 */
 export async function getPatterns(filters?: PatternFilters): Promise<Resource[]> {
   const params = new URLSearchParams()
