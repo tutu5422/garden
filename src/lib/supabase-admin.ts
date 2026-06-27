@@ -105,9 +105,11 @@ export async function supabaseUpsert(
   });
   if (postResult.ok) return { ok: true };
   if (postResult.status === 409) {
+    // PATCH 时排除 id（主键），避免 API 报错
+    const { id: _id, ...patchData } = data;
     const patchResult = await supabaseFetch(`${table}?id=eq.${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(patchData),
     });
     return { ok: patchResult.ok, error: patchResult.error };
   }
@@ -301,9 +303,11 @@ export async function vpsDbUpsert(
   });
   if (postResult.ok) return { ok: true };
   if (postResult.status === 409) {
+    // PATCH 时排除 id（主键），避免 PostgREST 报错
+    const { id: _id, ...patchData } = data;
     const patchResult = await vpsDbFetch(`${table}?id=eq.${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(patchData),
     });
     return { ok: patchResult.ok, error: patchResult.error };
   }
