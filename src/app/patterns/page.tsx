@@ -229,14 +229,21 @@ export default function PatternsPage() {
 
   const handleBatchMove = async (ids: string[], targetCategoryId: string) => {
     try {
-      await Promise.all(
+      const results = await Promise.allSettled(
         ids.map((id) => updatePattern(id, { category_id: targetCategoryId })),
       )
+      const failed = results.filter((r) => r.status === 'rejected')
+      if (failed.length > 0) {
+        console.error('批量移动失败详情:', failed.map((r: any) => r.reason?.message))
+        message.error(`移动失败 ${failed.length}/${ids.length} 个`)
+      } else {
+        message.success(`已移动 ${ids.length} 个图解`)
+      }
       handleClearSelection()
       void loadPatterns()
     } catch (e) {
-      console.error('批量移动失败:', e)
-      message.error('部分移动失败')
+      console.error('批量移动异常:', e)
+      message.error('批量移动异常')
     }
   }
 
