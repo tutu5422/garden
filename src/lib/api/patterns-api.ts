@@ -257,11 +257,18 @@ export async function unlinkPatternNote(patternId: string, noteId: string): Prom
 
 export async function getNotesForPattern(patternId: string): Promise<PatternNoteLink[]> {
   const data = await dbRequest(
-    `pattern_notes?select=*,note:notes(*)&pattern_id=eq.${patternId}`,
+    `pattern_notes?select=*,note:resources!pattern_notes_note_id_fkey(*)&pattern_id=eq.${patternId}`,
     'fetch',
     { method: 'GET' },
   )
-  return (data as PatternNoteLink[]) || []
+  // 将 resources 的 description 映射为 content（PatternTimeline 需要）
+  const links = (data as PatternNoteLink[]) || []
+  for (const link of links) {
+    if (link.note && typeof link.note === 'object' && !('content' in link.note) && 'description' in link.note) {
+      ;(link.note as any).content = (link.note as any).description
+    }
+  }
+  return links
 }
 
 export async function getPatternsForNote(noteId: string): Promise<Resource[]> {
