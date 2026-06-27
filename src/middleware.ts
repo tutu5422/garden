@@ -80,7 +80,7 @@ export default async function proxy(req: NextRequest) {
     const now = Date.now();
     const times = RL.get(ip) || [];
     const recent = times.filter((t) => now - t < 60000);
-    if (recent.length >= 30) return NextResponse.json({ error: "Too many" }, { status: 429 });
+    if (recent.length >= 300) return NextResponse.json({ error: "Too many" }, { status: 429 });
     recent.push(now);
     RL.set(ip, recent);
     return NextResponse.next();
