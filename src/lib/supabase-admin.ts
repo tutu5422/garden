@@ -62,23 +62,27 @@ export async function vpsDbFetch(
   return { ok: true, status: res.status, body };
 }
 
-/** Upsert：有 id 先 PATCH，404 降级 POST */
+/** Upsert：有 id 时先检查是否存在，存在则 PATCH，不存在则 POST */
 export async function vpsDbUpsert(
   table: string,
   data: Record<string, unknown>,
 ): Promise<{ ok: boolean; error?: string }> {
   const id = data.id;
   if (id) {
-    const { id: _id, ...patchData } = data;
-    const patchResult = await vpsDbFetch(`${table}?id=eq.${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(patchData),
-    });
-    if (patchResult.status === 204) return { ok: true };
-    if (patchResult.status !== 404) {
+    // 先查是否存在（PostgREST PATCH 对不存在的数据也返回 204，不能依赖 404 判断）
+    const checkResult = await vpsDbFetch(`${table}?id=eq.${id}&select=id`, { method: 'GET' });
+    if (checkResult.ok && Array.isArray(checkResult.body) && checkResult.body.length > 0) {
+      // 存在 → PATCH
+      const { id: _id, ...patchData } = data;
+      const patchResult = await vpsDbFetch(`${table}?id=eq.${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patchData),
+      });
+      if (patchResult.ok) return { ok: true };
       return { ok: false, error: patchResult.error || `PATCH returned ${patchResult.status}` };
     }
   }
+  // 不存在或无 id → POST（新建）
   const postResult = await vpsDbFetch(table, {
     method: 'POST',
     body: JSON.stringify(data),
