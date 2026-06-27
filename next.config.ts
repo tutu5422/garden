@@ -9,7 +9,7 @@ function remoteImagePatterns(): { protocol: "https"; hostname: string }[] {
   for (const raw of [vpsUrl, supaUrl]) {
     if (!raw) continue;
     try {
-      const host = new URL(raw.startsWith("http") ? raw : `https://${raw}`).hostname;
+      const host = new URL(raw.trim().startsWith("http") ? raw.trim() : `https://${raw.trim()}`).hostname;
       if (host && !patterns.some((p) => p.hostname === host)) {
         patterns.push({ protocol: "https", hostname: host });
       }
