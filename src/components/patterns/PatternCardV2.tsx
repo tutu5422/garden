@@ -63,10 +63,10 @@ export default function PatternCardV2({
             top: 8,
             left: 8,
             zIndex: 10,
-            background: 'rgba(255,255,255,0.92)',
+            background: 'var(--skin-surface)',
             borderRadius: 6,
             padding: '2px 4px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+            boxShadow: 'var(--shadow-sm)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -82,9 +82,9 @@ export default function PatternCardV2({
           onClick={handleWishlist}
         >
           {isWishlisted ? (
-            <HeartFilled style={{ fontSize: 14, color: '#ff4d4f' }} />
+            <HeartFilled style={{ fontSize: 14, color: 'var(--skin-primary)' }} />
           ) : (
-            <HeartOutlined style={{ fontSize: 14, color: '#C0B0A8' }} />
+            <HeartOutlined style={{ fontSize: 14, color: 'var(--skin-text-secondary)' }} />
           )}
         </div>
       )}
@@ -114,7 +114,7 @@ export default function PatternCardV2({
         onClick={handleCardClick}
         style={
           isSelected
-            ? { boxShadow: '0 0 0 2px #FFAAA5, 0 4px 16px rgba(255,170,165,0.3)' }
+            ? { boxShadow: '0 0 0 2px var(--skin-primary), 0 4px 16px rgba(var(--skin-primary-rgb), 0.3)' }
             : undefined
         }
       >
@@ -134,7 +134,7 @@ export default function PatternCardV2({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#D0C8C0',
+                color: 'var(--skin-text-secondary)',
               }}
             >
               <FilePdfOutlined style={{ fontSize: 48 }} />

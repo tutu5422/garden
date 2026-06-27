@@ -298,8 +298,8 @@ export default function PatternsPage() {
               >
                 <div className="warm-card-cover" style={{ height: 220 }} />
                 <div className="warm-card-body">
-                  <div style={{ height: 14, background: '#F0E0DA', borderRadius: 4, marginBottom: 8 }} />
-                  <div style={{ height: 10, width: 60, background: '#F0E0DA', borderRadius: 4 }} />
+                  <div style={{ height: 14, background: 'var(--skin-muted)', borderRadius: 4, marginBottom: 8 }} />
+                  <div style={{ height: 10, width: 60, background: 'var(--skin-muted)', borderRadius: 4 }} />
                 </div>
               </div>
             ))}

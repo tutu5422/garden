@@ -35,12 +35,12 @@ export default function PatternHeader({
         ) : (
           <>
             {selectedCategoryName && (
-              <Tag style={{ margin: 0, background: '#FFF8F5', color: '#A09088', border: '1px solid #F0E0DA' }}>
+              <Tag style={{ margin: 0, background: 'var(--skin-muted)', color: 'var(--skin-text-secondary)', border: '1px solid var(--skin-border)' }}>
                 当前分类：{selectedCategoryName}
               </Tag>
             )}
             {!selectedCategoryName && filterLabel !== '全部图解' && (
-              <Tag style={{ margin: 0, background: '#FFF8F5', color: '#A09088', border: '1px solid #F0E0DA' }}>
+              <Tag style={{ margin: 0, background: 'var(--skin-muted)', color: 'var(--skin-text-secondary)', border: '1px solid var(--skin-border)' }}>
                 当前筛选：{filterLabel}
               </Tag>
             )}

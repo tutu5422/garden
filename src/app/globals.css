@@ -623,42 +623,42 @@ h1, h2, h3, h4, h5, h6, .display-font {
 }
 
 /* ============================================================
-   织集（Patterns）— CCDS 暖色调设计系统
-   陶土珊瑚 #C17F6B · 亚麻底 #F5F0E8 · 深棕侧栏 #3D3228
+   织集（Patterns）
    ============================================================ */
 
 :root {
-  --warm-bg: #F5F0E8;
-  --warm-surface: #FFFBF5;
-  --warm-sidebar: #3D3228;
-  --warm-accent: #C17F6B;
-  --warm-accent-hover: #A86855;
-  --warm-text: #3D3228;
-  --warm-text-light: #8B7D72;
-  --warm-border: #E8DED0;
-  --warm-shadow: rgba(61,50,40,0.12);
-  --warm-card-shadow: 0 1px 3px rgba(61,50,40,0.08),0 4px 12px rgba(61,50,40,0.06),0 8px 24px rgba(61,50,40,0.04);
-  --warm-card-shadow-hover: 0 2px 6px rgba(61,50,40,0.10),0 8px 24px rgba(61,50,40,0.10),0 16px 40px rgba(61,50,40,0.08);
-  --warm-cover-bg: linear-gradient(135deg,#F5EDE4 0%,#EDE0D4 100%);
-  --warm-card-body-bg: linear-gradient(180deg,#FFFBF5 0%,#FFF8F0 100%);
-  --warm-card-title: #3D3228;
-  --warm-sidebar-text: #D0C8BA;
-  --warm-sidebar-title: #E8D5C0;
-  --warm-sidebar-subtitle: #9B8E80;
-  --warm-sidebar-active-bg: rgba(193,127,107,0.25);
-  --warm-sidebar-active-color: #E8D5C0;
-  --warm-sidebar-item: #C0B5A5;
-  --warm-divider: rgba(255,255,255,0.08);
-  --warm-card-radius: 16px;
+  /* --- 映射到主站 --skin-* 设计系统 --- */
+  --warm-bg: var(--skin-bg);
+  --warm-surface: var(--skin-surface);
+  --warm-sidebar: var(--skin-surface);
+  --warm-accent: var(--skin-primary);
+  --warm-accent-hover: #D42750;
+  --warm-text: var(--skin-text);
+  --warm-text-light: var(--skin-text-secondary);
+  --warm-border: var(--skin-border);
+  --warm-shadow: rgba(0,0,0,0.08);
+  --warm-card-shadow: var(--shadow-md);
+  --warm-card-shadow-hover: var(--shadow-xl);
+  --warm-cover-bg: var(--skin-muted);
+  --warm-card-body-bg: var(--skin-surface);
+  --warm-card-title: var(--skin-text);
+  --warm-sidebar-text: var(--skin-text);
+  --warm-sidebar-title: var(--skin-text);
+  --warm-sidebar-subtitle: var(--skin-text-secondary);
+  --warm-sidebar-active-bg: var(--skin-primary);
+  --warm-sidebar-active-color: #fff;
+  --warm-sidebar-item: var(--skin-text-secondary);
+  --warm-divider: var(--skin-border);
+  --warm-card-radius: 12px;
   --warm-cover-height: 290px;
-  --warm-header-border: #E8DED0;
+  --warm-header-border: var(--skin-border);
 }
 
 /* 织集页面容器 — 三栏布局 */
 .patterns-layout {
   display: flex;
   min-height: calc(100vh - 3.5rem);
-  background: linear-gradient(175deg,#F5F0E8 0%,#EDE4D8 40%,#F0E8DC 100%);
+  background: var(--skin-bg);
 }
 
 @media (max-width: 767px) {
@@ -668,7 +668,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
   }
 }
 
-/* 深色侧边栏 */
+/* 侧边栏 */
 .patterns-sidebar {
   width: 240px;
   flex-shrink: 0;
@@ -680,6 +680,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
   top: 3.5rem;
   height: calc(100vh - 3.5rem);
   overflow: hidden;
+  border-right: 1px solid var(--skin-border);
 }
 
 @media (max-width: 767px) {
@@ -696,7 +697,6 @@ h1, h2, h3, h4, h5, h6, .display-font {
   padding: 20px 16px 16px;
   text-align: center;
   border-bottom: 1px solid var(--warm-divider);
-  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);
 }
 
 .patterns-sidebar-header h1 {
@@ -722,7 +722,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
 
 /* 侧栏滚动条 */
 .patterns-sidebar-scroll::-webkit-scrollbar { width: 4px; }
-.patterns-sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+.patterns-sidebar-scroll::-webkit-scrollbar-thumb { background: var(--skin-border); border-radius: 2px; }
 
 /* 侧栏菜单项 */
 .sidebar-item {
@@ -739,7 +739,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
 }
 
 .sidebar-item:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--skin-muted);
 }
 
 .sidebar-item-active {
@@ -749,8 +749,8 @@ h1, h2, h3, h4, h5, h6, .display-font {
 }
 
 .sidebar-item-wishlist-active {
-  background: #FFE8E5;
-  color: #FFAAA5;
+  background: rgba(var(--skin-primary-rgb), 0.1);
+  color: var(--skin-primary);
   font-weight: 600;
 }
 
@@ -856,9 +856,9 @@ h1, h2, h3, h4, h5, h6, .display-font {
 .warm-card-tag {
   display: inline-block;
   font-size: 11px;
-  background: #FFF8F5;
-  color: #A09088;
-  border: 1px solid #F0E0DA;
+  background: var(--skin-muted);
+  color: var(--skin-text-secondary);
+  border: 1px solid var(--skin-border);
   border-radius: 4px;
   padding: 1px 6px;
   margin-top: 6px;
@@ -871,8 +871,8 @@ h1, h2, h3, h4, h5, h6, .display-font {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.92);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.15);
+  background: var(--skin-surface);
+  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -896,20 +896,20 @@ h1, h2, h3, h4, h5, h6, .display-font {
 
 .patterns-empty-icon {
   font-size: 64px;
-  color: var(--warm-text-light);
+  color: var(--skin-text-secondary);
   margin-bottom: 20px;
   opacity: 0.5;
 }
 
 .patterns-empty h3 {
   font-size: 18px;
-  color: var(--warm-text-light);
+  color: var(--skin-text-secondary);
   margin-bottom: 8px;
 }
 
 .patterns-empty p {
   font-size: 14px;
-  color: var(--warm-text-light);
+  color: var(--skin-text-secondary);
   opacity: 0.7;
   margin-bottom: 24px;
 }
@@ -952,10 +952,10 @@ h1, h2, h3, h4, h5, h6, .display-font {
 }
 
 .pattern-detail-card {
-  background: white;
+  background: var(--skin-surface);
   border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 2px 12px rgba(61,50,40,0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .cover-preview {
@@ -963,7 +963,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
   border-radius: 14px;
   overflow: hidden;
   margin-bottom: 14px;
-  box-shadow: 0 2px 8px var(--warm-shadow), 0 8px 24px var(--warm-shadow);
+  box-shadow: var(--shadow-md);
 }
 
 .cover-preview img {
@@ -975,10 +975,10 @@ h1, h2, h3, h4, h5, h6, .display-font {
 /* PDF 查看器容器 */
 .pdf-viewer-wrap {
   flex: 1;
-  background: var(--warm-bg);
+  background: var(--skin-surface);
   border-radius: 14px;
   overflow: hidden;
-  box-shadow: inset 0 1px 4px var(--warm-shadow);
+  box-shadow: var(--shadow-sm), inset 0 1px 3px rgba(0,0,0,0.06);
   min-height: 400px;
 }
 
@@ -996,8 +996,8 @@ h1, h2, h3, h4, h5, h6, .display-font {
   align-items: center;
   justify-content: space-between;
   padding: 10px 24px;
-  background: #FFF5F3;
-  border-bottom: 1px solid #FFE8E5;
+  background: var(--skin-muted);
+  border-bottom: 1px solid var(--skin-border);
   flex-shrink: 0;
 }
 
