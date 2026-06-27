@@ -75,6 +75,8 @@ export async function POST(req: NextRequest) {
     const craftType = (form.get('craftType') as string)?.trim() || 'knit';
     const categoryId = (form.get('categoryId') as string)?.trim() || '';
     const hash = (form.get('hash') as string)?.trim() || '';
+    // 批量导入时可传 skipPageCount=1 跳过服务端 pdfjs 页数计算以提速
+    const skipPageCount = (form.get('skipPageCount') as string)?.trim() === '1';
 
     // 生成 VPS 存储路径
     const year = new Date().getFullYear();
@@ -138,8 +140,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 获取 PDF 页数（纯 js，无原生依赖）
-    const pages = await getPdfPageCount(pdfBuffer.buffer);
+    // 获取 PDF 页数（纯 js，无原生依赖）；批量导入时可跳过以提速
+    const pages = skipPageCount ? 0 : await getPdfPageCount(pdfBuffer.buffer);
 
     // 写入 resources 表
     const resourceId = crypto.randomUUID();

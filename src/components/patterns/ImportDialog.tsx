@@ -40,6 +40,35 @@ async function computeFileHash(arrayBuffer: ArrayBuffer): Promise<string> {
     .substring(0, 32)
 }
 
+// 并发池：限制同时运行的异步任务数量
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+  onProgress?: (done: number, total: number) => void,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  let cursor = 0
+  let done = 0
+  const total = items.length
+  async function runOne(): Promise<void> {
+    while (cursor < items.length) {
+      const idx = cursor++
+      try {
+        results[idx] = await worker(items[idx], idx)
+      } catch (e) {
+        // 把异常塞进结果，由调用方处理；这里用 any 兜底
+        results[idx] = e as unknown as R
+      }
+      done++
+      onProgress?.(done, total)
+    }
+  }
+  const runners = Array.from({ length: Math.min(limit, items.length) }, () => runOne())
+  await Promise.all(runners)
+  return results
+}
+
 // 用 pdfjs-dist 渲染 PDF 首页为 JPEG Blob（客户端浏览器端）
 async function renderCoverBlob(arrayBuffer: ArrayBuffer): Promise<Blob | null> {
   try {
@@ -156,56 +185,84 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
     setStep('importing');
     setProgress(0);
 
-    // 预先查询所有已存在的哈希（用于去重）
-    let existingHashes = new Set<string>();
-    try {
-      const allStored = await findExistingPatternHashes([]); // 传空数组获取全部
-      // 上面这个 API 不太对，下面的循环里逐个查吧
-    } catch (e) {
-      console.warn('查询已存在哈希失败，跳过去重:', e);
-    }
-
+    const total = selectedFiles.length;
     const allResults: ImportResult[] = [];
 
-    // 逐个处理（读 → 算哈希 → 对比去重 → 上传）
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      const displayName = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
+    // ---------- 阶段 1：并行计算所有文件哈希（并发 5） ----------
+    type HashedFile = { file: File; displayName: string; hash: string; error?: string };
+    const hashedFiles: HashedFile[] = new Array(total);
+    await runWithConcurrency(
+      selectedFiles,
+      5,
+      async (file, i) => {
+        const displayName =
+          (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
+        try {
+          const ab = await file.arrayBuffer();
+          const hash = await computeFileHash(ab);
+          hashedFiles[i] = { file, displayName, hash };
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : '读取文件失败';
+          hashedFiles[i] = { file, displayName, hash: '', error: msg };
+        }
+      },
+      (done) => setProgress(Math.round((done / total) * 30)), // 哈希阶段占 0-30%
+    );
 
-      setProgress(Math.round((i / selectedFiles.length) * 95));
-
+    // ---------- 阶段 2：一次性批量查重 ----------
+    setProgress(32);
+    let existingHashes = new Set<string>();
+    const validHashes = hashedFiles.filter((h) => h.hash && !h.error).map((h) => h.hash!);
+    if (validHashes.length > 0) {
       try {
-        const ab = await file.arrayBuffer();
-        const hash = await computeFileHash(ab);
+        existingHashes = await findExistingPatternHashes(validHashes);
+      } catch (e) {
+        console.warn('批量查重失败，跳过去重:', e);
+      }
+    }
+    setProgress(35);
 
-        // 去重：查服务端是否已有相同 hash
-        if (hash) {
-          const found = await findExistingPatternHashes([hash]);
-          if (found.has(hash)) {
-            allResults.push({ success: false, fileName: displayName, error: '已存在，自动跳过' });
-            continue;
+    // ---------- 阶段 3：并行上传（并发 4） ----------
+    const toUpload = hashedFiles.filter((h) => !h.error);
+    await runWithConcurrency(
+      toUpload,
+      4,
+      async (hf) => {
+        // 再次检查是否重复（批量查重结果）
+        if (hf.hash && existingHashes.has(hf.hash)) {
+          allResults.push({ success: false, fileName: hf.displayName, error: '已存在，自动跳过' });
+          return;
+        }
+        try {
+          const formData = new FormData();
+          formData.append('file', hf.file);
+          formData.append('title', hf.file.name.replace(/\.pdf$/i, ''));
+          formData.append('categoryId', targetCategoryId);
+          if (hf.hash) formData.append('hash', hf.hash);
+          // 批量导入跳过服务端 pdfjs 页数计算，显著提速
+          formData.append('skipPageCount', '1');
+
+          const res = await fetch('/api/patterns/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || data.detail || '上传失败');
           }
+          allResults.push({ success: true, fileName: hf.displayName, id: data.id });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : '上传出错';
+          allResults.push({ success: false, fileName: hf.displayName, error: msg });
         }
+      },
+      (done) => setProgress(35 + Math.round((done / toUpload.length) * 60)), // 上传阶段占 35-95%
+    );
 
-        // 上传
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('title', file.name.replace(/\.pdf$/i, ''));
-        formData.append('categoryId', targetCategoryId);
-        if (hash) formData.append('hash', hash);
-
-        const res = await fetch('/api/patterns/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || data.detail || '上传失败');
-        }
-        allResults.push({ success: true, fileName: displayName, id: data.id });
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : '上传出错';
-        allResults.push({ success: false, fileName: displayName, error: msg });
+    // 阶段 1 里读取失败的文件计入结果
+    for (const hf of hashedFiles) {
+      if (hf.error) {
+        allResults.push({ success: false, fileName: hf.displayName, error: hf.error });
       }
     }
 
@@ -405,7 +462,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
           <LoadingOutlined style={{ fontSize: 48, color: '#C17F6B', marginBottom: 16 }} />
           <h3 style={{ color: '#4A4A4A' }}>正在导入...</h3>
           <p style={{ color: '#C0B0A8', marginBottom: 16 }}>
-            正在处理文件，提取封面并检测重复
+            正在并行处理文件并检测重复
           </p>
           <Progress percent={progress} strokeColor="#C17F6B" style={{ width: '80%', margin: '0 auto' }} />
         </div>
