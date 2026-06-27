@@ -137,7 +137,7 @@ export async function ensureUncategorized(): Promise<Category | null> {
       await dbRequest('categories', 'upsert', {
         name: '未分类',
         slug: 'uncategorized',
-        color: '#C0B0A8',
+        color: 'var(--skin-text-secondary)',
         icon: '\uD83D\uDCC1',
         sort_order: 999,
       })
@@ -158,7 +158,7 @@ export async function createCategory(name: string, color?: string, icon?: string
   const payload: Record<string, unknown> = {
     name,
     slug,
-    color: color || '#C17F6B',
+    color: color || 'var(--skin-primary)',
     icon: icon || '\uD83E\uDD76',
     sort_order: 0,
   }

@@ -321,7 +321,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
             onChange={handleFolderSelected}
           />
 
-          <p style={{ color: '#8A8A8A', marginBottom: 20 }}>选择导入方式</p>
+          <p style={{ color: 'var(--skin-text-secondary)', marginBottom: 20 }}>选择导入方式</p>
 
           <div
             style={{
@@ -336,52 +336,52 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
             <div
               onClick={() => fileInputRef.current?.click()}
               style={{
-                border: '2px dashed #FFD3B6',
+                border: '2px dashed var(--skin-border)',
                 borderRadius: 16,
                 padding: '28px 14px',
                 cursor: 'pointer',
-                background: '#FFFAF8',
+                background: 'var(--skin-surface)',
                 transition: 'all 0.2s',
                 textAlign: 'center',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#C17F6B'
-                e.currentTarget.style.background = '#FFF5F3'
+                e.currentTarget.style.borderColor = 'var(--skin-primary)'
+                e.currentTarget.style.background = 'var(--skin-muted)'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#FFD3B6'
-                e.currentTarget.style.background = '#FFFAF8'
+                e.currentTarget.style.borderColor = 'var(--skin-border)'
+                e.currentTarget.style.background = 'var(--skin-surface)'
               }}
             >
-              <FileAddOutlined style={{ fontSize: 32, color: '#C17F6B', marginBottom: 8 }} />
-              <h4 style={{ color: '#4A4A4A', marginBottom: 2 }}>PDF 文件</h4>
-              <p style={{ color: '#C0B0A8', fontSize: 12 }}>支持多选</p>
+              <FileAddOutlined style={{ fontSize: 32, color: 'var(--skin-primary)', marginBottom: 8 }} />
+              <h4 style={{ color: 'var(--skin-text)', marginBottom: 2 }}>PDF 文件</h4>
+              <p style={{ color: 'var(--skin-text-secondary)', fontSize: 12 }}>支持多选</p>
             </div>
 
             {/* 文件夹 */}
             <div
               onClick={() => folderInputRef.current?.click()}
               style={{
-                border: '2px dashed #A8D8EA',
+                border: '2px dashed var(--skin-border)',
                 borderRadius: 16,
                 padding: '28px 14px',
                 cursor: 'pointer',
-                background: '#F8FBFF',
+                background: 'var(--skin-surface)',
                 transition: 'all 0.2s',
                 textAlign: 'center',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#89C7E0'
-                e.currentTarget.style.background = '#F0F7FB'
+                e.currentTarget.style.borderColor = 'var(--skin-primary)'
+                e.currentTarget.style.background = 'var(--skin-muted)'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#A8D8EA'
-                e.currentTarget.style.background = '#F8FBFF'
+                e.currentTarget.style.borderColor = 'var(--skin-border)'
+                e.currentTarget.style.background = 'var(--skin-surface)'
               }}
             >
-              <FolderOpenOutlined style={{ fontSize: 32, color: '#A8D8EA', marginBottom: 8 }} />
-              <h4 style={{ color: '#4A4A4A', marginBottom: 2 }}>文件夹</h4>
-              <p style={{ color: '#C0B0A8', fontSize: 12 }}>导入所有 PDF</p>
+              <FolderOpenOutlined style={{ fontSize: 32, color: 'var(--skin-primary)', marginBottom: 8 }} />
+              <h4 style={{ color: 'var(--skin-text)', marginBottom: 2 }}>文件夹</h4>
+              <p style={{ color: 'var(--skin-text-secondary)', fontSize: 12 }}>导入所有 PDF</p>
             </div>
           </div>
         </div>
@@ -393,7 +393,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
           <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
             {importMode === 'folder' && <Tag color="blue">文件夹导入</Tag>}
             {importMode === 'pdf' && <Tag color="pink">文件导入</Tag>}
-            <span style={{ color: '#4A4A4A' }}>
+            <span style={{ color: 'var(--skin-text)' }}>
               已选择 <strong>{selectedFiles.length}</strong> 个 PDF 文件
             </span>
           </div>
@@ -405,8 +405,8 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
                 overflow: 'auto',
                 marginBottom: 20,
                 fontSize: 12,
-                color: '#A09088',
-                background: '#FFFAF8',
+                color: 'var(--skin-text-secondary)',
+                background: 'var(--skin-surface)',
                 borderRadius: 8,
                 padding: '8px 12px',
               }}
@@ -425,7 +425,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
                 </div>
               ))}
               {selectedFiles.length > 15 && (
-                <div style={{ color: '#C0B0A8' }}>
+                <div style={{ color: 'var(--skin-text-secondary)' }}>
                   ...还有 {selectedFiles.length - 15} 个文件
                 </div>
               )}
@@ -436,7 +436,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
             style={{
               display: 'block',
               marginBottom: 8,
-              color: '#4A4A4A',
+              color: 'var(--skin-text)',
               fontWeight: 500,
             }}
           >
@@ -456,7 +456,6 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
                 type="primary"
                 onClick={handleStartImport}
                 disabled={!targetCategoryId}
-                style={{ background: '#C17F6B', borderColor: '#C17F6B' }}
               >
                 开始导入
               </Button>
@@ -468,12 +467,12 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
       {/* ===== 导入中 ===== */}
       {step === 'importing' && (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <LoadingOutlined style={{ fontSize: 48, color: '#C17F6B', marginBottom: 16 }} />
-          <h3 style={{ color: '#4A4A4A' }}>正在导入...</h3>
-          <p style={{ color: '#C0B0A8', marginBottom: 16 }}>
+          <LoadingOutlined style={{ fontSize: 48, color: 'var(--skin-primary)', marginBottom: 16 }} />
+          <h3 style={{ color: 'var(--skin-text)' }}>正在导入...</h3>
+          <p style={{ color: 'var(--skin-text-secondary)', marginBottom: 16 }}>
             正在并行处理文件并检测重复
           </p>
-          <Progress percent={progress} strokeColor="#C17F6B" style={{ width: '80%', margin: '0 auto' }} />
+          <Progress percent={progress} strokeColor="var(--skin-primary)" style={{ width: '80%', margin: '0 auto' }} />
         </div>
       )}
 
@@ -542,7 +541,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
                 <div style={{ fontSize: 24, fontWeight: 700, color: '#52C41A' }}>
                   {successResults.length}
                 </div>
-                <div style={{ fontSize: 12, color: '#8A8A8A' }}>导入成功</div>
+                <div style={{ fontSize: 12, color: 'var(--skin-text-secondary)' }}>导入成功</div>
               </div>
             )}
             {duplicateResults.length > 0 && (
@@ -558,7 +557,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
                 <div style={{ fontSize: 24, fontWeight: 700, color: '#FAAD14' }}>
                   {duplicateResults.length}
                 </div>
-                <div style={{ fontSize: 12, color: '#8A8A8A' }}>重复跳过</div>
+                <div style={{ fontSize: 12, color: 'var(--skin-text-secondary)' }}>重复跳过</div>
               </div>
             )}
             {errorResults.length > 0 && (
@@ -574,7 +573,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
                 <div style={{ fontSize: 24, fontWeight: 700, color: '#FF4D4F' }}>
                   {errorResults.length}
                 </div>
-                <div style={{ fontSize: 12, color: '#8A8A8A' }}>导入失败</div>
+                <div style={{ fontSize: 12, color: 'var(--skin-text-secondary)' }}>导入失败</div>
               </div>
             )}
           </div>
@@ -585,7 +584,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
                 style={{
                   cursor: 'pointer',
                   padding: '6px 0',
-                  color: '#4A4A4A',
+                  color: 'var(--skin-text)',
                   fontSize: 13,
                   fontWeight: 500,
                   userSelect: 'none',
@@ -668,7 +667,7 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
                 setResults([])
                 setProgress(0)
               }}
-              style={{ background: '#C17F6B', borderColor: '#C17F6B', marginRight: 8 }}
+              style={{ marginRight: 8 }}
             >
               继续导入
             </Button>

@@ -68,7 +68,7 @@ export default function PatternSidebar({
   const [modalVisible, setModalVisible] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [catName, setCatName] = useState('')
-  const [catColor, setCatColor] = useState('#C17F6B')
+  const [catColor, setCatColor] = useState('var(--skin-primary)')
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const [tagModalVisible, setTagModalVisible] = useState(false)
@@ -143,7 +143,7 @@ export default function PatternSidebar({
     if (!cat) return
     setEditId(id)
     setCatName(cat.name)
-    setCatColor(cat.color || '#C17F6B')
+    setCatColor(cat.color || 'var(--skin-primary)')
     setModalVisible(true)
   }
 
@@ -231,8 +231,8 @@ export default function PatternSidebar({
   }
 
   const statusItems = [
-    { status: 'not-started', label: '未开始', icon: <ClockCircleOutlined />, color: '#9B8E80' },
-    { status: 'in-progress', label: '进行中', icon: <SyncOutlined />, color: '#FFAAA5' },
+    { status: 'not-started', label: '未开始', icon: <ClockCircleOutlined />, color: 'var(--skin-text-secondary)' },
+    { status: 'in-progress', label: '进行中', icon: <SyncOutlined />, color: 'var(--skin-primary)' },
     { status: 'completed', label: '已完成', icon: <CheckCircleOutlined />, color: '#8FA88A' },
   ]
 
@@ -259,7 +259,7 @@ export default function PatternSidebar({
           className={`sidebar-item ${filterMode === 'wishlist' ? 'sidebar-item-wishlist-active' : ''}`}
           onClick={onSelectWishlist}
         >
-          <HeartOutlined style={{ color: filterMode === 'wishlist' ? '#FFAAA5' : '#C0B0A8' }} />
+          <HeartOutlined style={{ color: filterMode === 'wishlist' ? 'var(--skin-primary)' : 'var(--skin-text-secondary)' }} />
           <span style={{ flex: 1 }}>心愿单</span>
           <span style={{ fontSize: 11, opacity: 0.7 }}>({wishlistCount})</span>
         </div>
@@ -284,16 +284,16 @@ export default function PatternSidebar({
               style={{
                 cursor: 'grab',
                 opacity: isDragging ? 0.4 : 1,
-                border: isDragOver ? '1px dashed #8AA0A8' : '1px solid transparent',
+                border: isDragOver ? '1px dashed var(--skin-primary)' : '1px solid transparent',
               }}
             >
-              <HolderOutlined style={{ fontSize: 12, color: '#D0C8C0', flexShrink: 0 }} />
+              <HolderOutlined style={{ fontSize: 12, color: 'var(--skin-text-secondary)', flexShrink: 0 }} />
               <span
                 style={{
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  background: cat.color || '#C17F6B',
+                  background: cat.color || 'var(--skin-primary)',
                   flexShrink: 0,
                 }}
               />
@@ -312,7 +312,7 @@ export default function PatternSidebar({
               </span>
               <span style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 <EditOutlined
-                  style={{ fontSize: 12, color: '#9B8E80' }}
+                  style={{ fontSize: 12, color: 'var(--skin-text-secondary)' }}
                   onClick={(e) => {
                     e.stopPropagation()
                     handleEdit(cat.id)
@@ -329,7 +329,7 @@ export default function PatternSidebar({
                   cancelText="取消"
                 >
                   <DeleteOutlined
-                    style={{ fontSize: 12, color: '#9B8E80' }}
+                    style={{ fontSize: 12, color: 'var(--skin-text-secondary)' }}
                     onClick={(e) => e.stopPropagation()}
                   />
                 </Popconfirm>
@@ -344,12 +344,12 @@ export default function PatternSidebar({
           onClick={() => {
             setEditId(null)
             setCatName('')
-            setCatColor('#C17F6B')
+            setCatColor('var(--skin-primary)')
             setModalVisible(true)
           }}
         >
-          <PlusOutlined style={{ color: '#9B8E80' }} />
-          <span style={{ flex: 1, color: '#9B8E80' }}>添加分类</span>
+          <PlusOutlined style={{ color: 'var(--skin-text-secondary)' }} />
+          <span style={{ flex: 1, color: 'var(--skin-text-secondary)' }}>添加分类</span>
         </div>
 
         <div className="sidebar-divider" />
@@ -365,7 +365,7 @@ export default function PatternSidebar({
               }`}
               onClick={() => onSelectStatus(status)}
             >
-              <span style={{ color: filterMode === 'status' && statusFilter === status ? '#FFAAA5' : color, fontSize: 14 }}>
+              <span style={{ color: filterMode === 'status' && statusFilter === status ? 'var(--skin-primary)' : color, fontSize: 14 }}>
                 {icon}
               </span>
               <span style={{ flex: 1 }}>{label}</span>
@@ -394,7 +394,7 @@ export default function PatternSidebar({
             />
           </div>
           {tags.length === 0 ? (
-            <div style={{ fontSize: 12, color: '#D0C8C0', padding: '4px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: 12, color: 'var(--skin-text-secondary)', padding: '4px 14px', textAlign: 'center' }}>
               点击 ✎ 创建标签
             </div>
           ) : (
@@ -504,7 +504,7 @@ export default function PatternSidebar({
                 alignItems: 'center',
                 gap: 8,
                 padding: '6px 8px',
-                borderBottom: '1px solid #F5F0ED',
+                borderBottom: '1px solid var(--skin-border)',
               }}
             >
               <span
@@ -544,7 +544,7 @@ export default function PatternSidebar({
             </div>
           ))}
           {tags.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#9B8E80', padding: 20 }}>
+            <div style={{ textAlign: 'center', color: 'var(--skin-text-secondary)', padding: 20 }}>
               暂无标签，在上方创建
             </div>
           )}

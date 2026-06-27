@@ -199,9 +199,9 @@ export default function PatternDetailPage() {
       <div className="pattern-detail-layout warm-antd">
         <div className="pattern-detail-sidebar">
           <div className="pattern-detail-card" style={{ opacity: 0.5 }}>
-            <div style={{ height: 200, background: '#F5F0ED', borderRadius: 12, marginBottom: 16 }} />
-            <div style={{ height: 20, background: '#F0E0DA', borderRadius: 4, marginBottom: 12 }} />
-            <div style={{ height: 14, background: '#F0E0DA', borderRadius: 4, width: '60%' }} />
+            <div style={{ height: 200, background: 'var(--skin-muted)', borderRadius: 12, marginBottom: 16 }} />
+            <div style={{ height: 20, background: 'var(--skin-muted)', borderRadius: 4, marginBottom: 12 }} />
+            <div style={{ height: 14, background: 'var(--skin-muted)', borderRadius: 4, width: '60%' }} />
           </div>
         </div>
         <div className="pattern-detail-content">
@@ -232,9 +232,9 @@ export default function PatternDetailPage() {
   }
 
   return (
-    <div className="warm-antd" style={{ background: 'linear-gradient(175deg,#F5F0E8 0%,#EDE4D8 40%,#F0E8DC 100%)', minHeight: 'calc(100vh - 3.5rem)' }}>
+    <div className="warm-antd" style={{ background: 'var(--skin-bg)', minHeight: 'calc(100vh - 3.5rem)' }}>
       {/* 返回栏 */}
-      <div style={{ padding: '12px 24px', background: 'var(--warm-surface)', borderBottom: '1px solid var(--warm-header-border)' }}>
+      <div style={{ padding: '12px 24px', background: 'var(--skin-surface)', borderBottom: '1px solid var(--skin-border)' }}>
         <Link href="/patterns">
           <Button type="text" icon={<ArrowLeftOutlined />}>返回织集</Button>
         </Link>
@@ -261,9 +261,9 @@ export default function PatternDetailPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: '#F5F0ED',
+                    background: 'var(--skin-muted)',
                     borderRadius: 12,
-                    color: '#D0C8C0',
+                    color: 'var(--skin-text-secondary)',
                     flexDirection: 'column',
                     gap: 8,
                   }}
@@ -275,13 +275,13 @@ export default function PatternDetailPage() {
             </div>
 
             {/* 标题 */}
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: '#3D3228', marginBottom: 12, wordBreak: 'break-all' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--skin-text)', marginBottom: 12, wordBreak: 'break-all' }}>
               {pattern.title}
             </h2>
 
             {/* 分类 */}
             <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', marginBottom: 6, color: '#8A8A8A', fontSize: 13 }}>分类</label>
+              <label style={{ display: 'block', marginBottom: 6, color: 'var(--skin-text-secondary)', fontSize: 13 }}>分类</label>
               <Select
                 value={pattern.category_id || undefined}
                 onChange={handleCategoryChange}
@@ -294,7 +294,7 @@ export default function PatternDetailPage() {
 
             {/* 编织状态 */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 6, color: '#8A8A8A', fontSize: 13 }}>编织状态</label>
+              <label style={{ display: 'block', marginBottom: 6, color: 'var(--skin-text-secondary)', fontSize: 13 }}>编织状态</label>
               <Select
                 value={status}
                 onChange={handleStatusChange}
@@ -322,7 +322,7 @@ export default function PatternDetailPage() {
 
             {/* 标签管理 */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 6, color: '#8A8A8A', fontSize: 13 }}>标签</label>
+              <label style={{ display: 'block', marginBottom: 6, color: 'var(--skin-text-secondary)', fontSize: 13 }}>标签</label>
               <Select
                 mode="multiple"
                 placeholder="添加标签..."
@@ -335,7 +335,7 @@ export default function PatternDetailPage() {
 
             {/* 元数据 */}
             {(brand || yarn || difficulty || craftType || pages) && (
-              <div style={{ marginBottom: 16, padding: 12, background: '#FFF8F5', borderRadius: 8, fontSize: 13, color: '#4A4A4A' }}>
+              <div style={{ marginBottom: 16, padding: 12, background: 'var(--skin-muted)', borderRadius: 8, fontSize: 13, color: 'var(--skin-text)' }}>
                 {brand && <div style={{ marginBottom: 4 }}><strong>品牌：</strong>{brand}</div>}
                 {yarn && <div style={{ marginBottom: 4 }}><strong>线材：</strong>{yarn}</div>}
                 {difficulty && <div style={{ marginBottom: 4 }}><strong>难度：</strong>{difficultyLabels[difficulty] || difficulty}</div>}
@@ -347,7 +347,7 @@ export default function PatternDetailPage() {
             {/* 编织笔记 */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ color: '#8A8A8A', fontSize: 13 }}>编织笔记</span>
+                <span style={{ color: 'var(--skin-text-secondary)', fontSize: 13 }}>编织笔记</span>
                 {!editingNotes ? (
                   <Button
                     type="text"
@@ -357,7 +357,7 @@ export default function PatternDetailPage() {
                       setEditingNotes(true)
                       setNotesText(((pattern.metadata as Record<string, unknown>)?.patternNotes as string) || '')
                     }}
-                    style={{ color: '#C0B0A8', padding: '0 4px' }}
+                    style={{ color: 'var(--skin-text-secondary)', padding: '0 4px' }}
                   />
                 ) : (
                   <Space size={4}>
@@ -390,7 +390,7 @@ export default function PatternDetailPage() {
                   style={{ fontSize: 13 }}
                 />
               ) : (
-                <div style={{ fontSize: 13, color: notesText ? '#4A4A4A' : '#C0B0A8', whiteSpace: 'pre-wrap' }}>
+                <div style={{ fontSize: 13, color: notesText ? 'var(--skin-text)' : 'var(--skin-text-secondary)', whiteSpace: 'pre-wrap' }}>
                   {notesText || '暂无备注，点击编辑图标添加'}
                 </div>
               )}
@@ -408,7 +408,7 @@ export default function PatternDetailPage() {
             </div>
 
             {/* 文件信息 */}
-            <div style={{ fontSize: 13, color: '#A09088', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: 'var(--skin-text-secondary)', marginBottom: 16 }}>
               <div>导入时间：{new Date(pattern.created_at).toLocaleDateString('zh-CN')}</div>
               {pattern.url && (
                 <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -437,7 +437,7 @@ export default function PatternDetailPage() {
 
           {/* 关联笔记时间线 */}
           <div className="pattern-detail-card" style={{ marginTop: 16 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: '#3D3228', marginBottom: 12 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--skin-text)', marginBottom: 12 }}>
               📝 关联笔记 ({notes.length})
             </h3>
             <PatternTimeline notes={notes} onNewNote={handleNewNote} />
@@ -461,7 +461,7 @@ export default function PatternDetailPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
-                  color: '#A09088',
+                  color: 'var(--skin-text-secondary)',
                   gap: 12,
                 }}
               >

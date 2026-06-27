@@ -99,8 +99,8 @@ export default function PatternGrid({
               indeterminate={someSelected && !allSelected}
               onChange={handleSelectAll}
             />
-            <span style={{ fontSize: 13, color: '#4A4A4A' }}>
-              已选择 <strong style={{ color: '#FFAAA5' }}>{selectedCount}</strong> 个
+            <span style={{ fontSize: 13, color: 'var(--skin-text)' }}>
+              已选择 <strong style={{ color: 'var(--skin-primary)' }}>{selectedCount}</strong> 个
             </span>
           </Space>
           <Space>
@@ -159,10 +159,9 @@ export default function PatternGrid({
         }}
         okText="确定移动"
         cancelText="取消"
-        okButtonProps={{ style: { background: '#C17F6B', borderColor: '#C17F6B' } }}
       >
         <div style={{ padding: '16px 0' }}>
-          <label style={{ display: 'block', marginBottom: 8, color: '#4A4A4A', fontWeight: 500 }}>
+          <label style={{ display: 'block', marginBottom: 8, color: 'var(--skin-text)', fontWeight: 500 }}>
             选择目标分类
           </label>
           <Select
@@ -172,7 +171,7 @@ export default function PatternGrid({
             style={{ width: '100%' }}
             options={categories.map((c) => ({ label: c.name, value: c.id }))}
           />
-          <p style={{ marginTop: 12, fontSize: 12, color: '#C0B0A8' }}>
+          <p style={{ marginTop: 12, fontSize: 12, color: 'var(--skin-text-secondary)' }}>
             选中的 {selectedCount} 个图解将被移动到目标分类下。
           </p>
         </div>
