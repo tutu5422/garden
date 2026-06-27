@@ -152,72 +152,60 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
       return
     }
 
-    setImporting(true)
-    setStep('importing')
-    setProgress(0)
+    setImporting(true);
+    setStep('importing');
+    setProgress(0);
 
-    // 1. 计算所有文件哈希，并查询已存在的
-    const fileHashes: string[] = []
-    const fileBuffers: ArrayBuffer[] = []
-    for (let i = 0; i < selectedFiles.length; i++) {
-      setProgress(Math.round((i / selectedFiles.length) * 20))
-      try {
-        const ab = await selectedFiles[i].arrayBuffer()
-        fileBuffers.push(ab)
-        fileHashes.push(await computeFileHash(ab))
-      } catch {
-        fileBuffers.push(new ArrayBuffer(0))
-        fileHashes.push('')
-      }
-    }
-
-    let existingHashes = new Set<string>()
+    // 预先查询所有已存在的哈希（用于去重）
+    let existingHashes = new Set<string>();
     try {
-      const validHashes = fileHashes.filter(Boolean)
-      if (validHashes.length > 0) {
-        existingHashes = await findExistingPatternHashes(validHashes)
-      }
+      const allStored = await findExistingPatternHashes([]); // 传空数组获取全部
+      // 上面这个 API 不太对，下面的循环里逐个查吧
     } catch (e) {
-      console.warn('查询已存在哈希失败，跳过去重:', e)
+      console.warn('查询已存在哈希失败，跳过去重:', e);
     }
 
-    const allResults: ImportResult[] = []
+    const allResults: ImportResult[] = [];
 
-    // 2. 逐个上传（跳过已存在的）
+    // 逐个处理（读 → 算哈希 → 对比去重 → 上传）
     for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i]
-      const hash = fileHashes[i]
-      const ab = fileBuffers[i]
-      const displayName = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name
+      const file = selectedFiles[i];
+      const displayName = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
 
-      setProgress(20 + Math.round((i / selectedFiles.length) * 75))
-
-      if (hash && existingHashes.has(hash)) {
-        allResults.push({ success: false, fileName: displayName, error: '已存在，自动跳过' })
-        continue
-      }
+      setProgress(Math.round((i / selectedFiles.length) * 95));
 
       try {
-        // 跳过封面渲染（客户端 pdfjs-dist 渲染太慢，影响批量导入体验）
-        // 封面后续可通过 /api/patterns/upload 的 cover 字段或手动上传补充
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('title', file.name.replace(/\.pdf$/i, ''))
-        formData.append('categoryId', targetCategoryId)
-        if (hash) formData.append('hash', hash)
+        const ab = await file.arrayBuffer();
+        const hash = await computeFileHash(ab);
+
+        // 去重：查服务端是否已有相同 hash
+        if (hash) {
+          const found = await findExistingPatternHashes([hash]);
+          if (found.has(hash)) {
+            allResults.push({ success: false, fileName: displayName, error: '已存在，自动跳过' });
+            continue;
+          }
+        }
+
+        // 上传
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', file.name.replace(/\.pdf$/i, ''));
+        formData.append('categoryId', targetCategoryId);
+        if (hash) formData.append('hash', hash);
 
         const res = await fetch('/api/patterns/upload', {
           method: 'POST',
           body: formData,
-        })
-        const data = await res.json()
+        });
+        const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || data.detail || '上传失败')
+          throw new Error(data.error || data.detail || '上传失败');
         }
-        allResults.push({ success: true, fileName: displayName, id: data.id })
+        allResults.push({ success: true, fileName: displayName, id: data.id });
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : '上传出错'
-        allResults.push({ success: false, fileName: displayName, error: msg })
+        const msg = err instanceof Error ? err.message : '上传出错';
+        allResults.push({ success: false, fileName: displayName, error: msg });
       }
     }
 
