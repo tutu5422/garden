@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPass, isAuth } from '@/lib/auth';
-import { dbConfigOk, dbUpsertOwned, resolveStorageUrl, vpsUpload } from '@/lib/supabase-admin';
+import { dbConfigOk, dbFetch, dbUpsertOwned, resolveStorageUrl, vpsUpload } from '@/lib/supabase-admin';
 
 /**
  * 生成安全的文件名片段（只保留字母数字和连字符）
@@ -75,6 +75,20 @@ export async function POST(req: NextRequest) {
     const craftType = (form.get('craftType') as string)?.trim() || 'knit';
     const categoryId = (form.get('categoryId') as string)?.trim() || '';
     const hash = (form.get('hash') as string)?.trim() || '';
+    // 服务端查重：hash 已存在则跳过（兜底，客户端查重可能因限流失败）
+    if (hash) {
+      const dupCheck = await dbFetch(
+        `resources?select=id&metadata->>is_pattern=eq.true&metadata->>patternHash=eq.${hash}`,
+        { method: 'GET' },
+      );
+      if (dupCheck.ok && Array.isArray(dupCheck.body) && dupCheck.body.length > 0) {
+        const existingId = (dupCheck.body as { id: string }[])[0]?.id;
+        return NextResponse.json(
+          { ok: true, id: existingId, duplicate: true, error: '已存在，自动跳过' },
+          { status: 200 },
+        );
+      }
+    }
     // 批量导入时可传 skipPageCount=1 跳过服务端 pdfjs 页数计算以提速
     const skipPageCount = (form.get('skipPageCount') as string)?.trim() === '1';
 
