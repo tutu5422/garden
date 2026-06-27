@@ -103,8 +103,13 @@ export async function updatePattern(
   id: string,
   data: Partial<Resource> | { metadata: Record<string, JsonValue> },
 ): Promise<Resource | null> {
-  await dbRequest('resources', 'upsert', { id, ...data }, { owned: true })
-  return getPattern(id)
+  try {
+    await dbRequest('resources', 'upsert', { id, ...data }, { owned: true })
+    return null // 不二次查询，提升可靠性
+  } catch (e: any) {
+    console.error('updatePattern 失败:', id, e?.message || e)
+    throw e
+  }
 }
 
 /** 删除图解 */
