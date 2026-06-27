@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPass, isAuth } from '@/lib/auth';
-import { dbConfigOk, dbUpsertOwned, resolveStorageUrl } from '@/lib/supabase-admin';
+import { dbConfigOk, dbUpsertOwned, resolveStorageUrl, vpsUpload } from '@/lib/supabase-admin';
 
 /**
  * 生成安全的文件名片段（只保留字母数字和连字符）
@@ -92,31 +92,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'VPS_STORAGE_URL 未配置' }, { status: 500 });
     }
 
-    const pdfBuffer = Buffer.from(await file.arrayBuffer());
+    const pdfArrayBuffer = await file.arrayBuffer();
 
     // 上传 PDF 到 VPS
-    const pdfUrl = `${vpsBase}/${storagePath}`;
-    const pdfRes = await fetch(pdfUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Length': pdfBuffer.length.toString(),
-      },
-      body: pdfBuffer,
-    });
+    const pdfUploadResult = await vpsUpload(storagePath, pdfArrayBuffer, 'application/pdf');
 
-    if (!pdfRes.ok) {
+    if (!pdfUploadResult.ok) {
       // 尝试创建目录（WebDAV 需要）
       const dirUrl = `${vpsBase}/patterns/${year}/${dirName}/`;
-      await fetch(dirUrl, { method: 'MKCOL' }).catch(() => {});
-      const retryRes = await fetch(pdfUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/pdf' },
-        body: pdfBuffer,
-      });
-      if (!retryRes.ok) {
+      await fetch(dirUrl, {
+        method: 'MKCOL',
+        headers: { 'x-storage-key': process.env.VPS_STORAGE_KEY || '' },
+      }).catch(() => {});
+      const retryResult = await vpsUpload(storagePath, pdfArrayBuffer, 'application/pdf');
+      if (!retryResult.ok) {
         return NextResponse.json(
-          { error: 'PDF 上传到 VPS 失败', detail: `${retryRes.status}` },
+          { error: 'PDF 上传到 VPS 失败', detail: retryResult.error },
           { status: 500 },
         );
       }
@@ -125,23 +116,15 @@ export async function POST(req: NextRequest) {
     // 上传封面缩略图（前端已渲染好传过来的）
     let coverUrl = '';
     if (coverFile) {
-      const coverBuffer = Buffer.from(await coverFile.arrayBuffer());
-      const coverVpsUrl = `${vpsBase}/${thumbPath}`;
-      const coverRes = await fetch(coverVpsUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': coverFile.type || 'image/jpeg',
-          'Content-Length': coverBuffer.length.toString(),
-        },
-        body: coverBuffer,
-      });
-      if (coverRes.ok) {
-        coverUrl = resolveStorageUrl(thumbPath) || coverVpsUrl;
+      const coverBuffer = await coverFile.arrayBuffer();
+      const coverResult = await vpsUpload(thumbPath, coverBuffer, coverFile.type || 'image/jpeg');
+      if (coverResult.ok) {
+        coverUrl = resolveStorageUrl(thumbPath) || `${vpsBase}/${thumbPath}`;
       }
     }
 
     // 获取 PDF 页数（纯 js，无原生依赖）；批量导入时可跳过以提速
-    const pages = skipPageCount ? 0 : await getPdfPageCount(pdfBuffer.buffer);
+    const pages = skipPageCount ? 0 : await getPdfPageCount(pdfArrayBuffer);
 
     // 写入 resources 表
     const resourceId = crypto.randomUUID();
@@ -154,7 +137,7 @@ export async function POST(req: NextRequest) {
       title,
       resource_type: 'other',
       status: 'active',
-      url: resolveStorageUrl(storagePath) || pdfUrl,
+      url: resolveStorageUrl(storagePath) || `${vpsBase}/${storagePath}`,
       cover_image_url: coverUrl || undefined,
       category_id: categoryId || null,
       metadata: {
