@@ -95,8 +95,14 @@ const patternNoteUpsertDataSchema = z.object({
 // ----- Delete data shape -------------------------------------------------
 
 const deleteDataSchema = z.object({
-  id: idSchema,
-});
+  id: idSchema.optional(),
+  // pattern_notes uses composite key (pattern_id, note_id) — no `id` column
+  pattern_id: idSchema.optional(),
+  note_id: idSchema.optional(),
+}).refine(
+  (d) => d.id || (d.pattern_id && d.note_id),
+  { message: 'Either id or (pattern_id + note_id) is required' },
+);
 
 // ----- Top-level payload -------------------------------------------------
 

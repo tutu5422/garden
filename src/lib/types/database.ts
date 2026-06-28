@@ -183,9 +183,11 @@ export interface Note {
   user_id: string
 }
 
-/** `pattern_notes` junction table row. */
+/** `pattern_notes` junction table row. No separate `id` column — the primary
+ *  key is the composite (pattern_id, note_id). The optional `id` field is used
+ *  only by client-side code that synthesizes a composite key for React keys. */
 export interface PatternNoteRow {
-  id: string;
+  id?: string;
   pattern_id: string;
   note_id: string;
   created_at: string;

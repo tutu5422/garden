@@ -475,14 +475,14 @@ export function linkPatternNoteLocally(patternId: string, noteId: string): Patte
   const existing = notes.find(n => n.pattern_id === patternId && n.note_id === noteId)
   if (existing) return existing
   const link: PatternNoteRow = {
-    id: uid(),
     pattern_id: patternId,
     note_id: noteId,
     created_at: new Date().toISOString(),
   }
   notes.push(link)
   saveLocalPatternNotes(notes)
-  syncToCloud('pattern_notes', 'upsert', link)
+  // Sync without `id` — pattern_notes table has no id column (composite PK)
+  syncToCloud('pattern_notes', 'upsert', { pattern_id: patternId, note_id: noteId, created_at: link.created_at })
   return link
 }
 
@@ -492,7 +492,7 @@ export function unlinkPatternNoteLocally(patternId: string, noteId: string) {
   const filtered = notes.filter(n => !(n.pattern_id === patternId && n.note_id === noteId))
   saveLocalPatternNotes(filtered)
   if (target) {
-    syncToCloud('pattern_notes', 'delete', { id: target.id })
+    syncToCloud('pattern_notes', 'delete', { pattern_id: patternId, note_id: noteId })
   }
 }
 

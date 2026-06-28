@@ -184,7 +184,7 @@ export async function GET(req: NextRequest) {
         updated_at: r.updated_at,
       })),
       patternNotes: (patternNotes || []).map((pn: PatternNoteRow) => ({
-        id: pn.id,
+        id: `${pn.pattern_id}_${pn.note_id}`,
         pattern_id: pn.pattern_id,
         note_id: pn.note_id,
         created_at: pn.created_at,
@@ -356,9 +356,10 @@ export async function POST(req: NextRequest) {
         // 幂等性：pattern_notes 上有 UNIQUE(pattern_id, note_id) 约束，但
         // dbUpsert 走 POST-first → 409 → PATCH ?id=eq.<id>，当客户端没传 id
         // 时回退的 PATCH 没有主键可匹配会失败。这里改用 PostgREST 原生
-        // upsert：POST + `Prefer: resolution=merge-duplicates` + `On-Conflict`
-        // 指定 (pattern_id, note_id)，让数据库在冲突时按唯一约束合并，
-        // 无论客户端是否传 id 都幂等。
+        // upsert：POST + `Prefer: resolution=merge-duplicates` +
+        // `?on_conflict=pattern_id,note_id` 查询参数指定冲突列，
+        // 让数据库在冲突时按唯一约束合并，无论客户端是否传 id 都幂等。
+        // 注意：PostgREST 不识别 On-Conflict HTTP 头，必须用 on_conflict 查询参数。
         const pn = data;
         const upsertData: Record<string, unknown> = {
           pattern_id: pn.pattern_id,
@@ -367,12 +368,11 @@ export async function POST(req: NextRequest) {
         };
         // 仅在客户端显式传入 id 时带上，避免覆盖数据库已生成的主键。
         if (pn.id) upsertData.id = pn.id;
-        const pnRes = await dbFetch('pattern_notes', {
+        const pnRes = await dbFetch('pattern_notes?on_conflict=pattern_id,note_id', {
           method: 'POST',
           body: JSON.stringify(upsertData),
           headers: {
             Prefer: 'return=minimal, resolution=merge-duplicates',
-            'On-Conflict': 'pattern_id,note_id',
           },
         });
         if (!pnRes.ok) return NextResponse.json({ error: '同步图解笔记关联失败', detail: pnRes.error }, { status: 500 });
@@ -392,8 +392,11 @@ export async function POST(req: NextRequest) {
         const result = await dbFetch(`resources?id=eq.${data.id}&user_id=eq.${LOCAL_USER_ID}`, { method: 'DELETE' });
         if (!result.ok) return NextResponse.json({ error: '删除文件失败', detail: result.error }, { status: 500 });
       } else if (table === 'pattern_notes') {
-        const result = await dbFetch(`pattern_notes?id=eq.${data.id}`, { method: 'DELETE' });
-        if (!result.ok) return NextResponse.json({ error: '删除图解笔记关联失败', detail: result.error }, { status: 500 });
+        // pattern_notes has no `id` column — delete by composite key
+        if (data.pattern_id && data.note_id) {
+          const result = await dbFetch(`pattern_notes?pattern_id=eq.${data.pattern_id}&note_id=eq.${data.note_id}`, { method: 'DELETE' });
+          if (!result.ok) return NextResponse.json({ error: '删除图解笔记关联失败', detail: result.error }, { status: 500 });
+        }
       }
     }
 

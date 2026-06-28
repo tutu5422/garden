@@ -302,8 +302,9 @@ export async function getNotesForPattern(patternId: string): Promise<PatternNote
   // 两段式查询：不依赖 FK 约束名（PostgREST embedded resource 别名依赖 FK 名，
   // 若实际约束名与硬编码不符，note 字段会返回 null，导致时间线不显示）
   // 1. 先查 pattern_notes 获取所有关联的 note_id
+  //    注意：pattern_notes 表没有单独的 id 列，主键是 (pattern_id, note_id) 复合键
   const linkData = await dbRequest(
-    `pattern_notes?select=id,note_id,created_at&pattern_id=eq.${patternId}`,
+    `pattern_notes?select=pattern_id,note_id,created_at&pattern_id=eq.${patternId}`,
     'fetch',
     { method: 'GET' },
   )
@@ -326,7 +327,7 @@ export async function getNotesForPattern(patternId: string): Promise<PatternNote
   return linkRows.map((link: any) => {
     const note = noteMap.get(link.note_id)
     return {
-      id: link.id,
+      id: `${link.pattern_id}_${link.note_id}`,
       pattern_id: patternId,
       note_id: link.note_id,
       created_at: link.created_at,

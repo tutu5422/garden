@@ -175,11 +175,20 @@ function EditForm() {
         const initial = new Set(initialPatternIds)
         const current = new Set(selectedPatternIds)
         // 新增的关联
-        await Promise.all(
+        const linkResults = await Promise.all(
           selectedPatternIds
             .filter((pid) => !initial.has(pid))
-            .map((pid) => linkPatternNote(pid, savedNoteId).catch((e) => console.error('关联失败:', e))),
+            .map((pid) =>
+              linkPatternNote(pid, savedNoteId).then(() => ({ ok: true, pid })).catch((e) => {
+                console.error('[linkPatternNote] 关联失败 patternId=', pid, 'noteId=', savedNoteId, '错误:', e?.message || e)
+                return { ok: false, pid }
+              }),
+            ),
         )
+        const failedLinks = linkResults.filter((r) => !r.ok)
+        if (failedLinks.length > 0) {
+          console.warn('[save] 图解关联部分失败，失败的 patternId:', failedLinks.map((r) => r.pid))
+        }
         // 移除的关联
         await Promise.all(
           initialPatternIds
