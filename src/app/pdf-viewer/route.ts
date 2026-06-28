@@ -13,7 +13,8 @@ export async function GET(req: Request) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#f0f0f0; font-family:-apple-system,sans-serif; }
+html, body { height:100%; }
+body { background:#f0f0f0; font-family:-apple-system,sans-serif; display:flex; flex-direction:column; }
 #toolbar { display:flex; align-items:center; justify-content:space-between; padding:8px 16px; background:#fff; border-bottom:1px solid #e0e0e0; position:sticky; top:0; z-index:10; }
 #toolbar .group { display:flex; align-items:center; gap:4px; }
 #toolbar button { width:36px; height:36px; border:none; background:transparent; border-radius:8px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; color:#333; transition:background .2s; }
@@ -21,7 +22,7 @@ body { background:#f0f0f0; font-family:-apple-system,sans-serif; }
 #toolbar button:disabled { opacity:.3; cursor:default; }
 #pageInfo { font-size:14px; color:#666; min-width:60px; text-align:center; }
 #zoomInfo { font-size:12px; color:#999; min-width:40px; text-align:center; }
-#canvasWrap { display:flex; justify-content:center; padding:16px; overflow-y:auto; }
+#canvasWrap { flex:1; display:flex; justify-content:center; align-items:flex-start; padding:16px; overflow-y:auto; }
 canvas { box-shadow:0 2px 12px rgba(0,0,0,.15); border-radius:4px; }
 #loading, #error { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; min-height:60vh; color:#999; font-size:14px; }
 #loading .spinner { width:32px; height:32px; border:3px solid #e0e0e0; border-top-color:#C17F6B; border-radius:50%; animation:spin .8s linear infinite; }
@@ -89,7 +90,7 @@ async function renderPage(num) {
   try {
     const page = await pdfDoc.getPage(num);
     const vp = page.getViewport({scale:1});
-    const maxW = Math.max(canvas.parentElement.clientWidth - 32, 600);
+    const maxW = Math.max(Math.min(canvas.parentElement.clientWidth - 32, window.innerWidth - 32), 300);
     const fitS = Math.min(maxW / vp.width, 2.5);
     const finalS = Math.min(scale, fitS);
     const viewport = page.getViewport({scale:finalS});

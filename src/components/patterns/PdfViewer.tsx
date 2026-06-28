@@ -11,7 +11,6 @@ export default function PdfViewer({ url }: { url: string }) {
         width: '100%',
         height: '100%',
         border: 'none',
-        minHeight: '100%',
       }}
     />
   )
