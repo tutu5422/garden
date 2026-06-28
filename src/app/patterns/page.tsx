@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Button, message } from 'antd'
+import { message } from 'antd'
 import PatternSidebar from '@/components/patterns/PatternSidebar'
 import PatternHeader from '@/components/patterns/PatternHeader'
 import PatternGrid from '@/components/patterns/PatternGrid'
@@ -39,10 +39,6 @@ export default function PatternsPage() {
 
   // 手机端侧栏控制
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-
-  // 分页显示
-  const PAGE_SIZE = 30
-  const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE)
 
   // 加载所有图解
   const loadPatterns = useCallback(async () => {
@@ -114,14 +110,6 @@ export default function PatternsPage() {
 
     return list
   }, [allPatterns, filterMode, statusFilter, selectedCategoryId, tagFilterId, search])
-
-  // 页面展示（分页切割）
-  const visiblePatterns = useMemo(() => filteredPatterns.slice(0, displayLimit), [filteredPatterns, displayLimit])
-  const hasMorePatterns = displayLimit < filteredPatterns.length
-
-  const handleLoadMore = () => {
-    setDisplayLimit(prev => prev + PAGE_SIZE)
-  }
 
   // 筛选标签
   const filterLabel = useMemo(() => {
@@ -328,9 +316,8 @@ export default function PatternsPage() {
             ))}
           </div>
         ) : (
-          <>
           <PatternGrid
-            patterns={visiblePatterns}
+            patterns={filteredPatterns}
             categories={categories}
             batchMode={batchMode}
             selectedIds={selectedIds}
@@ -344,14 +331,6 @@ export default function PatternsPage() {
             selectedCategoryName={selectedCategoryName}
             onImportClick={() => setImportDialogOpen(true)}
           />
-          {hasMorePatterns && (
-            <div style={{ textAlign: 'center', padding: '24px 0 40px' }}>
-              <Button onClick={handleLoadMore} style={{ minWidth: 160 }}>
-                加载更多 · 剩余 {filteredPatterns.length - displayLimit} 个
-              </Button>
-            </div>
-          )}
-          </>
         )}
       </div>
 
