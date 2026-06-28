@@ -81,6 +81,24 @@ function mergeSlotItems(slot: TimeSlot): MergedItem[] {
   return items.sort((a, b) => b.time.localeCompare(a.time));
 }
 
+// 墓碑 key：记录已删除的备忘 ID，防止下次从云端合并时复活
+const DELETED_MEMOS_KEY = 'minitu_timeline_deleted';
+
+// 从云端拉取 timeline 备忘（/api/sync GET 返回 timelineMemos 字段）
+async function syncTimelineMemosFromCloud(): Promise<TimelineMemo[]> {
+  try {
+    const res = await fetch('/api/sync', { method: 'GET' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.timelineMemos || []).map((r: any) => ({
+      id: r.id,
+      content: r.metadata?.content || r.content || r.title || '',
+      createdAt: r.createdAt || r.created_at || new Date().toISOString(),
+      source: 'timeline' as const,
+    }));
+  } catch { return []; }
+}
+
 export default function TimelinePage() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,15 +109,44 @@ export default function TimelinePage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const all: (NoteItem | TimelineMemo)[] = [];
-    try {
-      const notes: NoteItem[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
-      notes.forEach(n => all.push({ ...n, source: "notes" as const }));
-      const memos: TimelineMemo[] = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
-      memos.forEach(m => all.push({ ...m, source: "timeline" as const }));
-    } catch {}
-    setSlots(buildSlots(all));
-    setLoading(false);
+    const load = async () => {
+      const all: (NoteItem | TimelineMemo)[] = [];
+      let localMemos: TimelineMemo[] = [];
+      try {
+        const notes: NoteItem[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
+        notes.forEach(n => all.push({ ...n, source: "notes" as const }));
+        localMemos = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
+      } catch {}
+
+      // 从云端拉取 timeline 备忘并合并（带墓碑过滤，防止已删备忘复活）
+      const cloudMemos = await syncTimelineMemosFromCloud();
+      if (cloudMemos.length > 0) {
+        const deletedIds: string[] = (() => {
+          try { return JSON.parse(localStorage.getItem(DELETED_MEMOS_KEY) || "[]"); } catch { return []; }
+        })();
+        const deletedSet = new Set(deletedIds);
+        const merged = new Map<string, TimelineMemo>();
+        for (const m of localMemos) merged.set(m.id, { ...m, source: "timeline" });
+        for (const m of cloudMemos) {
+          if (deletedSet.has(m.id)) continue; // 跳过已删除的备忘
+          const existing = merged.get(m.id);
+          if (!existing || new Date(m.createdAt) > new Date(existing.createdAt)) {
+            merged.set(m.id, { ...m, source: "timeline" });
+          }
+        }
+        const mergedList = Array.from(merged.values());
+        // 本地与云端有差异时回写 localStorage
+        if (mergedList.length !== localMemos.length || cloudMemos.some(c => !localMemos.find(l => l.id === c.id))) {
+          localStorage.setItem("minitu_timeline", JSON.stringify(mergedList));
+          localMemos = mergedList;
+        }
+      }
+
+      localMemos.forEach(m => all.push({ ...m, source: "timeline" as const }));
+      setSlots(buildSlots(all));
+      setLoading(false);
+    };
+    load();
   }, []);
 
   const refresh = () => {
@@ -113,6 +160,22 @@ export default function TimelinePage() {
     setSlots(buildSlots(all));
   };
 
+  // 同步单条备忘到云端（fire-and-forget）
+  const syncTimelineMemo = (memo: TimelineMemo) => {
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'timeline_memo', action: 'upsert', data: memo }),
+    }).catch((e) => console.warn('[sync] timeline memo sync failed:', e));
+  };
+  const syncTimelineMemoDelete = (id: string) => {
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'timeline_memo', action: 'delete', data: { id } }),
+    }).catch((e) => console.warn('[sync] timeline memo delete failed:', e));
+  };
+
   const addMemo = () => {
     if (!newMemo.trim()) return;
     const memos: TimelineMemo[] = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
@@ -124,6 +187,7 @@ export default function TimelinePage() {
     };
     memos.unshift(memo);
     localStorage.setItem("minitu_timeline", JSON.stringify(memos));
+    syncTimelineMemo(memo);
     setNewMemo("");
     setShowForm(false);
     refresh();
@@ -132,6 +196,13 @@ export default function TimelinePage() {
   const delMemo = (id: string) => {
     const memos: TimelineMemo[] = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
     localStorage.setItem("minitu_timeline", JSON.stringify(memos.filter(m => m.id !== id)));
+    syncTimelineMemoDelete(id);
+    // 记录墓碑，防止云端合并时复活
+    try {
+      const deleted = JSON.parse(localStorage.getItem(DELETED_MEMOS_KEY) || "[]");
+      if (!deleted.includes(id)) deleted.push(id);
+      localStorage.setItem(DELETED_MEMOS_KEY, JSON.stringify(deleted));
+    } catch {}
     refresh();
   };
 

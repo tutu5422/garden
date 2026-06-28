@@ -52,13 +52,14 @@ export async function GET(req: NextRequest) {
     // we know the user's pattern IDs (see below) — fetching it unscoped here
     // would leak other users' associations because the service key bypasses
     // the RLS policy that normally filters via the `resources` owner.
-    const [musicRes, notesRes, resRes, filesRes, colRes, patternRes] = await Promise.all([
+    const [musicRes, notesRes, resRes, filesRes, colRes, patternRes, memoRes] = await Promise.all([
       dbFetch(`resources?id=eq.${MUSIC_PLAYLIST_ID}&user_id=eq.${LOCAL_USER_ID}&select=metadata`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=${SYNC_PAGE_LIMIT}`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&or=(metadata->>is_note.is.null,metadata->>is_note.eq.false)&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&metadata->>is_file=eq.true&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
       dbFetch(`collections?select=*&user_id=eq.${LOCAL_USER_ID}&order=updated_at.desc`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&metadata->>is_pattern=eq.true&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
+      dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&resource_type=eq.article&metadata->>is_timeline_memo=eq.true&order=created_at.desc&limit=${SYNC_PAGE_LIMIT}`),
     ]);
 
     let musicPlaylist: MusicTrack[] = [];
@@ -82,6 +83,7 @@ export async function GET(req: NextRequest) {
     const cloudFiles = filesRes.ok ? ((filesRes.body as ResourceRow[]) || []) : [];
     const collections = colRes.ok ? ((colRes.body as CollectionRow[]) || []) : [];
     const patterns = patternRes.ok ? ((patternRes.body as ResourceRow[]) || []) : [];
+    const timelineMemos = memoRes.ok ? ((memoRes.body as ResourceRow[]) || []) : [];
 
     // Fetch pattern_notes scoped to the current user's patterns. The
     // `pattern_notes` junction has no user_id column, so we filter by
@@ -188,6 +190,11 @@ export async function GET(req: NextRequest) {
         pattern_id: pn.pattern_id,
         note_id: pn.note_id,
         created_at: pn.created_at,
+      })),
+      timelineMemos: (timelineMemos || []).map((r: ResourceRow) => ({
+        id: r.id,
+        content: r.metadata?.content || r.title || '',
+        createdAt: r.created_at,
       })),
     });
     response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
@@ -376,6 +383,26 @@ export async function POST(req: NextRequest) {
           },
         });
         if (!pnRes.ok) return NextResponse.json({ error: '同步图解笔记关联失败', detail: pnRes.error }, { status: 500 });
+      } else if (table === 'timeline_memo') {
+        // 时间线备忘存为 resources 行，resource_type='article'，
+        // 备忘内容存入 metadata.content，metadata.is_timeline_memo=true 用于 GET 过滤
+        const memo = data;
+        const supabaseData = {
+          id: memo.id,
+          title: memo.content ? memo.content.substring(0, 80) : '备忘',
+          description: memo.content ? memo.content.substring(0, 200) : null,
+          resource_type: 'article',
+          user_id: LOCAL_USER_ID,
+          status: 'active',
+          metadata: {
+            is_timeline_memo: true,
+            content: memo.content || '',
+          },
+          created_at: memo.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const { ok: memoOk, error: memoErr } = await dbUpsertOwned('resources', supabaseData);
+        if (!memoOk) return NextResponse.json({ error: '同步备忘失败', detail: memoErr }, { status: 500 });
       }
     } else if (action === 'delete') {
       if (table === 'resources' || table === 'notes') {
@@ -397,6 +424,10 @@ export async function POST(req: NextRequest) {
           const result = await dbFetch(`pattern_notes?pattern_id=eq.${data.pattern_id}&note_id=eq.${data.note_id}`, { method: 'DELETE' });
           if (!result.ok) return NextResponse.json({ error: '删除图解笔记关联失败', detail: result.error }, { status: 500 });
         }
+      } else if (table === 'timeline_memo') {
+        // timeline_memo 存在 resources 表，按 id + user_id 删除
+        const result = await dbFetch(`resources?id=eq.${data.id}&user_id=eq.${LOCAL_USER_ID}`, { method: 'DELETE' });
+        if (!result.ok) return NextResponse.json({ error: '删除备忘失败', detail: result.error }, { status: 500 });
       }
     }
 
