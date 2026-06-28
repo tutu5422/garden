@@ -1080,6 +1080,17 @@ h1, h2, h3, h4, h5, h6, .display-font {
   min-height: 600px;
 }
 
+@media (max-width: 767px) {
+  .pdf-viewer-wrap {
+    height: 50vh;
+    min-height: 300px;
+  }
+  .pdf-viewer-wrap iframe {
+    min-height: unset;
+    height: 100%;
+  }
+}
+
 /* 批量操作栏 */
 .batch-bar {
   display: flex;

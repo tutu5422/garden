@@ -13,6 +13,8 @@ export interface PatternFilters {
   search?: string
   tagId?: string
   wishlisted?: boolean
+  limit?: number
+  offset?: number
 }
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
@@ -70,6 +72,8 @@ export async function getPatterns(filters?: PatternFilters): Promise<Resource[]>
   if (filters?.status) params.set('metadata->>patternStatus', `eq.${filters.status}`)
   if (filters?.wishlisted) params.set('metadata->>patternStatus', 'eq.wishlist')
   if (filters?.search) params.set('title', `ilike.*${filters.search}*`)
+  if (filters?.limit) params.set('limit', String(filters.limit))
+  if (filters?.offset) params.set('offset', String(filters.offset))
 
   const qs = params.toString()
   const data = await dbRequest(`resources?${qs}`, 'fetch', { method: 'GET' })
