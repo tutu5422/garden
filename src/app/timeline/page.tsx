@@ -84,19 +84,28 @@ function mergeSlotItems(slot: TimeSlot): MergedItem[] {
 // 墓碑 key：记录已删除的备忘 ID，防止下次从云端合并时复活
 const DELETED_MEMOS_KEY = 'minitu_timeline_deleted';
 
+// 模块级去重：同一个页面生命周期内只发起一次 /api/sync GET，
+// 避免组件重挂载或 StrictMode 双调用导致重复全量拉取。
+let _syncTimelineMemosPromise: Promise<TimelineMemo[]> | null = null;
+
 // 从云端拉取 timeline 备忘（/api/sync GET 返回 timelineMemos 字段）
 async function syncTimelineMemosFromCloud(): Promise<TimelineMemo[]> {
-  try {
-    const res = await fetch('/api/sync', { method: 'GET' });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.timelineMemos || []).map((r: any) => ({
-      id: r.id,
-      content: r.metadata?.content || r.content || r.title || '',
-      createdAt: r.createdAt || r.created_at || new Date().toISOString(),
-      source: 'timeline' as const,
-    }));
-  } catch { return []; }
+  if (_syncTimelineMemosPromise) return _syncTimelineMemosPromise;
+  _syncTimelineMemosPromise = (async () => {
+    try {
+      const res = await fetch('/api/sync', { method: 'GET' });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.timelineMemos || []).map((r: any) => ({
+        id: r.id,
+        content: r.metadata?.content || r.content || r.title || '',
+        createdAt: r.createdAt || r.created_at || new Date().toISOString(),
+        source: 'timeline' as const,
+      }));
+    } catch { return []; }
+  })();
+  _syncTimelineMemosPromise.catch(() => { _syncTimelineMemosPromise = null; });
+  return _syncTimelineMemosPromise;
 }
 
 export default function TimelinePage() {

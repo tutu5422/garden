@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Modal, Input, ColorPicker, message, Popconfirm, Button } from 'antd'
+import { message } from 'antd'
+import dynamic from 'next/dynamic'
 import {
   PlusOutlined,
   EditOutlined,
@@ -25,6 +26,14 @@ import {
   updateTag,
   deleteTag,
 } from '@/lib/api/patterns-api'
+
+// 侧栏弹窗/输入类 antd 组件动态导入，减小首屏 chunk。
+// `message` 为静态方法，保留常规导入。
+const Modal = dynamic(() => import('antd').then((m) => m.Modal), { ssr: false })
+const Input = dynamic(() => import('antd').then((m) => m.Input), { ssr: false })
+const ColorPicker = dynamic(() => import('antd').then((m) => m.ColorPicker), { ssr: false })
+const Popconfirm = dynamic(() => import('antd').then((m) => m.Popconfirm), { ssr: false })
+const Button = dynamic(() => import('antd').then((m) => m.Button), { ssr: false })
 
 const MACARON_COLORS = [
   '#C17F6B', '#D4A98A', '#8FA88A', '#8AA0A8',

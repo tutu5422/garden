@@ -25,25 +25,35 @@ const bentoPalette = [
   { bg: '#F0F7FA', accent: '#3A8B9E', text: '#1E3A4A' },
 ];
 
+// 模块级去重：同一个页面生命周期内只发起一次 /api/sync GET，
+// 避免组件重挂载或 StrictMode 双调用导致重复全量拉取。
+let _syncNotesPromise: Promise<Note[]> | null = null;
+
 // Pull notes from cloud via /api/sync (server-side service key, no RLS issues)
 async function syncNotesFromCloud(): Promise<Note[]> {
-  try {
-    const res = await fetch('/api/sync', { method: 'GET' });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.notes || []).map((r: any) => ({
-      id: r.id,
-      title: r.title || '',
-      content: r.content || '',
-      type: r.type || 'article',
-      tags: r.tags || [],
-      collectionId: r.collectionId || undefined,
-      collectionName: r.collectionName || undefined,
-      createdAt: r.createdAt || new Date().toISOString(),
-      image: r.image || undefined,
-      imageThumb: r.imageThumb || undefined,
-    }));
-  } catch { return []; }
+  if (_syncNotesPromise) return _syncNotesPromise;
+  _syncNotesPromise = (async () => {
+    try {
+      const res = await fetch('/api/sync', { method: 'GET' });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.notes || []).map((r: any) => ({
+        id: r.id,
+        title: r.title || '',
+        content: r.content || '',
+        type: r.type || 'article',
+        tags: r.tags || [],
+        collectionId: r.collectionId || undefined,
+        collectionName: r.collectionName || undefined,
+        createdAt: r.createdAt || new Date().toISOString(),
+        image: r.image || undefined,
+        imageThumb: r.imageThumb || undefined,
+      }));
+    } catch { return []; }
+  })();
+  // 失败时清空缓存，允许下次重试
+  _syncNotesPromise.catch(() => { _syncNotesPromise = null; });
+  return _syncNotesPromise;
 }
 
 function compressImage(file: File, maxW: number, quality: number): Promise<{ full: string; thumb: string }> {

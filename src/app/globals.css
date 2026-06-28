@@ -657,14 +657,15 @@ h1, h2, h3, h4, h5, h6, .display-font {
 /* 织集页面容器 — 三栏布局 */
 .patterns-layout {
   display: flex;
-  min-height: calc(100vh - 3.5rem);
+  height: calc(100vh - 3.5rem);
+  overflow: hidden;
   background: var(--skin-bg);
 }
 
 @media (max-width: 767px) {
   .patterns-layout {
     flex-direction: column;
-    min-height: calc(100vh - 7rem);
+    height: calc(100vh - 7rem);
   }
 }
 

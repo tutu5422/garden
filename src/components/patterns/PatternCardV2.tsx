@@ -1,11 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Checkbox, Popconfirm, message } from 'antd'
+import dynamic from 'next/dynamic'
 import { FilePdfOutlined, DeleteOutlined, HeartOutlined, HeartFilled } from '@ant-design/icons'
 import { useRouter } from 'next/navigation'
 import SmartImage from '@/components/shared/SmartImage'
 import type { Resource } from '@/lib/types'
+
+// 卡片内 antd 组件按需动态导入，避免整个 antd 包打进首屏 chunk。
+const Checkbox = dynamic(() => import('antd').then((m) => m.Checkbox), { ssr: false })
+const Popconfirm = dynamic(() => import('antd').then((m) => m.Popconfirm), { ssr: false })
 
 interface PatternCardV2Props {
   pattern: Resource

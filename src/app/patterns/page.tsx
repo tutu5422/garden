@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { message } from 'antd'
 import PatternSidebar from '@/components/patterns/PatternSidebar'
 import PatternHeader from '@/components/patterns/PatternHeader'
 import PatternGrid from '@/components/patterns/PatternGrid'
-import ImportDialog from '@/components/patterns/ImportDialog'
 import type { Resource, Category, Tag } from '@/lib/types'
 import {
   getPatterns,
@@ -14,6 +14,12 @@ import {
   getCategories,
   getTags,
 } from '@/lib/api/patterns-api'
+
+// 弹窗非首屏可见，懒加载以减小首屏 chunk。
+const ImportDialog = dynamic(
+  () => import('@/components/patterns/ImportDialog'),
+  { ssr: false },
+)
 
 type FilterMode = 'all' | 'category' | 'wishlist' | 'status' | 'tag'
 
@@ -300,20 +306,22 @@ export default function PatternsPage() {
         />
 
         {loading ? (
-          <div className="pattern-grid">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="warm-card"
-                style={{ height: 300, opacity: 0.4 }}
-              >
-                <div className="warm-card-cover" style={{ height: 220 }} />
-                <div className="warm-card-body">
-                  <div style={{ height: 14, background: 'var(--skin-muted)', borderRadius: 4, marginBottom: 8 }} />
-                  <div style={{ height: 10, width: 60, background: 'var(--skin-muted)', borderRadius: 4 }} />
+          <div style={{ flex: 1, overflow: 'auto' }}>
+            <div className="pattern-grid">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="warm-card"
+                  style={{ height: 300, opacity: 0.4 }}
+                >
+                  <div className="warm-card-cover" style={{ height: 220 }} />
+                  <div className="warm-card-body">
+                    <div style={{ height: 14, background: 'var(--skin-muted)', borderRadius: 4, marginBottom: 8 }} />
+                    <div style={{ height: 10, width: 60, background: 'var(--skin-muted)', borderRadius: 4 }} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         ) : (
           <PatternGrid
