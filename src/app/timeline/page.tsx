@@ -180,7 +180,7 @@ export default function TimelinePage() {
     if (!newMemo.trim()) return;
     const memos: TimelineMemo[] = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
     const memo: TimelineMemo = {
-      id: "tl-" + Date.now().toString(36),
+      id: crypto.randomUUID?.() || 'tl-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
       content: newMemo.trim(),
       createdAt: new Date().toISOString(),
       source: "timeline",
