@@ -26,6 +26,13 @@ const nextConfig: NextConfig = {
   compiler: { removeConsole: false }, // temporarily disabled for debugging
   async headers() {
     return [
+      // Allow PDF viewer to be embedded in iframe (must come before catch-all)
+      {
+        source: "/pdf-viewer.html",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        ],
+      },
       // Security headers applied to every response.
       {
         source: "/(.*)",
