@@ -84,28 +84,34 @@ function mergeSlotItems(slot: TimeSlot): MergedItem[] {
 // 墓碑 key：记录已删除的备忘 ID，防止下次从云端合并时复活
 const DELETED_MEMOS_KEY = 'minitu_timeline_deleted';
 
-// 模块级去重：同一个页面生命周期内只发起一次 /api/sync GET，
-// 避免组件重挂载或 StrictMode 双调用导致重复全量拉取。
-let _syncTimelineMemosPromise: Promise<TimelineMemo[]> | null = null;
+// 模块级去重：整个页面只发起一次 /api/sync GET，解析出 notes + timelineMemos
+let _syncAllPromise: Promise<{ notes: NoteItem[]; memos: TimelineMemo[] }> | null = null;
 
-// 从云端拉取 timeline 备忘（/api/sync GET 返回 timelineMemos 字段）
-async function syncTimelineMemosFromCloud(): Promise<TimelineMemo[]> {
-  if (_syncTimelineMemosPromise) return _syncTimelineMemosPromise;
-  _syncTimelineMemosPromise = (async () => {
+async function syncAllForTimeline(): Promise<{ notes: NoteItem[]; memos: TimelineMemo[] }> {
+  if (_syncAllPromise) return _syncAllPromise;
+  _syncAllPromise = (async () => {
     try {
       const res = await fetch('/api/sync', { method: 'GET' });
-      if (!res.ok) return [];
+      if (!res.ok) return { notes: [], memos: [] };
       const data = await res.json();
-      return (data.timelineMemos || []).map((r: any) => ({
-        id: r.id,
-        content: r.metadata?.content || r.content || r.title || '',
-        createdAt: r.createdAt || r.created_at || new Date().toISOString(),
-        source: 'timeline' as const,
-      }));
-    } catch { return []; }
+      return {
+        notes: (data.notes || []).map((r: any) => ({
+          id: r.id, title: r.title || '', content: r.content || '',
+          type: r.type || 'article', tags: r.tags || [],
+          collectionName: r.collectionName || undefined,
+          createdAt: r.createdAt || new Date().toISOString(),
+          image: r.image || undefined, source: 'notes' as const,
+        })),
+        memos: (data.timelineMemos || []).map((r: any) => ({
+          id: r.id,
+          content: r.metadata?.content || r.content || r.title || '',
+          createdAt: r.createdAt || r.created_at || new Date().toISOString(),
+          source: 'timeline' as const,
+        })),
+      };
+    } catch { return { notes: [], memos: [] }; }
   })();
-  _syncTimelineMemosPromise.catch(() => { _syncTimelineMemosPromise = null; });
-  return _syncTimelineMemosPromise;
+  return _syncAllPromise;
 }
 
 export default function TimelinePage() {
@@ -117,36 +123,17 @@ export default function TimelinePage() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // 复用 notes 页面的云端同步函数
-  async function syncNotesForTimeline(): Promise<NoteItem[]> {
-    try {
-      const res = await fetch('/api/sync', { method: 'GET' });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.notes || []).map((r: any) => ({
-        id: r.id,
-        title: r.title || '',
-        content: r.content || '',
-        type: r.type || 'article',
-        tags: r.tags || [],
-        collectionName: r.collectionName || undefined,
-        createdAt: r.createdAt || new Date().toISOString(),
-        image: r.image || undefined,
-        source: 'notes' as const,
-      }));
-    } catch { return []; }
-  }
-
   useEffect(() => {
     const load = async () => {
       const all: (NoteItem | TimelineMemo)[] = [];
       let localMemos: TimelineMemo[] = [];
       try {
-        // 先从云端拉取 notes 并回写 localStorage（CloudSyncProvider 已不再全量 sync）
-        const cloudNotes = await syncNotesForTimeline();
+        // 先从云端拉取 notes + timelineMemos（一次请求，解析两份数据）
+        const { notes: cloudNotes, memos: cloudMemos } = await syncAllForTimeline();
+
+        // 处理 notes
         const existingNotes: NoteItem[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
         if (cloudNotes.length > 0) {
-          // 合并云端和本地 notes（取较新版本）
           const mergedNotes = new Map<string, NoteItem>();
           for (const n of existingNotes) mergedNotes.set(n.id, n);
           for (const n of cloudNotes) {
@@ -162,32 +149,30 @@ export default function TimelinePage() {
         } else {
           existingNotes.forEach(n => all.push({ ...n, source: "notes" as const }));
         }
-        localMemos = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
-      } catch {}
 
-      // 从云端拉取 timeline 备忘并合并（带墓碑过滤，防止已删备忘复活）
-      const cloudMemos = await syncTimelineMemosFromCloud();
-      if (cloudMemos.length > 0) {
-        const deletedIds: string[] = (() => {
-          try { return JSON.parse(localStorage.getItem(DELETED_MEMOS_KEY) || "[]"); } catch { return []; }
-        })();
-        const deletedSet = new Set(deletedIds);
-        const merged = new Map<string, TimelineMemo>();
-        for (const m of localMemos) merged.set(m.id, { ...m, source: "timeline" });
-        for (const m of cloudMemos) {
-          if (deletedSet.has(m.id)) continue; // 跳过已删除的备忘
-          const existing = merged.get(m.id);
-          if (!existing || new Date(m.createdAt) > new Date(existing.createdAt)) {
-            merged.set(m.id, { ...m, source: "timeline" });
+        // 处理 timelineMemos
+        localMemos = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
+        if (cloudMemos.length > 0) {
+          const deletedIds: string[] = (() => {
+            try { return JSON.parse(localStorage.getItem(DELETED_MEMOS_KEY) || "[]"); } catch { return []; }
+          })();
+          const deletedSet = new Set(deletedIds);
+          const merged = new Map<string, TimelineMemo>();
+          for (const m of localMemos) merged.set(m.id, { ...m, source: "timeline" });
+          for (const m of cloudMemos) {
+            if (deletedSet.has(m.id)) continue;
+            const existing = merged.get(m.id);
+            if (!existing || new Date(m.createdAt) > new Date(existing.createdAt)) {
+              merged.set(m.id, { ...m, source: "timeline" });
+            }
+          }
+          const mergedList = Array.from(merged.values());
+          if (mergedList.length !== localMemos.length || cloudMemos.some(c => !localMemos.find(l => l.id === c.id))) {
+            localStorage.setItem("minitu_timeline", JSON.stringify(mergedList));
+            localMemos = mergedList;
           }
         }
-        const mergedList = Array.from(merged.values());
-        // 本地与云端有差异时回写 localStorage
-        if (mergedList.length !== localMemos.length || cloudMemos.some(c => !localMemos.find(l => l.id === c.id))) {
-          localStorage.setItem("minitu_timeline", JSON.stringify(mergedList));
-          localMemos = mergedList;
-        }
-      }
+      } catch {}
 
       localMemos.forEach(m => all.push({ ...m, source: "timeline" as const }));
       setSlots(buildSlots(all));
