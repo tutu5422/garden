@@ -35,6 +35,12 @@ export default function PatternDetailPage() {
   const router = useRouter()
   const patternId = params.id as string
 
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
+
   const [pattern, setPattern] = useState<Resource | null>(null)
   const [notes, setNotes] = useState<any[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -277,7 +283,35 @@ export default function PatternDetailPage() {
         <div className="pattern-detail-content">
           <div className="pdf-viewer-wrap">
             {pattern.url ? (
-              <PdfViewer url={pattern.url} />
+              isMobile ? (
+                <PdfViewer url={pattern.url} />
+              ) : (
+                <object
+                  data={pattern.url}
+                  type="application/pdf"
+                  style={{ width: '100%', height: '100%', border: 'none', minHeight: '600px' }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%',
+                      minHeight: 300,
+                      color: 'var(--skin-text-secondary)',
+                      gap: 12,
+                      padding: 24,
+                    }}
+                  >
+                    <FilePdfOutlined style={{ fontSize: 64, opacity: 0.4 }} />
+                    <p>浏览器无法内嵌预览 PDF</p>
+                    <a href={pattern.url} target="_blank" rel="noopener noreferrer">
+                      <Button type="primary" icon={<LinkOutlined />}>在新标签页打开</Button>
+                    </a>
+                  </div>
+                </object>
+              )
             ) : (
               <div
                 style={{
