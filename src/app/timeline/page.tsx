@@ -117,13 +117,51 @@ export default function TimelinePage() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // 复用 notes 页面的云端同步函数
+  async function syncNotesForTimeline(): Promise<NoteItem[]> {
+    try {
+      const res = await fetch('/api/sync', { method: 'GET' });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.notes || []).map((r: any) => ({
+        id: r.id,
+        title: r.title || '',
+        content: r.content || '',
+        type: r.type || 'article',
+        tags: r.tags || [],
+        collectionName: r.collectionName || undefined,
+        createdAt: r.createdAt || new Date().toISOString(),
+        image: r.image || undefined,
+        source: 'notes' as const,
+      }));
+    } catch { return []; }
+  }
+
   useEffect(() => {
     const load = async () => {
       const all: (NoteItem | TimelineMemo)[] = [];
       let localMemos: TimelineMemo[] = [];
       try {
-        const notes: NoteItem[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
-        notes.forEach(n => all.push({ ...n, source: "notes" as const }));
+        // 先从云端拉取 notes 并回写 localStorage（CloudSyncProvider 已不再全量 sync）
+        const cloudNotes = await syncNotesForTimeline();
+        const existingNotes: NoteItem[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
+        if (cloudNotes.length > 0) {
+          // 合并云端和本地 notes（取较新版本）
+          const mergedNotes = new Map<string, NoteItem>();
+          for (const n of existingNotes) mergedNotes.set(n.id, n);
+          for (const n of cloudNotes) {
+            if (!mergedNotes.has(n.id) || new Date(n.createdAt) > new Date(mergedNotes.get(n.id)!.createdAt)) {
+              mergedNotes.set(n.id, n);
+            }
+          }
+          const merged = Array.from(mergedNotes.values());
+          if (merged.length !== existingNotes.length) {
+            localStorage.setItem("minitu_notes", JSON.stringify(merged));
+          }
+          merged.forEach(n => all.push({ ...n, source: 'notes' as const }));
+        } else {
+          existingNotes.forEach(n => all.push({ ...n, source: "notes" as const }));
+        }
         localMemos = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
       } catch {}
 
