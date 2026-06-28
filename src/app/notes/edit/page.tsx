@@ -132,7 +132,7 @@ function EditForm() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
-        }).catch(() => {})
+        }).catch((e) => console.warn('[sync] 笔记同步失败:', e))
       } else {
         let syncedNote: Note | undefined
         const updated = notes.map(n => {
@@ -154,7 +154,7 @@ function EditForm() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ table: 'notes', action: 'upsert', data: syncedNote }),
-          }).catch(() => {})
+          }).catch((e) => console.warn('[sync] 笔记同步失败:', e))
         }
       }
 

@@ -19,14 +19,51 @@ export default function NoteDetail() {
   const [linkedPatterns, setLinkedPatterns] = useState<Resource[]>([]);
 
   useEffect(() => {
-    try {
-      const notes: Note[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
-      const found = notes.find((n) => n.id === id);
-      if (found) setNote(found);
-      else setNotFound(true);
-    } catch {
-      setNotFound(true);
-    }
+    const load = async () => {
+      try {
+        const notes: Note[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
+        const found = notes.find((n) => n.id === id);
+        if (found) {
+          setNote(found);
+          // Fix A3: 本地有则同步到云端，确保云端有备份
+          fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: 'notes', action: 'upsert', data: found }),
+          }).catch((e) => console.warn('[sync] note detail sync failed:', e));
+          return;
+        }
+        // Fix A2: localStorage 找不到，尝试从云端加载兜底
+        try {
+          const cloudRes = await fetch('/api/sync');
+          if (cloudRes.ok) {
+            const data = await cloudRes.json();
+            const cloudNote = (data.notes || []).find((n: any) => n.id === id);
+            if (cloudNote) {
+              setNote({
+                id: cloudNote.id,
+                title: cloudNote.title,
+                content: cloudNote.content || '',
+                type: cloudNote.type || 'article',
+                tags: cloudNote.tags || [],
+                collectionId: cloudNote.collectionId,
+                collectionName: cloudNote.collectionName,
+                createdAt: cloudNote.createdAt || cloudNote.created_at,
+                image: cloudNote.image,
+                imageThumb: cloudNote.imageThumb,
+              });
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('[sync] 从云端加载笔记失败:', e);
+        }
+        setNotFound(true);
+      } catch {
+        setNotFound(true);
+      }
+    };
+    load();
     // 加载关联图解（异步走 VPS PostgREST）
     if (id) {
       void (async () => {

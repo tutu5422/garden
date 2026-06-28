@@ -141,7 +141,7 @@ export default function Notes() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ table: 'notes', action: 'upsert', data: n }),
-            }).catch(() => {});
+            }).catch((e) => console.warn('[sync] re-sync failed:', e));
           });
         } else {
           setNotes(local);
@@ -176,14 +176,14 @@ export default function Notes() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
-    }).catch(() => {});
+    }).catch((e) => console.warn('[sync] syncNote failed:', e));
   };
   const syncNoteDelete = (id: string) => {
     fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: 'notes', action: 'delete', data: { id } }),
-    }).catch(() => {});
+    }).catch((e) => console.warn('[sync] delete sync failed:', e));
   };
 
   const save = (n: Note[]) => { setNotes(n); localStorage.setItem("minitu_notes", JSON.stringify(n)); };

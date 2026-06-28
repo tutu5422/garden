@@ -55,10 +55,11 @@ export default function LoginPage() {
           </span>
           <p className="text-[10px] text-[var(--skin-text-secondary)] mt-1">此网站仅限主人访问</p>
         </div>
-        <form onSubmit={handleGateLogin} className="space-y-4">
+        <form onSubmit={handleGateLogin} className="space-y-4" autoComplete="on">
           <input
             type="password" placeholder="输入访问密码" value={gatePwd}
             onChange={(e) => setGatePwd(e.target.value)} autoFocus
+            autoComplete="current-password"
             className="input-filled w-full text-sm" />
           {error && <p className="text-xs text-center" style={{ color: 'var(--skin-accent)' }}>{error}</p>}
           <button type="submit" className="btn w-full justify-center" disabled={loading || !gatePwd}>
