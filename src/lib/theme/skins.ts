@@ -17,38 +17,39 @@ export interface ThemeColors {
 /** 非颜色维度的皮肤样式 */
 export interface ThemeStyle {
   // 圆角体系
-  radiusSm: string    // 小 (按钮、输入框、标签)
-  radiusMd: string    // 中 (卡片)
-  radiusLg: string    // 大 (弹窗、Hero区域)
-  radiusXl: string    // 特大 (全宽卡片)
+  radiusSm: string
+  radiusMd: string
+  radiusLg: string
+  radiusXl: string
 
   // 字体
-  fontDisplay: string // 标题字体
-  fontBody: string    // 正文字体
+  fontDisplay: string
+  fontBody: string
 
   // 卡片样式
-  cardBg: string            // 卡片背景 (vs --skin-surface)
-  cardBorder: string        // 卡片边框色
-  cardBorderWidth: string   // 卡片边框宽度
-  cardShadow: string        // 卡片阴影
-  cardHover: string         // 悬停变换 (e.g. 'translateY(-4px)')
-  cardHoverShadow: string   // 悬停阴影
-  cardHoverBorder: string   // 悬停边框色
+  cardBg: string
+  cardBorder: string
+  cardBorderWidth: string
+  cardShadow: string
+  cardBackdrop?: string  // 毛玻璃 blur 值 (e.g. 'blur(16px)')
+  cardHover: string
+  cardHoverShadow: string
+  cardHoverBorder: string
 
-  // 毛玻璃 (仅 "glass" 卡片风格时生效)
+  // 毛玻璃
   glassBg?: string
   glassBlur?: string
   glassBorder?: string
 
-  // 按钮样式
+  // 按钮
   btnRadius: string
   btnShadow: string
 
-  // 标签/徽标
+  // 标签
   tagRadius: string
 
-  // 页面级
-  pageBg: string  // 背景 (等于 colors.background，但可在上面叠加纹理)
+  // 页面
+  pageBg: string
   sectionGap: string
 }
 
@@ -59,10 +60,10 @@ export interface ThemeDefinition {
   description: string
   light: ThemeColors
   dark: ThemeColors
-  style: ThemeStyle  // 每个皮肤的独立样式
+  style: ThemeStyle
 }
 
-// ========== 编辑狂想 · 时尚杂志美学（原始主题，保留不变）==========
+// ========== 编辑狂想 · 时尚杂志美学（保持不变）==========
 
 export const EDITORIAL_RAVE: ThemeDefinition = {
   id: 'editorial-rave',
@@ -116,16 +117,13 @@ export const EDITORIAL_RAVE: ThemeDefinition = {
   },
 }
 
-// =====================================================================
-// 以下三个皮肤由 Devin+Kimi K2.7 重新定义，下轮迭代将重写为非颜色维度的全面改造
-// =====================================================================
-
 // ========== 森系纸墨 · Forest Paper ==========
+// 手写笔记本质感 — 圆润纸张、手绘感边框、衬线字体
 export const FOREST_PAPER: ThemeDefinition = {
   id: 'forest-paper',
   name: '森系纸墨',
   emoji: '🌿',
-  description: '米纸宣纸 × 墨绿木色 · 自然手绘质感',
+  description: '米纸宣纸 × 墨绿木色 · 自然手写质感',
   light: {
     primary:       '#2E5C45',
     background:    '#F5F1E8',
@@ -147,33 +145,34 @@ export const FOREST_PAPER: ThemeDefinition = {
     textSecondary: '#8A9B8A',
   },
   style: {
-    radiusSm:     '0.5rem',
-    radiusMd:     '0.875rem',
-    radiusLg:     '1.125rem',
-    radiusXl:     '1.5rem',
+    radiusSm:     '0.625rem',
+    radiusMd:     '1rem',
+    radiusLg:     '1.25rem',
+    radiusXl:     '1.75rem',
 
-    fontDisplay:  "'Noto Serif SC', 'STSong', 'Georgia', serif",
-    fontBody:     "'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
+    fontDisplay:  "'Noto Serif SC', 'STSong', 'ZCOOL XiaoWei', 'Georgia', serif",
+    fontBody:     "'Noto Serif SC', 'PingFang SC', system-ui, sans-serif",
 
     cardBg:           '#FDFCF8',
     cardBorder:       '#D9D2C3',
-    cardBorderWidth:  '1px',
-    cardShadow:       '0 2px 8px rgba(0,0,0,0.06)',
-    cardHover:        'translateY(-4px)',
-    cardHoverShadow:  '0 8px 24px rgba(0,0,0,0.10)',
+    cardBorderWidth:  '1.5px',
+    cardShadow:       '0 2px 6px rgba(0,0,0,0.04)',
+    cardHover:        'translateY(-3px)',
+    cardHoverShadow:  '0 6px 16px rgba(0,0,0,0.08)',
     cardHoverBorder:  '#2E5C45',
 
-    btnRadius:        '0.625rem',
-    btnShadow:        '0 2px 4px rgba(0,0,0,0.06)',
+    btnRadius:        '0.75rem',
+    btnShadow:        '0 2px 4px rgba(0,0,0,0.05)',
 
-    tagRadius:        '0.375rem',
+    tagRadius:        '9999px',
 
     pageBg:           'var(--skin-bg)',
-    sectionGap:       '3rem',
+    sectionGap:       '4rem',
   },
 }
 
 // ========== 暖阳陶土 · Warm Terracotta ==========
+// 地中海阳光 — 超大圆角、暖光投影、浑厚衬线
 export const WARM_TERRACOTTA: ThemeDefinition = {
   id: 'warm-terracotta',
   name: '暖阳陶土',
@@ -200,38 +199,39 @@ export const WARM_TERRACOTTA: ThemeDefinition = {
     textSecondary: '#B89A82',
   },
   style: {
-    radiusSm:     '0.75rem',
-    radiusMd:     '1rem',
+    radiusSm:     '1rem',
+    radiusMd:     '1.25rem',
     radiusLg:     '1.5rem',
     radiusXl:     '2rem',
 
-    fontDisplay:  "'Noto Serif SC', 'STSong', 'Georgia', serif",
+    fontDisplay:  "'Noto Serif SC', 'STSong', 'Georgia', 'Times New Roman', serif",
     fontBody:     "'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
 
     cardBg:           '#FFFBF5',
     cardBorder:       '#E8D5C4',
     cardBorderWidth:  '1px',
-    cardShadow:       '0 4px 12px rgba(0,0,0,0.06)',
+    cardShadow:       '0 4px 16px rgba(198,93,59,0.10), 0 8px 24px rgba(0,0,0,0.04)',
     cardHover:        'translateY(-4px)',
-    cardHoverShadow:  '0 12px 32px rgba(0,0,0,0.10)',
+    cardHoverShadow:  '0 12px 32px rgba(198,93,59,0.15), 0 24px 48px rgba(0,0,0,0.06)',
     cardHoverBorder:  '#C65D3B',
 
-    btnRadius:        '0.875rem',
-    btnShadow:        '0 2px 8px rgba(0,0,0,0.06)',
+    btnRadius:        '9999px',
+    btnShadow:        '0 4px 12px rgba(198,93,59,0.20)',
 
-    tagRadius:        '0.5rem',
+    tagRadius:        '9999px',
 
     pageBg:           'var(--skin-bg)',
-    sectionGap:       '3rem',
+    sectionGap:       '3.5rem',
   },
 }
 
 // ========== 午夜蓝金 · Midnight Blue ==========
+// 奢华毛玻璃 — 半透明卡片、金色细边框、无衬线精致感
 export const MIDNIGHT_BLUE: ThemeDefinition = {
   id: 'midnight-blue',
   name: '午夜蓝金',
   emoji: '🌙',
-  description: '午夜蓝 × 月光金 · 沉稳奢华的夜间花园',
+  description: '午夜蓝 × 月光金 · 毛玻璃奢华质感',
   light: {
     primary:       '#1E3A8A',
     background:    '#F4F6F9',
@@ -245,7 +245,7 @@ export const MIDNIGHT_BLUE: ThemeDefinition = {
   dark: {
     primary:       '#3B82F6',
     background:    '#0B1120',
-    surface:       '#151E32',
+    surface:       'rgba(21,30,50,0.6)',
     muted:         '#1C2744',
     border:        '#2A3A5C',
     accent:        '#F0C050',
@@ -261,21 +261,27 @@ export const MIDNIGHT_BLUE: ThemeDefinition = {
     fontDisplay:  "'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
     fontBody:     "'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
 
-    cardBg:           '#FFFFFF',
-    cardBorder:       '#D5DDE8',
+    // 浅色用半透明白+模糊，深色用半透明深蓝+模糊
+    cardBg:           'rgba(255,255,255,0.55)',
+    cardBorder:       'rgba(201,162,39,0.25)',
     cardBorderWidth:  '1px',
-    cardShadow:       '0 4px 12px rgba(0,0,0,0.06)',
-    cardHover:        'translateY(-4px)',
-    cardHoverShadow:  '0 16px 32px rgba(0,0,0,0.10)',
-    cardHoverBorder:  '#1E3A8A',
+    cardShadow:       '0 4px 16px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.02)',
+    cardBackdrop:     'blur(16px)',
+    cardHover:        'translateY(-3px)',
+    cardHoverShadow:  '0 12px 32px rgba(30,58,138,0.10), 0 8px 16px rgba(201,162,39,0.08)',
+    cardHoverBorder:  'rgba(201,162,39,0.6)',
 
-    btnRadius:        '0.25rem',
-    btnShadow:        '0 2px 4px rgba(0,0,0,0.06)',
+    glassBg:          'rgba(255,255,255,0.55)',
+    glassBlur:        '16px',
+    glassBorder:      'rgba(201,162,39,0.2)',
+
+    btnRadius:        '0.375rem',
+    btnShadow:        '0 2px 8px rgba(30,58,138,0.15)',
 
     tagRadius:        '0.25rem',
 
     pageBg:           'var(--skin-bg)',
-    sectionGap:       '3rem',
+    sectionGap:       '2.5rem',
   },
 }
 
@@ -356,7 +362,6 @@ export function applyTheme(skinId: string, dark: boolean) {
     '--skin-text':             palette.text,
     '--skin-text-secondary':   palette.textSecondary,
 
-    // 样式变量
     '--skin-radius-sm':        s.radiusSm,
     '--skin-radius-md':        s.radiusMd,
     '--skin-radius-lg':        s.radiusLg,
@@ -369,6 +374,7 @@ export function applyTheme(skinId: string, dark: boolean) {
     '--skin-card-border':      s.cardBorder,
     '--skin-card-border-width': s.cardBorderWidth,
     '--skin-card-shadow':      s.cardShadow,
+    '--skin-card-backdrop':    s.cardBackdrop ?? 'none',
     '--skin-card-hover':       s.cardHover,
     '--skin-card-hover-shadow': s.cardHoverShadow,
     '--skin-card-hover-border': s.cardHoverBorder,
