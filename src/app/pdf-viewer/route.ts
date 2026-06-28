@@ -118,6 +118,9 @@ loadPdf();
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'X-Frame-Options': 'SAMEORIGIN',
+      // 显式 CSP：PDF viewer 仅依赖 cdnjs 加载 pdf.js，不需要 unpkg / unsafe-eval。
+      // 覆盖 next.config.ts 中针对全站的更宽松 CSP，避免移动端浏览器安全警告。
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; worker-src 'self' https://cdnjs.cloudflare.com blob:; frame-src 'self'",
     },
   })
 }

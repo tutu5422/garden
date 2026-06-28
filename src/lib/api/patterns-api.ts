@@ -299,19 +299,42 @@ export async function unlinkPatternNote(patternId: string, noteId: string): Prom
 }
 
 export async function getNotesForPattern(patternId: string): Promise<PatternNoteLink[]> {
-  const data = await dbRequest(
-    `pattern_notes?select=*,note:resources!pattern_notes_note_id_fkey(*)&pattern_id=eq.${patternId}`,
+  // 两段式查询：不依赖 FK 约束名（PostgREST embedded resource 别名依赖 FK 名，
+  // 若实际约束名与硬编码不符，note 字段会返回 null，导致时间线不显示）
+  // 1. 先查 pattern_notes 获取所有关联的 note_id
+  const linkData = await dbRequest(
+    `pattern_notes?select=id,note_id,created_at&pattern_id=eq.${patternId}`,
     'fetch',
     { method: 'GET' },
   )
-  // 将 resources 的 description 映射为 content（PatternTimeline 需要）
-  const links = (data as PatternNoteLink[]) || []
-  for (const link of links) {
-    if (link.note && typeof link.note === 'object' && !('content' in link.note) && 'description' in link.note) {
-      ;(link.note as any).content = (link.note as any).description
-    }
-  }
-  return links
+  const linkRows = (linkData as any[]) || []
+  if (linkRows.length === 0) return []
+
+  // 2. 再查 resources 获取笔记详情
+  const noteIds = linkRows.map((l: any) => l.note_id).filter(Boolean)
+  if (noteIds.length === 0) return []
+
+  const notesData = await dbRequest(
+    `resources?select=id,title,description,created_at,metadata&id=in.(${noteIds.join(',')})`,
+    'fetch',
+    { method: 'GET' },
+  )
+  const notes = (notesData as any[]) || []
+  const noteMap = new Map(notes.map((n: any) => [n.id, n]))
+
+  // 3. 组装回 PatternNoteLink 格式，并将 description 映射为 content（PatternTimeline 需要）
+  return linkRows.map((link: any) => {
+    const note = noteMap.get(link.note_id)
+    return {
+      id: link.id,
+      pattern_id: patternId,
+      note_id: link.note_id,
+      created_at: link.created_at,
+      note: note
+        ? { ...note, content: note.description || '' }
+        : null,
+    } as PatternNoteLink
+  })
 }
 
 export async function getPatternsForNote(noteId: string): Promise<Resource[]> {

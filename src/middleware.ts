@@ -18,6 +18,13 @@ export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const ip = clientIp(req);
 
+  // HTTP → HTTPS 强制跳转（生产环境）：避免移动端混合内容/安全警告
+  if (!isDev && req.headers.get("x-forwarded-proto") === "http") {
+    const url = new URL(req.url);
+    url.protocol = "https:";
+    return NextResponse.redirect(url, 308);
+  }
+
   if (pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname.startsWith("/pdf-viewer")) {
     return NextResponse.next();
   }
