@@ -1,7 +1,7 @@
 'use client'
 
 export default function PdfViewer({ url }: { url: string }) {
-  const viewerUrl = `/pdf-viewer.html?file=${encodeURIComponent(url)}`
+  const viewerUrl = `/pdf-viewer?file=${encodeURIComponent(url)}`
 
   return (
     <iframe

@@ -18,7 +18,7 @@ export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const ip = clientIp(req);
 
-  if (pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname === "/pdf-viewer.html") {
+  if (pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname.startsWith("/pdf-viewer")) {
     return NextResponse.next();
   }
 
