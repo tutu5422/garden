@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
+<title>PDF 查看器</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #f0f0f0; font-family: -apple-system, sans-serif; }
+#toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px; background: #fff; border-bottom: 1px solid #e0e0e0;
+  position: sticky; top: 0; z-index: 10;
+}
+#toolbar .group { display: flex; align-items: center; gap: 4px; }
+#toolbar button {
+  width: 36px; height: 36px; border: none; background: transparent;
+  border-radius: 8px; cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  color: #333; transition: background 0.2s;
+}
+#toolbar button:hover { background: #f0f0f0; }
+#toolbar button:disabled { opacity: 0.3; cursor: default; }
+#pageInfo { font-size: 14px; color: #666; min-width: 60px; text-align: center; }
+#zoomInfo { font-size: 12px; color: #999; min-width: 40px; text-align: center; }
+#canvasWrap {
+  display: flex; justify-content: center; padding: 16px; min-height: calc(100vh - 60px);
+}
+canvas {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15); border-radius: 4px;
+  max-width: 100%; height: auto !important;
+}
+#loading, #error {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; min-height: 60vh; color: #999; font-size: 14px;
+}
+#loading .spinner {
+  width: 32px; height: 32px; border: 3px solid #e0e0e0;
+  border-top-color: #C17F6B; border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#error .big-icon { width: 80px; height: 80px; background: #C17F6B18; border-radius: 20px; display: flex; align-items: center; justify-content: center; }
+#error h3 { color: #333; font-size: 18px; }
+#error p { color: #999; font-size: 14px; }
+#error a { text-decoration: none; }
+#openBtn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 28px; background: #C17F6B; color: #fff;
+  border: none; border-radius: 12px; font-size: 16px; cursor: pointer;
+  text-decoration: none; margin-top: 4px;
+}
+@media (max-width: 480px) {
+  #toolbar { padding: 6px 10px; }
+  #toolbar button { width: 32px; height: 32px; font-size: 16px; }
+  #canvasWrap { padding: 8px; }
+}
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <div class="group">
+    <button id="zoomOut" title="缩小">−</button>
+    <span id="zoomInfo">100%</span>
+    <button id="zoomIn" title="放大">+</button>
+  </div>
+  <div class="group">
+    <button id="prevPage" title="上一页">◀</button>
+    <span id="pageInfo">- / -</span>
+    <button id="nextPage" title="下一页">▶</button>
+  </div>
+  <div class="group">
+    <button id="openNew" title="新标签打开">↗</button>
+  </div>
+</div>
+<div id="loading"><div class="spinner"></div><span>正在加载 PDF...</span></div>
+<div id="error" style="display:none">
+  <div class="big-icon">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C17F6B" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+    </svg>
+  </div>
+  <h3>无法预览</h3>
+  <p>当前浏览器不支持直接预览此 PDF</p>
+  <a id="fallbackLink" href="#" target="_blank" rel="noopener noreferrer"><button id="openBtn">打开图解</button></a>
+</div>
+<div id="canvasWrap" style="display:none"><canvas id="pdfCanvas"></canvas></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const params = new URLSearchParams(location.search);
+const pdfUrl = params.get('file');
+if (!pdfUrl) { showError(); }
+
+const canvas = document.getElementById('pdfCanvas');
+const ctx = canvas.getContext('2d');
+let pdfDoc = null;
+let pageNum = 1;
+let scale = 1.2;
+
+async function loadPdf() {
+  try {
+    pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('canvasWrap').style.display = 'flex';
+    document.getElementById('pageInfo').textContent = `1 / ${pdfDoc.numPages}`;
+    renderPage(1);
+  } catch(e) {
+    console.error('PDF load error:', e);
+    showError();
+  }
+}
+
+function showError() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('error').style.display = 'flex';
+  document.getElementById('fallbackLink').href = pdfUrl || '#';
+}
+
+async function renderPage(num) {
+  if (!pdfDoc) return;
+  try {
+    const page = await pdfDoc.getPage(num);
+    const vp = page.getViewport({scale: 1});
+    const maxW = canvas.parentElement.clientWidth - 32 || 600;
+    const fitS = Math.min(maxW / vp.width, 2.5);
+    const finalS = Math.min(scale, fitS);
+    const viewport = page.getViewport({scale: finalS});
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = viewport.width * dpr;
+    canvas.height = viewport.height * dpr;
+    canvas.style.width = viewport.width + 'px';
+    canvas.style.height = viewport.height + 'px';
+
+    await page.render({canvasContext: ctx, viewport, transform: [dpr,0,0,dpr,0,0]}).promise;
+    document.getElementById('pageInfo').textContent = `${num} / ${pdfDoc.numPages}`;
+    document.getElementById('zoomInfo').textContent = Math.round(finalS * 100) + '%';
+  } catch(e) { console.error('Render error:', e); }
+}
+
+document.getElementById('prevPage').onclick = () => {
+  if (pageNum > 1) { pageNum--; renderPage(pageNum); }
+};
+document.getElementById('nextPage').onclick = () => {
+  if (pageNum < pdfDoc.numPages) { pageNum++; renderPage(pageNum); }
+};
+document.getElementById('zoomIn').onclick = () => {
+  scale = Math.min(scale + 0.3, 3); renderPage(pageNum);
+};
+document.getElementById('zoomOut').onclick = () => {
+  scale = Math.max(scale - 0.3, 0.5); renderPage(pageNum);
+};
+document.getElementById('openNew').onclick = () => {
+  window.open(pdfUrl, '_blank');
+};
+
+loadPdf();
+</script>
+</body>
+</html>

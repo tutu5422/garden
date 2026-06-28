@@ -1,7 +1,7 @@
 'use client'
 
 export default function PdfViewer({ url }: { url: string }) {
-  const viewerUrl = `https://cdn.jsdelivr.net/npm/pdfjs-dist@6.1.200/web/viewer.html?file=${encodeURIComponent(url)}`
+  const viewerUrl = `/pdf-viewer.html?file=${encodeURIComponent(url)}`
 
   return (
     <iframe
