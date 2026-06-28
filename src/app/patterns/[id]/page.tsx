@@ -11,6 +11,7 @@ import {
 import Link from 'next/link'
 import SmartImage from '@/components/shared/SmartImage'
 import PatternTimeline from '@/components/patterns/PatternTimeline'
+import PdfViewer from '@/components/patterns/PdfViewer'
 import type { Resource, Category, Tag } from '@/lib/types'
 import {
   getPattern as apiGetPattern,
@@ -276,55 +277,7 @@ export default function PatternDetailPage() {
         <div className="pattern-detail-content">
           <div className="pdf-viewer-wrap">
             {pattern.url ? (
-              <>
-                {/* 桌面端：内嵌 PDF 查看器 */}
-                <div className="pdf-desktop-viewer">
-                  <object
-                    data={pattern.url}
-                    type="application/pdf"
-                    style={{ width: '100%', height: '100%', border: 'none', minHeight: '600px' }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '100%',
-                        minHeight: 300,
-                        color: 'var(--skin-text-secondary)',
-                        gap: 12,
-                        padding: 24,
-                      }}
-                    >
-                      <FilePdfOutlined style={{ fontSize: 64, opacity: 0.4 }} />
-                      <p>浏览器无法内嵌预览 PDF</p>
-                      <a href={pattern.url} target="_blank" rel="noopener noreferrer">
-                        <Button type="primary" icon={<LinkOutlined />}>在新标签页打开</Button>
-                      </a>
-                    </div>
-                  </object>
-                </div>
-                {/* 手机端：打开引导卡片 */}
-                <div className="pdf-mobile-card">
-                  <div className="pdf-mobile-card-icon">
-                    <FilePdfOutlined style={{ fontSize: 56 }} />
-                  </div>
-                  <h3 className="pdf-mobile-card-title">图解文件</h3>
-                  <p className="pdf-mobile-card-name">{pattern.title}</p>
-                  <a href={pattern.url} target="_blank" rel="noopener noreferrer" style={{ width: '100%' }}>
-                    <Button
-                      type="primary"
-                      size="large"
-                      icon={<LinkOutlined />}
-                      block
-                      style={{ height: 48, fontSize: 16, borderRadius: 12 }}
-                    >
-                      打开图解
-                    </Button>
-                  </a>
-                </div>
-              </>
+              <PdfViewer url={pattern.url} />
             ) : (
               <div
                 style={{
