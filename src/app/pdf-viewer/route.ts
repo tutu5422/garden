@@ -89,7 +89,7 @@ async function renderPage(num) {
   try {
     const page = await pdfDoc.getPage(num);
     const vp = page.getViewport({scale:1});
-    const maxW = canvas.parentElement.clientWidth - 32 || 600;
+    const maxW = Math.max(canvas.parentElement.clientWidth - 32, 600);
     const fitS = Math.min(maxW / vp.width, 2.5);
     const finalS = Math.min(scale, fitS);
     const viewport = page.getViewport({scale:finalS});
