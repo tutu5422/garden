@@ -276,11 +276,40 @@ export default function PatternDetailPage() {
         <div className="pattern-detail-content">
           <div className="pdf-viewer-wrap">
             {pattern.url ? (
-              <iframe
-                src={pattern.url}
-                title={pattern.title}
-                style={{ width: '100%', height: '100%', border: 'none', minHeight: '600px' }}
-              />
+              <>
+                <object
+                  data={pattern.url}
+                  type="application/pdf"
+                  style={{ width: '100%', height: '100%', border: 'none', minHeight: '600px' }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%',
+                      minHeight: 300,
+                      color: 'var(--skin-text-secondary)',
+                      gap: 12,
+                      padding: 24,
+                    }}
+                  >
+                    <FilePdfOutlined style={{ fontSize: 64, opacity: 0.4 }} />
+                    <p>浏览器无法直接预览 PDF</p>
+                    <a href={pattern.url} target="_blank" rel="noopener noreferrer">
+                      <Button type="primary" icon={<LinkOutlined />} size="large">
+                        在新标签页中打开
+                      </Button>
+                    </a>
+                  </div>
+                </object>
+                <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 12, color: 'var(--skin-text-secondary)' }}>
+                  <a href={pattern.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--skin-primary)' }}>
+                    在新标签页中打开 PDF ↗
+                  </a>
+                </div>
+              </>
             ) : (
               <div
                 style={{

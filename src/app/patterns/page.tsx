@@ -45,10 +45,10 @@ export default function PatternsPage() {
   const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE)
 
   // 加载所有图解
-  const loadPatterns = useCallback(async (loadAll = false) => {
+  const loadPatterns = useCallback(async () => {
     setLoading(true)
     try {
-      const all = await getPatterns(loadAll ? undefined : { limit: 200 })
+      const all = await getPatterns()
       console.log('loadPatterns count:', all.length)
       all.sort(
         (a, b) =>
@@ -63,10 +63,6 @@ export default function PatternsPage() {
       setLoading(false)
     }
   }, [])
-
-  const loadAllPatterns = useCallback(() => {
-    loadPatterns(true)
-  }, [loadPatterns])
 
   const loadCategories = useCallback(async () => {
     try {

@@ -1082,11 +1082,11 @@ h1, h2, h3, h4, h5, h6, .display-font {
 
 @media (max-width: 767px) {
   .pdf-viewer-wrap {
-    height: 50vh;
+    height: 60vh;
     min-height: 300px;
   }
-  .pdf-viewer-wrap iframe {
-    min-height: unset;
+  .pdf-viewer-wrap object {
+    min-height: 300px;
     height: 100%;
   }
 }
