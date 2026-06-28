@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { syncCollectionsFromCloud } from '@/lib/db/supabase-queries'
+import { syncCollectionsFromCloud } from '@/lib/db/cache-queries'
 
 /**
  * Pull all cloud data (notes, resources, collections) into localStorage on startup.
@@ -87,7 +87,7 @@ async function syncResourcesFromCloud() {
 }
 
 /**
- * 应用启动时从 Supabase 拉取云端数据，合并到本地 localStorage。
+ * 应用启动时从 VPS 拉取云端数据，合并到本地 localStorage。
  * 确保换设备后能看到另一设备的数据。
  */
 export default function CloudSyncProvider({ children }: { children: React.ReactNode }) {

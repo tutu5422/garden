@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth'
-import { vpsStorageEnabled, vpsStorageUrl } from '@/lib/supabase-admin'
+import { vpsStorageEnabled, vpsStorageUrl } from '@/lib/vps-db'
 
 /**
  * 生成上传 URL。

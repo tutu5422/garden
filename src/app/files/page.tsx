@@ -88,7 +88,7 @@ async function uploadFile(file: File, id: string): Promise<{ storagePath: string
     }
     const { signedUrl, storagePath, publicUrl } = await presignRes.json();
 
-    // Step 2: Upload directly to Supabase via signed URL
+    // Step 2: Upload directly to VPS Storage via signed URL
     const uploadRes = await fetch(signedUrl, {
       method: 'PUT',
       headers: { 'Content-Type': file.type || 'application/octet-stream' },
@@ -230,7 +230,7 @@ export default function Files() {
           body: JSON.stringify({ storagePath: f.storagePath }),
         });
       } catch (err) {
-        console.error("Delete from Supabase failed:", err);
+        console.error("Delete from VPS Storage failed:", err);
       }
     } else {
       const { deleteBlob } = await import("@/lib/db/idb-store");

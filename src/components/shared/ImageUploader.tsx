@@ -30,21 +30,15 @@ export default function ImageUploader({
       setUploading(true)
 
       try {
-        // For now, store as base64 data URL when Supabase isn't configured
-        // In production, this would upload to Supabase Storage
+        // For now, store as base64 data URL when VPS Storage isn't configured
+        // In production, this would upload to VPS Storage
         const reader = new FileReader()
         const base64 = await new Promise<string>((resolve) => {
           reader.onload = () => resolve(reader.result as string)
           reader.readAsDataURL(file)
         })
 
-        // TODO: Replace with Supabase Storage upload when configured
-        // const supabase = createClient()
-        // const { data, error } = await supabase.storage
-        //   .from(bucket)
-        //   .upload(`${Date.now()}-${file.name}`, file)
-        // if (error) throw error
-        // const url = supabase.storage.from(bucket).getPublicUrl(data.path).data.publicUrl
+        // TODO: Replace with VPS Storage upload when configured
 
         onChange(base64)
         toast.success('图片已上传')

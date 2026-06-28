@@ -6,7 +6,7 @@ import {
   dbFetch,
   dbUpsertOwned,
   resolveStorageUrl,
-} from '@/lib/supabase-admin';
+} from '@/lib/vps-db';
 import { syncPostSchema } from '@/lib/sync-schema';
 import { SYNC_PAGE_LIMIT, NOTE_DESCRIPTION_MAX_LENGTH } from '@/lib/constants/config';
 import type {
@@ -21,7 +21,7 @@ import type {
 // Pre-computed: crypto.createHash('md5').update('garden-music-' + LOCAL_USER_ID).digest('hex') → UUID
 const MUSIC_PLAYLIST_ID = '254e932e-ac70-4320-8944-92107bcc4eb1';
 
-// Valid resource_type enum values in the Supabase schema
+// Valid resource_type enum values in the PostgREST schema
 const VALID_TYPES = new Set(['article', 'book', 'link', 'image', 'tool']);
 
 function mapResourceType(type: string): string | null {
@@ -30,8 +30,7 @@ function mapResourceType(type: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Data-source dispatch: when VPS_DB_URL is set, route all DB calls through the
-// VPS PostgREST instance; otherwise fall back to the existing Supabase logic.
+// Data-source dispatch: all DB calls route through the VPS PostgREST instance.
 // ---------------------------------------------------------------------------
 
 // GET: Pull all cloud data for the user (uses service key, bypasses RLS)
@@ -45,7 +44,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Parallelize all DB queries (VPS PostgREST or Supabase REST).
+    // Parallelize all DB queries (VPS PostgREST).
     // All `resources`/`collections` queries are scoped to LOCAL_USER_ID as
     // app-layer RLS defense-in-depth (the service key bypasses DB-level RLS).
     // `pattern_notes` has no user_id column, so it is fetched separately after
@@ -68,7 +67,7 @@ export async function GET(req: NextRequest) {
       if (musicData?.[0]?.metadata?.tracks) {
         // Rewrite each track's `url` from its `storagePath` at runtime so the
         // client always receives a URL pointing at the currently active storage
-        // backend (VPS or Supabase). A stored absolute `url` is kept as a cache
+        // backend (VPS). A stored absolute `url` is kept as a cache
         // but only trusted when no `storagePath` is present.
         musicPlaylist = musicData[0].metadata.tracks.map((t: MusicTrack) => {
           if (!t) return t;
@@ -236,12 +235,12 @@ export async function POST(req: NextRequest) {
     if (action === 'upsert') {
       if (table === 'resources') {
         const resource = data;
-        const supabaseType = resource.resource_type ? mapResourceType(resource.resource_type) : null;
-        const supabaseData = {
+        const dbType = resource.resource_type ? mapResourceType(resource.resource_type) : null;
+        const dbData = {
           id: resource.id,
           title: resource.title || '',
           description: resource.description || null,
-          resource_type: supabaseType,
+          resource_type: dbType,
           user_id: LOCAL_USER_ID,
           category_id: resource.category_id || null,
           status: resource.status || 'active',
@@ -252,7 +251,7 @@ export async function POST(req: NextRequest) {
           pinned: resource.pinned || false,
           metadata: {
             ...(resource.metadata || {}),
-            actual_resource_type: !supabaseType && resource.resource_type ? resource.resource_type : undefined,
+            actual_resource_type: !dbType && resource.resource_type ? resource.resource_type : undefined,
             collection_name: resource.metadata?.collectionName || undefined,
             tags: resource.resource_tags?.map((rt: { tag?: { name?: string } | string }) =>
               typeof rt.tag === 'string' ? rt.tag : rt.tag?.name) || [],
@@ -260,12 +259,12 @@ export async function POST(req: NextRequest) {
           created_at: resource.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const { ok, error } = await dbUpsertOwned('resources', supabaseData);
+        const { ok, error } = await dbUpsertOwned('resources', dbData);
         if (!ok) return NextResponse.json({ error: '同步资源失败', detail: error }, { status: 500 });
       } else if (table === 'music_playlist') {
         // Store playlist as a resource row — use deterministic UUID derived from user_id
         const playlistId = MUSIC_PLAYLIST_ID;
-        const supabaseData = {
+        const dbData = {
           id: playlistId,
           title: '__music_playlist__',
           description: null,
@@ -276,13 +275,13 @@ export async function POST(req: NextRequest) {
           created_at: data.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const { ok: ok2, error: err2 } = await dbUpsertOwned('resources', supabaseData);
+        const { ok: ok2, error: err2 } = await dbUpsertOwned('resources', dbData);
         if (!ok2) return NextResponse.json({ error: '同步播放列表失败', detail: err2 }, { status: 500 });
       } else if (table === 'notes') {
         // Store note as a resource row with resource_type='article'
         // Note-specific fields (content, image, tags, collectionId) go into metadata
         const note = data;
-        const supabaseData = {
+        const dbData = {
           id: note.id,
           title: note.title || '',
           description: note.content ? note.content.substring(0, NOTE_DESCRIPTION_MAX_LENGTH) : null,
@@ -302,11 +301,11 @@ export async function POST(req: NextRequest) {
           created_at: note.createdAt || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const { ok: noteOk, error: noteErr } = await dbUpsertOwned('resources', supabaseData);
-        if (!noteOk) return NextResponse.json({ error: '同步笔记失败', detail: noteErr, debug_data_keys: Object.keys(supabaseData) }, { status: 500 });
+        const { ok: noteOk, error: noteErr } = await dbUpsertOwned('resources', dbData);
+        if (!noteOk) return NextResponse.json({ error: '同步笔记失败', detail: noteErr, debug_data_keys: Object.keys(dbData) }, { status: 500 });
       } else if (table === 'collections') {
         const col = data;
-        const supabaseData = {
+        const dbData = {
           id: col.id,
           title: col.title,
           description: col.description || '',
@@ -318,7 +317,7 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString(),
         };
         // Upsert collection
-        const { ok: ok3, error: err3 } = await dbUpsertOwned('collections', supabaseData);
+        const { ok: ok3, error: err3 } = await dbUpsertOwned('collections', dbData);
         if (!ok3) return NextResponse.json({ error: '同步合集失败', detail: err3 }, { status: 500 });
         // Sync resource associations via junction table
         const resourceIds: string[] = col.resourceIds || [];
@@ -338,7 +337,7 @@ export async function POST(req: NextRequest) {
       } else if (table === 'files') {
         // Store file metadata as a resource row
         const file = data;
-        const supabaseData = {
+        const dbData = {
           id: file.id,
           title: file.name || '',
           description: null,
@@ -356,7 +355,7 @@ export async function POST(req: NextRequest) {
           created_at: file.createdAt || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const { ok: fileOk, error: fileErr } = await dbUpsertOwned('resources', supabaseData);
+        const { ok: fileOk, error: fileErr } = await dbUpsertOwned('resources', dbData);
         if (!fileOk) return NextResponse.json({ error: '同步文件失败', detail: fileErr }, { status: 500 });
       } else if (table === 'pattern_notes') {
         // 同步图解-笔记关联（pattern_notes 无 user_id 列）。
@@ -387,7 +386,7 @@ export async function POST(req: NextRequest) {
         // 时间线备忘存为 resources 行，resource_type='article'，
         // 备忘内容存入 metadata.content，metadata.is_timeline_memo=true 用于 GET 过滤
         const memo = data;
-        const supabaseData = {
+        const dbData = {
           id: memo.id,
           title: memo.content ? memo.content.substring(0, 80) : '备忘',
           description: memo.content ? memo.content.substring(0, 200) : null,
@@ -401,7 +400,7 @@ export async function POST(req: NextRequest) {
           created_at: memo.createdAt || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        const { ok: memoOk, error: memoErr } = await dbUpsertOwned('resources', supabaseData);
+        const { ok: memoOk, error: memoErr } = await dbUpsertOwned('resources', dbData);
         if (!memoOk) return NextResponse.json({ error: '同步备忘失败', detail: memoErr }, { status: 500 });
       }
     } else if (action === 'delete') {

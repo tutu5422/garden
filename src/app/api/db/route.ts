@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbFetch, dbUpsert, dbUpsertOwned } from '@/lib/supabase-admin';
+import { dbFetch, dbUpsert, dbUpsertOwned } from '@/lib/vps-db';
 import { configMissingResponse, getPass, isAuth } from '@/lib/auth';
 
 /**

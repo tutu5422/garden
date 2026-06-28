@@ -1,7 +1,7 @@
 /**
  * 统一数据层 — VPS 版
  *
- * 所有数据操作走 VPS PostgREST / Nginx WebDAV，彻底脱离 Supabase。
+ * 所有数据操作走 VPS PostgREST / Nginx WebDAV。
  */
 
 export const LOCAL_USER_ID = process.env.SUPABASE_LOCAL_USER_ID || '';
@@ -92,7 +92,7 @@ export async function vpsDbUpsert(
 }
 
 // ---------------------------------------------------------------------------
-// 统一调度（直接走 VPS，无 Supabase 回退）
+// 统一调度（直接走 VPS）
 // ---------------------------------------------------------------------------
 
 export async function dbFetch(path: string, options: RequestInit = {}): Promise<DbResult> {

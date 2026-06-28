@@ -6,7 +6,7 @@ import {
   vpsDbEnabled,
   vpsDbUrl,
   vpsStorageEnabled,
-} from '@/lib/supabase-admin';
+} from '@/lib/vps-db';
 
 export async function GET(req: NextRequest) {
   if (!getPass()) return configMissingResponse();

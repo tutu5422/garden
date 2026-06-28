@@ -11,8 +11,8 @@ export interface Track {
   title: string
   artist?: string
   album?: string
-  url: string // public Supabase Storage URL
-  storagePath?: string // Supabase storage path for cross-device sync
+  url: string // public VPS Storage URL
+  storagePath?: string // VPS storage path for cross-device sync
   lyrics?: string          // 纯文本歌词（无时间戳）
   syncedLyrics?: string    // 原始 LRC 格式（含时间戳）
   lyricsSource?: 'searched' | 'manual'
@@ -109,7 +109,7 @@ function writeMeta(tracks: Track[]) {
   } catch { toast.error('存储空间不足') }
 }
 
-// 后台同步到 Supabase
+// 后台同步到 VPS
 function syncPlaylistToCloud(tracks: Track[]) {
   if (typeof window === 'undefined') return
   try {

@@ -1,7 +1,7 @@
 /**
  * Client-side storage URL resolver.
  *
- * Mirrors the server-side `resolveStorageUrl` in `supabase-admin.ts` but only
+ * Mirrors the server-side `resolveStorageUrl` in `vps-db.ts` but only
  * reads `NEXT_PUBLIC_*` env vars (server-only vars like `VPS_STORAGE_URL` are
  * not inlined into the client bundle). Both env vars must be kept in sync via
  * `.env.local` (`VPS_STORAGE_URL` + `NEXT_PUBLIC_VPS_STORAGE_URL`).

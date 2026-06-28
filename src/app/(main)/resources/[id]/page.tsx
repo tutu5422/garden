@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, Pencil, ExternalLink, Calendar } from 'lucide-react'
-import { getResourceHybrid, getResourceCached } from '@/lib/db/supabase-queries'
+import { getResourceHybrid, getResourceCached } from '@/lib/db/cache-queries'
 import { getLocalCategories } from '@/lib/db/local-store'
 import type { Resource } from '@/lib/types'
 import SmartImage from '@/components/shared/SmartImage'
@@ -14,7 +14,7 @@ export default function ResourceDetailPage({ params }: { params: Promise<{ id: s
   const [resource, setResource] = useState<Resource | null>(() => getResourceCached(id))
 
   useEffect(() => {
-    // 后台从 Supabase 拉最新数据
+    // 后台从 VPS 拉最新数据
     getResourceHybrid(id).then(r => { if (r) setResource(r) })
   }, [id])
 

@@ -152,7 +152,7 @@ export function getDeletedCategoryNames(): Set<string> {
   } catch { return new Set() }
 }
 
-// 云端同步版本 — 同时写本地和 Supabase
+// 云端同步版本 — 同时写本地和 VPS
 export async function syncCategoriesToCloud(categories: Category[]) {
   // 本地存储
   write(CATEGORIES_KEY, categories)

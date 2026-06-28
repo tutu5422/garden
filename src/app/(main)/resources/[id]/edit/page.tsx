@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, use } from 'react'
-import { getResourceHybrid, getResourceCached } from '@/lib/db/supabase-queries'
+import { getResourceHybrid, getResourceCached } from '@/lib/db/cache-queries'
 import SimpleForm from '@/components/resources/SimpleForm'
 import type { Resource } from '@/lib/types'
 

@@ -2,11 +2,11 @@ export type ResourceType = 'link' | 'image' | 'book' | 'movie' | 'tool' | 'artic
 export type ResourceStatus = 'active' | 'archived' | 'wishlist'
 
 // ---------------------------------------------------------------------------
-// Raw DB row shapes (as returned by PostgREST / Supabase REST).
+// Raw DB row shapes (as returned by PostgREST).
 // These mirror the actual table columns plus the `metadata` JSONB blob.
 // ---------------------------------------------------------------------------
 
-/** Raw `resources` table row (PostgREST/Supabase REST shape). */
+/** Raw `resources` table row (PostgREST shape). */
 export interface ResourceRow {
   id: string;
   title: string;
@@ -204,7 +204,7 @@ export interface ResourceFilters {
   pageSize?: number
 }
 
-// Supabase Database type (generated placeholder)
+// PostgREST Database type (generated placeholder)
 export interface Database {
   public: {
     Tables: {

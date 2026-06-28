@@ -5,7 +5,7 @@ import { z } from 'zod';
  *
  * Before this module the route read `await req.json()` and accessed fields
  * with no shape check, so a malformed client payload could throw deep inside
- * a Supabase call or — worse — write a partially-shaped row. These schemas
+ * a PostgREST call or — worse — write a partially-shaped row. These schemas
  * make the contract explicit and produce a clean 400 on bad input.
  *
  * The shapes mirror what the route handler actually reads; fields the route

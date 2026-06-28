@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPass, isAuth } from '@/lib/auth';
-import { dbConfigOk, dbFetch, dbUpsertOwned, resolveStorageUrl, vpsUpload } from '@/lib/supabase-admin';
+import { dbConfigOk, dbFetch, dbUpsertOwned, resolveStorageUrl, vpsUpload } from '@/lib/vps-db';
 
 /**
  * 生成安全的文件名片段（只保留字母数字和连字符）

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
-import { vpsDelete, vpsStorageEnabled } from '@/lib/supabase-admin';
+import { vpsDelete, vpsStorageEnabled } from '@/lib/vps-db';
 
 export async function POST(req: NextRequest) {
   if (!getPass()) return configMissingResponse();

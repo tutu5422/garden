@@ -179,7 +179,7 @@ export default function Notes() {
     loadNotes();
   }, []);
 
-  // Sync helper: push note to Supabase (fire-and-forget)
+  // Sync helper: push note to VPS (fire-and-forget)
   const syncNote = (note: Note) => {
     fetch('/api/sync', {
       method: 'POST',
