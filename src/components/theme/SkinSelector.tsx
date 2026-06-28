@@ -8,7 +8,7 @@ export default function SkinSelector() {
   const { skin, setSkin, skins, dark } = useTheme()
   const [open, setOpen] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 })
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
 
   useEffect(() => {
     if (!open || !btnRef.current) return
@@ -26,6 +26,11 @@ export default function SkinSelector() {
       window.removeEventListener('resize', onResize)
       window.removeEventListener('scroll', onResize, true)
     }
+  }, [open])
+
+  // 关闭时重置 pos，避免下次打开时闪烁
+  useEffect(() => {
+    if (!open) setPos(null)
   }, [open])
 
   return (
@@ -68,7 +73,7 @@ export default function SkinSelector() {
       )}
 
       {/* 皮肤选择面板 — fixed 定位，脱离父级层叠上下文 */}
-      {open && (
+      {open && pos && (
         <div
           className="fixed z-40 rounded-xl overflow-hidden shadow-xl"
           style={{
