@@ -22,7 +22,7 @@ body { background:#f0f0f0; font-family:-apple-system,sans-serif; }
 #pageInfo { font-size:14px; color:#666; min-width:60px; text-align:center; }
 #zoomInfo { font-size:12px; color:#999; min-width:40px; text-align:center; }
 #canvasWrap { display:flex; justify-content:center; padding:16px; min-height:calc(100vh - 60px); }
-canvas { box-shadow:0 2px 12px rgba(0,0,0,.15); border-radius:4px; max-width:100%; height:auto !important; }
+canvas { box-shadow:0 2px 12px rgba(0,0,0,.15); border-radius:4px; max-width:100%; }
 #loading, #error { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; min-height:60vh; color:#999; font-size:14px; }
 #loading .spinner { width:32px; height:32px; border:3px solid #e0e0e0; border-top-color:#C17F6B; border-radius:50%; animation:spin .8s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }

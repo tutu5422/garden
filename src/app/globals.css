@@ -1076,8 +1076,12 @@ h1, h2, h3, h4, h5, h6, .display-font {
 
 @media (max-width: 767px) {
   .pdf-viewer-wrap {
-    height: auto;
+    height: 70vh;
     min-height: 400px;
+  }
+  .pdf-viewer-wrap iframe {
+    height: 100%;
+    width: 100%;
   }
 }
 
