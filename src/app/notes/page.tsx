@@ -12,6 +12,9 @@ interface Note {
 
 interface Collection { id: string; title: string; }
 
+// 墓碑 key：记录已删除的笔记 ID，防止下次从云端合并时复活
+const DELETED_NOTES_KEY = 'minitu_notes_deleted';
+
 // 便当盒柔和色板
 const bentoPalette = [
   { bg: '#FFF5F0', accent: '#E8836B', text: '#5C2D1E' },
@@ -151,9 +154,15 @@ export default function Notes() {
         // Pull cloud notes and merge
         const cloud = await syncNotesFromCloud();
         if (cloud.length > 0) {
+          // 读取墓碑列表，过滤掉已删除的笔记，防止从云端复活
+          const deletedIds: string[] = (() => {
+            try { return JSON.parse(localStorage.getItem(DELETED_NOTES_KEY) || '[]'); } catch { return []; }
+          })();
+          const deletedSet = new Set(deletedIds);
           const merged = new Map<string, Note>();
           for (const n of local) merged.set(n.id, n);
           for (const n of cloud) {
+            if (deletedSet.has(n.id)) continue; // 跳过已删除的笔记
             const existing = merged.get(n.id);
             if (!existing || new Date(n.createdAt) > new Date(existing.createdAt)) {
               merged.set(n.id, n);
@@ -257,7 +266,16 @@ export default function Notes() {
     resetForm(); setUploading(false);
   };
 
-  const del = (id: string) => { save(notes.filter(n => n.id !== id)); syncNoteDelete(id); };
+  const del = (id: string) => {
+    save(notes.filter(n => n.id !== id));
+    syncNoteDelete(id);
+    // 记录墓碑，防止云端合并时复活
+    try {
+      const deleted = JSON.parse(localStorage.getItem(DELETED_NOTES_KEY) || '[]');
+      if (!deleted.includes(id)) deleted.push(id);
+      localStorage.setItem(DELETED_NOTES_KEY, JSON.stringify(deleted));
+    } catch {}
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8 page-enter relative z-0">

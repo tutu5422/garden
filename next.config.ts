@@ -40,6 +40,14 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          {
+            key: "Content-Security-Policy",
+            // 'unsafe-eval' 是因为 PDF.js worker 使用 eval；
+            // cdnjs/unpkg 用于 PDF.js viewer 与导入封面渲染；
+            // worker-src 显式放开两个 CDN 以兼容 PDF.js worker 加载。
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-src 'self'; media-src 'self' https:; object-src 'self'; worker-src 'self' https://cdnjs.cloudflare.com https://unpkg.com blob:",
+          },
         ],
       },
       // Next.js build artifacts (JS/CSS chunks, fonts, static images). These

@@ -127,12 +127,18 @@ function EditForm() {
         }
         savedNoteId = note.id
         localStorage.setItem('minitu_notes', JSON.stringify([note, ...notes]))
-        // Sync to cloud
-        fetch('/api/sync', {
+        // Sync to cloud — await 确保云端已有该笔记行后再关联图解
+        const syncRes = await fetch('/api/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
-        }).catch((e) => console.warn('[sync] 笔记同步失败:', e))
+        }).catch((e) => {
+          console.warn('[sync] 笔记同步失败:', e);
+          return null;
+        });
+        if (!syncRes || !syncRes.ok) {
+          console.warn('[sync] 笔记同步返回异常:', syncRes?.status);
+        }
       } else {
         let syncedNote: Note | undefined
         const updated = notes.map(n => {
@@ -148,13 +154,19 @@ function EditForm() {
           return note
         })
         localStorage.setItem('minitu_notes', JSON.stringify(updated))
-        // Sync to cloud
+        // Sync to cloud — await 确保云端已有该笔记行后再关联图解
         if (syncedNote) {
-          fetch('/api/sync', {
+          const syncRes = await fetch('/api/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ table: 'notes', action: 'upsert', data: syncedNote }),
-          }).catch((e) => console.warn('[sync] 笔记同步失败:', e))
+          }).catch((e) => {
+            console.warn('[sync] 笔记同步失败:', e);
+            return null;
+          });
+          if (!syncRes || !syncRes.ok) {
+            console.warn('[sync] 笔记同步返回异常:', syncRes?.status);
+          }
         }
       }
 

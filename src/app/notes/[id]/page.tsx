@@ -77,14 +77,28 @@ export default function NoteDetail() {
     }
   }, [id]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!note || !confirm("确定要删除这篇笔记吗？")) return;
     try {
       const notes: Note[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
       const updated = notes.filter((n) => n.id !== note.id);
       localStorage.setItem("minitu_notes", JSON.stringify(updated));
+      // 记录墓碑，防止下次从云端合并时复活
+      try {
+        const deleted = JSON.parse(localStorage.getItem("minitu_notes_deleted") || "[]");
+        if (!deleted.includes(note.id)) deleted.push(note.id);
+        localStorage.setItem("minitu_notes_deleted", JSON.stringify(deleted));
+      } catch {}
+      // 同步删除到云端
+      await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: 'notes', action: 'delete', data: { id: note.id } }),
+      }).catch((e) => console.warn('[sync] note detail delete failed:', e));
       router.push("/notes");
-    } catch {}
+    } catch {
+      console.warn('[notes] 删除笔记异常');
+    }
   };
 
   if (notFound) {

@@ -271,7 +271,23 @@ export interface PatternNoteLink {
 }
 
 export async function linkPatternNote(patternId: string, noteId: string): Promise<void> {
-  await dbRequest('pattern_notes', 'upsert', { pattern_id: patternId, note_id: noteId })
+  // 走 /api/sync 路由：pattern_notes 上有 UNIQUE(pattern_id, note_id) 约束，
+  // /api/sync 使用 PostgREST 的 `Prefer: resolution=merge-duplicates` +
+  // `On-Conflict: pattern_id,note_id` 头实现幂等 upsert；而 /api/db 走的
+  // dbUpsert 在无 id 时退化为纯 POST，重复关联会触发 409 冲突。
+  const res = await fetch('/api/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      table: 'pattern_notes',
+      action: 'upsert',
+      data: { pattern_id: patternId, note_id: noteId },
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(err.error || `关联失败: ${res.status}`)
+  }
 }
 
 export async function unlinkPatternNote(patternId: string, noteId: string): Promise<void> {
