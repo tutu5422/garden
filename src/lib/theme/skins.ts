@@ -347,7 +347,6 @@ export function applyTheme(skinId: string, dark: boolean) {
   const root = document.documentElement
 
   root.classList.toggle('dark', dark)
-  root.setAttribute('data-skin', skinId)
 
   const vars: Record<string, string> = {
     '--skin-primary':          palette.primary,
