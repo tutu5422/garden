@@ -311,7 +311,9 @@ export async function POST(req: NextRequest) {
             Prefer: 'resolution=merge-duplicates',
           },
         });
+        console.log('[sync:notes] upsert status:', noteRes?.status, 'ok:', noteRes?.ok, 'noteId:', note.id);
         if (!noteRes.ok) {
+          console.error('[sync:notes] upsert FAILED:', noteRes?.error, 'status:', noteRes?.status);
           return NextResponse.json({ error: '同步笔记失败', detail: noteRes.error, debug_data_keys: Object.keys(dbData) }, { status: 500 });
         }
       } else if (table === 'collections') {
