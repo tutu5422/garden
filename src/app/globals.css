@@ -748,7 +748,10 @@ h1, h2, h3, h4, h5, h6, .display-font {
   .patterns-header {
     padding: 8px 12px;
     gap: 6px;
-    top: 0;
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
   }
   .patterns-header-search {
     max-width: 130px !important;
@@ -867,11 +870,13 @@ h1, h2, h3, h4, h5, h6, .display-font {
   flex-direction: column;
   min-width: 0;
   padding-left: 240px;
+  padding-top: 56px; /* 固定 header 占位 */
 }
 
 @media (max-width: 767px) {
   .patterns-main {
     padding-left: 0;
+    padding-top: 0;
   }
 }
 
@@ -884,9 +889,11 @@ h1, h2, h3, h4, h5, h6, .display-font {
   background: var(--warm-surface);
   border-bottom: 1px solid var(--warm-header-border);
   flex-shrink: 0;
-  position: sticky;
+  position: fixed;
   top: 3.5rem;
   z-index: 10;
+  left: 240px;
+  right: 0;
 }
 
 /* 卡片网格 */
