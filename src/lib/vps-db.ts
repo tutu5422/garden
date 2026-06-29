@@ -43,7 +43,6 @@ export async function vpsDbFetch(
     headers: {
       'Content-Type': 'application/json',
       'x-storage-key': key,
-      Prefer: 'return=minimal',
       ...(options.headers || {}),
     },
   });

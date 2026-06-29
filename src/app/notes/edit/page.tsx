@@ -136,7 +136,7 @@ function EditForm() {
           tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
           collectionId: form.collectionId || undefined,
           collectionName: col?.title,
-          createdAt: new Date().toISOString(), image, imageThumb,
+          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), image, imageThumb,
         }
         savedNoteId = note.id
         localStorage.setItem('minitu_notes', JSON.stringify([note, ...notes]))
@@ -169,6 +169,7 @@ function EditForm() {
             tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
             collectionId: form.collectionId || undefined,
             collectionName: col?.title,
+            updatedAt: new Date().toISOString(),
             ...(image ? { image, imageThumb } : {}),
           }
           syncedNote = note

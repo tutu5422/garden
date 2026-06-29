@@ -129,6 +129,7 @@ export async function GET(req: NextRequest) {
         collectionId: r.metadata?.collectionId || undefined,
         collectionName: r.metadata?.collectionName || undefined,
         createdAt: r.created_at,
+        updatedAt: r.updated_at,
         image: r.metadata?.image || undefined,
         imageThumb: r.metadata?.imageThumb || undefined,
       })),
@@ -299,7 +300,7 @@ export async function POST(req: NextRequest) {
             type: note.type || 'article',
           },
           created_at: note.createdAt || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          updated_at: note.updatedAt || new Date().toISOString(),
         };
         const { ok: noteOk, error: noteErr } = await dbUpsertOwned('resources', dbData);
         if (!noteOk) return NextResponse.json({ error: '同步笔记失败', detail: noteErr, debug_data_keys: Object.keys(dbData) }, { status: 500 });

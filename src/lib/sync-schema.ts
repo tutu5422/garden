@@ -56,6 +56,7 @@ const noteUpsertDataSchema = z.object({
   collectionName: z.string().nullable().optional(),
   type: z.string().optional().default('article'),
   createdAt: isoString.optional(),
+  updatedAt: isoString.optional(),
 });
 
 const musicPlaylistUpsertDataSchema = z.object({

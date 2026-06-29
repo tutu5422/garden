@@ -25,14 +25,14 @@ const bentoPalette = [
   { bg: '#F0F7FA', accent: '#3A8B9E', text: '#1E3A4A' },
 ];
 
-// 模块级去重：同一个页面生命周期内只发起一次 /api/sync GET，
-// 避免组件重挂载或 StrictMode 双调用导致重复全量拉取。
-let _syncNotesPromise: Promise<Note[]> | null = null;
+// 模块级缓存：按 cacheKey 缓存云端数据，避免重复全量拉取。
+// cacheKey 在每次组件挂载时更新，确保同会话内导航回 /notes 时重新获取。
+let _syncNotesCache: { key: string; promise: Promise<Note[]> } | null = null;
 
 // Pull notes from cloud via /api/sync (server-side service key, no RLS issues)
-async function syncNotesFromCloud(): Promise<Note[]> {
-  if (_syncNotesPromise) return _syncNotesPromise;
-  _syncNotesPromise = (async () => {
+async function syncNotesFromCloud(cacheKey: string): Promise<Note[]> {
+  if (_syncNotesCache && _syncNotesCache.key === cacheKey) return _syncNotesCache.promise;
+  const promise = (async () => {
     try {
       const res = await fetch('/api/sync', { method: 'GET' });
       if (!res.ok) return [];
@@ -52,8 +52,9 @@ async function syncNotesFromCloud(): Promise<Note[]> {
     } catch { return []; }
   })();
   // 失败时清空缓存，允许下次重试
-  _syncNotesPromise.catch(() => { _syncNotesPromise = null; });
-  return _syncNotesPromise;
+  promise.catch(() => { _syncNotesCache = null; });
+  _syncNotesCache = { key: cacheKey, promise };
+  return promise;
 }
 
 function compressImage(file: File, maxW: number, quality: number): Promise<{ full: string; thumb: string }> {
@@ -123,6 +124,7 @@ export default function Notes() {
 
   // Load notes: migrate old IDs → then pull from cloud
   useEffect(() => {
+    const cacheKey = 'notes-' + Date.now()
     const loadNotes = async () => {
       try {
         let local: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]');
@@ -162,24 +164,34 @@ export default function Notes() {
         setCollections(JSON.parse(localStorage.getItem('garden_collections') || '[]'));
 
         // Pull cloud notes and merge
-        const cloud = await syncNotesFromCloud();
+        const cloud = await syncNotesFromCloud(cacheKey);
         if (cloud.length > 0) {
           // 读取墓碑列表，过滤掉已删除的笔记，防止从云端复活
           const deletedIds: string[] = (() => {
             try { return JSON.parse(localStorage.getItem(DELETED_NOTES_KEY) || '[]'); } catch { return []; }
           })();
           const deletedSet = new Set(deletedIds);
+          let changed = false;
           const merged = new Map<string, Note>();
           for (const n of local) merged.set(n.id, n);
           for (const n of cloud) {
             if (deletedSet.has(n.id)) continue; // 跳过已删除的笔记
             const existing = merged.get(n.id);
-            if (!existing || new Date(n.createdAt) > new Date(existing.createdAt)) {
+            if (!existing) {
               merged.set(n.id, n);
+              changed = true;
+            } else {
+              // 比较 updatedAt（优先）或 createdAt
+              const localTime = (existing as any).updatedAt || existing.createdAt;
+              const cloudTime = (n as any).updatedAt || n.createdAt;
+              if (new Date(cloudTime) > new Date(localTime)) {
+                merged.set(n.id, n);
+                changed = true;
+              }
             }
           }
           const mergedList = Array.from(merged.values());
-          if (mergedList.length !== local.length || cloud.some(c => !local.find(l => l.id === c.id))) {
+          if (changed) {
             setNotes(mergedList);
             localStorage.setItem('minitu_notes', JSON.stringify(mergedList));
           }
@@ -269,7 +281,7 @@ export default function Notes() {
       tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
       collectionId: form.collectionId || undefined,
       collectionName: col?.title,
-      createdAt: new Date().toISOString(), image, imageThumb,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), image, imageThumb,
     };
     save([note, ...notes]);
     syncNote(note);
