@@ -665,7 +665,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
 @media (max-width: 767px) {
   .patterns-layout {
     flex-direction: column;
-    height: calc(100vh - 7rem);
+    height: calc(100vh - 3.5rem); /* 手机端无顶部导航，只减 body padding-bottom (3.5rem) */
   }
 }
 
