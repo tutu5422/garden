@@ -33,7 +33,7 @@ async function syncNotesFromCloud(cacheKey: string): Promise<Note[]> {
   if (_syncNotesCache && _syncNotesCache.key === cacheKey) return _syncNotesCache.promise;
   const promise = (async () => {
     try {
-      const res = await fetch('/api/sync', { method: 'GET' });
+      const res = await fetch('/api/sync?_=' + Date.now(), { method: 'GET' });
       if (!res.ok) return [];
       const data = await res.json();
       return (data.notes || []).map((r: any) => ({
@@ -45,6 +45,7 @@ async function syncNotesFromCloud(cacheKey: string): Promise<Note[]> {
         collectionId: r.collectionId || undefined,
         collectionName: r.collectionName || undefined,
         createdAt: r.createdAt || new Date().toISOString(),
+        updatedAt: r.updatedAt,
         image: r.image || undefined,
         imageThumb: r.imageThumb || undefined,
       }));
@@ -174,35 +175,25 @@ export default function Notes() {
           })();
           const deletedSet = new Set(deletedIds);
           let changed = false;
-          const merged = new Map<string, Note>();
-          for (const n of local) merged.set(n.id, n);
+          // 策略：云端永远优先。以云端数据为基础，本地数据补充云端没有的笔记
+          const mergedMap = new Map<string, Note>();
+          // 1. 先放所有云端笔记
           for (const n of cloud) {
-            if (deletedSet.has(n.id)) continue; // 跳过已删除的笔记
-            const existing = merged.get(n.id);
-            if (!existing) {
-              merged.set(n.id, n);
-              changed = true;
-            } else {
-              // 比较 updatedAt（优先）或 createdAt
-              const localTime = (existing as any).updatedAt || existing.createdAt;
-              const cloudTime = (n as any).updatedAt || n.createdAt;
-              const cloudWins = new Date(cloudTime) > new Date(localTime);
-              if (cloudWins) {
-                console.log('[loadNotes] cloud OVERWRITES local for', n.id.substring(0,8), 'cloudTime:', cloudTime, 'localTime:', localTime)
-                merged.set(n.id, n);
-                changed = true;
-              }
+            if (deletedSet.has(n.id)) continue;
+            mergedMap.set(n.id, n);
+          }
+          // 2. 补充本地有但云端没有的笔记
+          for (const n of local) {
+            if (!mergedMap.has(n.id)) {
+              mergedMap.set(n.id, n);
             }
           }
-          const mergedList = Array.from(merged.values());
-          console.log('[loadNotes] changed:', changed, 'merged:', mergedList.length, 'local:', local.length)
-          if (changed) {
-            console.log('[loadNotes] UPDATING state and localStorage')
-            setNotes(mergedList);
-            localStorage.setItem('minitu_notes', JSON.stringify(mergedList));
-          } else {
-            console.log('[loadNotes] no change, keeping local data')
-          }
+          // 3. 检查是否有变化
+          const mergedList = Array.from(mergedMap.values());
+          // 只要云端有数据，就用合并结果覆盖本地
+          setNotes(mergedList);
+          localStorage.setItem('minitu_notes', JSON.stringify(mergedList));
+          console.log('[loadNotes] cloud-first merge done, count:', mergedList.length)
         }
       } catch { /* local data is fine */ }
     };
