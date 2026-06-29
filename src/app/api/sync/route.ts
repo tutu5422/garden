@@ -281,8 +281,6 @@ export async function POST(req: NextRequest) {
       } else if (table === 'notes') {
         // Store note as a resource row with resource_type='article'
         // Note-specific fields (content, image, tags, collectionId) go into metadata
-        // Use PostgREST native upsert (on_conflict=id) to handle both create and update
-        // in a single atomic request, avoiding the GET-check-then-PATCH/POST race in dbUpsert.
         const note = data;
         const dbData = {
           id: note.id,
@@ -304,18 +302,12 @@ export async function POST(req: NextRequest) {
           created_at: note.createdAt || new Date().toISOString(),
           updated_at: note.updatedAt || new Date().toISOString(),
         };
-        const noteRes = await dbFetch('resources?on_conflict=id', {
-          method: 'POST',
-          body: JSON.stringify(dbData),
-          headers: {
-            Prefer: 'resolution=merge-duplicates',
-          },
-        });
-        console.log('[sync:notes] upsert status:', noteRes?.status, 'ok:', noteRes?.ok, 'noteId:', note.id);
-        if (!noteRes.ok) {
-          console.error('[sync:notes] upsert FAILED:', noteRes?.error, 'status:', noteRes?.status);
-          return NextResponse.json({ error: '同步笔记失败', detail: noteRes.error, debug_data_keys: Object.keys(dbData) }, { status: 500 });
+        const { ok: noteOk, error: noteErr } = await dbUpsertOwned('resources', dbData);
+        if (!noteOk) {
+          console.error('[sync:notes] upsert FAILED:', noteErr, 'noteId:', note.id);
+          return NextResponse.json({ error: '同步笔记失败', detail: noteErr, debug_data_keys: Object.keys(dbData) }, { status: 500 });
         }
+        console.log('[sync:notes] upsert OK noteId:', note.id);
       } else if (table === 'collections') {
         const col = data;
         const dbData = {
