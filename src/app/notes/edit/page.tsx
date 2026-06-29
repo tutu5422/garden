@@ -106,16 +106,13 @@ function EditForm() {
 
   const save = async () => {
     if (!form.title.trim()) return
-    console.log('[save] ===== SAVE STARTED ===== noteId:', noteId, 'isNew:', !noteId)
     setUploading(true)
     let cloudSyncFailed = false
     try {
       let notes: Note[]
       try {
         notes = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
-        console.log('[save] localStorage read:', notes.length, 'notes')
       } catch {
-        console.warn('[save] localStorage parse failed, using []')
         notes = []
       }
       const col = collections.find(c => c.id === form.collectionId)
@@ -143,7 +140,6 @@ function EditForm() {
         }
         savedNoteId = note.id
         localStorage.setItem('minitu_notes', JSON.stringify([note, ...notes]))
-        console.log('[save] NEW NOTE created, id:', note.id)
         // Sync to cloud — await 确保云端已有该笔记行后再关联图解
         try {
           const syncRes = await fetch('/api/sync', {
@@ -151,25 +147,18 @@ function EditForm() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
           })
-          console.log('[save] sync POST status:', syncRes.status)
           if (!syncRes.ok) {
             cloudSyncFailed = true
-            const errText = await syncRes.text().catch(() => '')
-            console.warn('[save] sync failed:', syncRes.status, errText.substring(0,200))
           }
         } catch (e) {
           cloudSyncFailed = true
-          console.warn('[save] sync network error:', e)
         }
       } else {
-        console.log('[save] EDITING note, noteId:', noteId)
         const existing = notes.find(n => n.id === noteId)
         if (!existing) {
-          console.warn('[save] NOTE NOT FOUND in localStorage! noteId:', noteId, 'available IDs:', notes.map(n=>n.id.substring(0,8)).join(','))
           toast.error('未找到该笔记，可能已被删除')
           return
         }
-        console.log('[save] found existing note:', existing.title.substring(0,30), 'createdAt:', existing.createdAt)
         let syncedNote: Note | undefined
         const updated = notes.map(n => {
           if (n.id !== noteId) return n
@@ -185,7 +174,6 @@ function EditForm() {
           return note
         })
         localStorage.setItem('minitu_notes', JSON.stringify(updated))
-        console.log('[save] localStorage WRITTEN, syncedNote:', syncedNote?.title.substring(0,30), 'updatedAt:', syncedNote?.updatedAt)
         // Sync to cloud — await 确保云端已有该笔记行后再关联图解
         if (syncedNote) {
           try {
@@ -194,15 +182,11 @@ function EditForm() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ table: 'notes', action: 'upsert', data: syncedNote }),
             })
-            console.log('[save] sync POST status:', syncRes.status)
             if (!syncRes.ok) {
               cloudSyncFailed = true
-              const errText = await syncRes.text().catch(() => '')
-              console.warn('[save] sync failed:', syncRes.status, errText.substring(0,200))
             }
           } catch (e) {
             cloudSyncFailed = true
-            console.warn('[save] sync network error:', e)
           }
         }
       }

@@ -125,11 +125,9 @@ export default function Notes() {
   // Load notes: migrate old IDs → then pull from cloud
   useEffect(() => {
     const cacheKey = 'notes-' + Date.now()
-    console.log('[loadNotes] MOUNT cacheKey:', cacheKey)
     const loadNotes = async () => {
       try {
         let local: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]');
-        console.log('[loadNotes] local count:', local.length, 'sample IDs:', local.slice(0,3).map(n=>n.id?.substring(0,8)))
         let migrated = false;
 
         // Migrate old non-UUID note IDs to proper UUIDs
@@ -193,7 +191,6 @@ export default function Notes() {
           // 只要云端有数据，就用合并结果覆盖本地
           setNotes(mergedList);
           localStorage.setItem('minitu_notes', JSON.stringify(mergedList));
-          console.log('[loadNotes] cloud-first merge done, count:', mergedList.length)
         }
       } catch { /* local data is fine */ }
     };

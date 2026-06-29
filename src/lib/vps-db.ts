@@ -73,7 +73,6 @@ export async function vpsDbUpsert(
     if (checkResult.ok && Array.isArray(checkResult.body) && checkResult.body.length > 0) {
       // 存在 → PATCH
       const { id: _id, ...patchData } = data;
-      console.log('[vpsDbUpsert] PATCH', table, 'id:', id, 'title:', (patchData as any)?.title?.substring?.(0, 30) || 'N/A', 'keys:', Object.keys(patchData).join(','));
       const patchResult = await vpsDbFetch(`${table}?id=eq.${id}`, {
         method: 'PATCH',
         body: JSON.stringify(patchData),
