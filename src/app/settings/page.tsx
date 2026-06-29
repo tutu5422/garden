@@ -88,7 +88,7 @@ export default function SettingsPage() {
         </div>
 
         {/* 皮肤主题 */}
-        <div className="card card-rounded-tl p-6 sm:p-8" style={{ overflow: 'visible' }}>
+        <div className="card card-rounded-tl p-6 sm:p-8">
           <div className="flex items-center gap-2 mb-6">
             <SwatchBook className="size-5" style={{ color: 'var(--skin-accent)' }} />
             <h2 className="font-extrabold text-base tracking-wider"
