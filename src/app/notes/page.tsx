@@ -124,9 +124,11 @@ export default function Notes() {
   // Load notes: migrate old IDs → then pull from cloud
   useEffect(() => {
     const cacheKey = 'notes-' + Date.now()
+    console.log('[loadNotes] MOUNT cacheKey:', cacheKey)
     const loadNotes = async () => {
       try {
         let local: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]');
+        console.log('[loadNotes] local count:', local.length, 'sample IDs:', local.slice(0,3).map(n=>n.id?.substring(0,8)))
         let migrated = false;
 
         // Migrate old non-UUID note IDs to proper UUIDs
@@ -164,6 +166,7 @@ export default function Notes() {
 
         // Pull cloud notes and merge
         const cloud = await syncNotesFromCloud(cacheKey);
+        console.log('[loadNotes] cloud count:', cloud.length)
         if (cloud.length > 0) {
           // 读取墓碑列表，过滤掉已删除的笔记，防止从云端复活
           const deletedIds: string[] = (() => {
@@ -183,16 +186,22 @@ export default function Notes() {
               // 比较 updatedAt（优先）或 createdAt
               const localTime = (existing as any).updatedAt || existing.createdAt;
               const cloudTime = (n as any).updatedAt || n.createdAt;
-              if (new Date(cloudTime) > new Date(localTime)) {
+              const cloudWins = new Date(cloudTime) > new Date(localTime);
+              if (cloudWins) {
+                console.log('[loadNotes] cloud OVERWRITES local for', n.id.substring(0,8), 'cloudTime:', cloudTime, 'localTime:', localTime)
                 merged.set(n.id, n);
                 changed = true;
               }
             }
           }
           const mergedList = Array.from(merged.values());
+          console.log('[loadNotes] changed:', changed, 'merged:', mergedList.length, 'local:', local.length)
           if (changed) {
+            console.log('[loadNotes] UPDATING state and localStorage')
             setNotes(mergedList);
             localStorage.setItem('minitu_notes', JSON.stringify(mergedList));
+          } else {
+            console.log('[loadNotes] no change, keeping local data')
           }
         }
       } catch { /* local data is fine */ }
