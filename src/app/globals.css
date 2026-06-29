@@ -693,6 +693,14 @@ h1, h2, h3, h4, h5, h6, .display-font {
     height: auto;
     max-height: 50vh;
   }
+  .patterns-header {
+    padding: 8px 12px;
+    gap: 6px;
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+  }
 }
 
 /* 手机端遮罩层菜单 — 覆盖默认移动端样式 */
@@ -745,14 +753,6 @@ h1, h2, h3, h4, h5, h6, .display-font {
     background: rgba(255,255,255,0.1);
   }
   /* 手机端 header 紧凑布局 */
-  .patterns-header {
-    padding: 8px 12px;
-    gap: 6px;
-    position: relative;
-    left: auto;
-    right: auto;
-    top: auto;
-  }
   .patterns-header-search {
     max-width: 130px !important;
   }
