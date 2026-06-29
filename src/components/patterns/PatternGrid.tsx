@@ -1,32 +1,19 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState } from 'react'
 import { message } from 'antd'
 import dynamic from 'next/dynamic'
 import { InboxOutlined, DeleteOutlined, SwapOutlined, ImportOutlined } from '@ant-design/icons'
-import { Grid, type CellComponentProps } from 'react-window'
 import PatternCardV2 from './PatternCardV2'
 import type { Resource, Category } from '@/lib/types'
 
 // 非首屏关键 antd UI 组件动态导入，避免整个 antd 包打进首屏 chunk。
-// `message` 为静态方法，保留常规导入。
 const Button = dynamic(() => import('antd').then((m) => m.Button), { ssr: false })
 const Checkbox = dynamic(() => import('antd').then((m) => m.Checkbox), { ssr: false })
 const Popconfirm = dynamic(() => import('antd').then((m) => m.Popconfirm), { ssr: false })
 const Modal = dynamic(() => import('antd').then((m) => m.Modal), { ssr: false })
 const Select = dynamic(() => import('antd').then((m) => m.Select), { ssr: false })
 const Space = dynamic(() => import('antd').then((m) => m.Space), { ssr: false })
-
-// ===== 网格尺寸常量（与 globals.css 中 .pattern-grid / .warm-card 保持一致）=====
-const CARD_MIN_WIDTH = 220
-const CARD_MIN_WIDTH_MOBILE = 160
-const COVER_HEIGHT = 220
-const COVER_HEIGHT_MOBILE = 160
-const CARD_BODY_HEIGHT = 74 // 匹配 .warm-card-body: padding(12+14)=26 + title(~22) + tag-margin(6) + tag(~20) = ~74
-const GRID_GAP = 20
-const GRID_GAP_MOBILE = 12
-const GRID_PADDING = 24
-const GRID_PADDING_MOBILE = 16
 
 interface PatternGridProps {
   patterns: Resource[]
@@ -42,53 +29,6 @@ interface PatternGridProps {
   onDelete: (id: string) => void
   selectedCategoryName?: string | null
   onImportClick?: () => void
-}
-
-// 传递给每个 cell 的数据（react-window v2 Grid 通过 cellProps 注入）
-interface CellData {
-  patterns: Resource[]
-  columns: number
-  cardWidth: number
-  cardH: number
-  batchMode: boolean
-  selectedIds: Set<string>
-  onToggleSelect: (id: string) => void
-  onWishlist: (id: string, currentStatus: string) => void
-  onDelete: (id: string) => void
-}
-
-// cell 渲染组件（模块级，保持引用稳定）
-function PatternCell({
-  columnIndex,
-  rowIndex,
-  style,
-  patterns,
-  columns,
-  cardWidth,
-  cardH,
-  batchMode,
-  selectedIds,
-  onToggleSelect,
-  onWishlist,
-  onDelete,
-}: CellComponentProps<CellData>) {
-  const idx = rowIndex * columns + columnIndex
-  const pattern = patterns[idx]
-  if (!pattern) return null
-  return (
-    <div style={style}>
-      <div style={{ width: cardWidth, height: cardH }}>
-        <PatternCardV2
-          pattern={pattern}
-          batchMode={batchMode}
-          isSelected={selectedIds.has(pattern.id)}
-          onSelect={onToggleSelect}
-          onWishlist={onWishlist}
-          onDelete={onDelete}
-        />
-      </div>
-    </div>
-  )
 }
 
 export default function PatternGrid({
@@ -108,31 +48,6 @@ export default function PatternGrid({
 }: PatternGridProps) {
   const [moveModalVisible, setMoveModalVisible] = useState(false)
   const [moveTargetId, setMoveTargetId] = useState('')
-
-  // 可靠检测手机/桌面宽度（直接通过 window，不需要 ResizeObserver）
-  const [isMobileWidth, setIsMobileWidth] = useState(false)
-  useEffect(() => {
-    const check = () => setIsMobileWidth(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-
-  // 桌面端：列表容器尺寸（用于虚拟滚动高度/宽度与列数计算）
-  const [listEl, setListEl] = useState<HTMLDivElement | null>(null)
-  const listRef = useCallback((el: HTMLDivElement | null) => setListEl(el), [])
-  const [dims, setDims] = useState({ width: 0, height: 0 })
-
-  useEffect(() => {
-    if (!listEl) return
-    const update = () => {
-      setDims({ width: listEl.clientWidth, height: listEl.clientHeight })
-    }
-    update()
-    const ro = new ResizeObserver(update)
-    ro.observe(listEl)
-    return () => ro.disconnect()
-  }, [listEl])
 
   const selectedCount = selectedIds.size
   const allSelected = patterns.length > 0 && patterns.every((p) => selectedIds.has(p.id))
@@ -164,35 +79,6 @@ export default function PatternGrid({
     message.success(`已将 ${ids.length} 个图解移动到新分类`)
   }
 
-  // ===== 桌面端虚拟滚动网格参数 =====
-  const cardMinW = isMobileWidth ? CARD_MIN_WIDTH_MOBILE : CARD_MIN_WIDTH
-  const gap = isMobileWidth ? GRID_GAP_MOBILE : GRID_GAP
-  const padding = isMobileWidth ? GRID_PADDING_MOBILE : GRID_PADDING
-  const coverH = isMobileWidth ? COVER_HEIGHT_MOBILE : COVER_HEIGHT
-  const cardH = coverH + CARD_BODY_HEIGHT
-  const gridW = Math.max(0, dims.width - padding * 2)
-  const gridH = Math.max(0, dims.height - padding * 2)
-  const columns = Math.max(1, Math.floor((gridW + gap) / (cardMinW + gap)))
-  const cardWidth = columns > 0 ? (gridW - (columns - 1) * gap) / columns : cardMinW
-  const rowCount = Math.ceil(patterns.length / columns)
-  const columnWidth = cardWidth + gap
-  const rowHeight = cardH + gap
-
-  const cellProps = useMemo<CellData>(
-    () => ({
-      patterns,
-      columns,
-      cardWidth,
-      cardH,
-      batchMode,
-      selectedIds,
-      onToggleSelect,
-      onWishlist,
-      onDelete,
-    }),
-    [patterns, columns, cardWidth, cardH, batchMode, selectedIds, onToggleSelect, onWishlist, onDelete],
-  )
-
   if (patterns.length === 0 && !batchMode) {
     return (
       <div className="patterns-empty warm-antd">
@@ -212,16 +98,7 @@ export default function PatternGrid({
   }
 
   return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: isMobileWidth ? undefined : 'hidden',
-      }}
-      className="warm-antd"
-    >
+    <div className="warm-antd" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
       {/* 批量操作栏 */}
       {batchMode && (
         <div className="batch-bar" style={{ flexShrink: 0 }}>
@@ -265,42 +142,20 @@ export default function PatternGrid({
         </div>
       )}
 
-      {/* 手机端：CSS grid 普通滚动（body 自然滚动，header sticky 固定） */}
-      {isMobileWidth ? (
-        <div style={{ flex: 1 }}>
-          <div className="pattern-grid">
-            {patterns.map((pattern) => (
-              <PatternCardV2
-                key={pattern.id}
-                pattern={pattern}
-                batchMode={batchMode}
-                isSelected={selectedIds.has(pattern.id)}
-                onSelect={onToggleSelect}
-                onWishlist={onWishlist}
-                onDelete={onDelete}
-              />
-            ))}
-          </div>
-        </div>
-      ) : (
-        /* 桌面端：虚拟滚动卡片网格 */
-        <div ref={listRef} style={{ flex: 1, minHeight: 0 }}>
-          {gridH > 0 && gridW > 0 && columns > 0 && (
-            <div style={{ height: '100%', width: '100%', padding, boxSizing: 'border-box' }}>
-              <Grid
-                columnCount={columns}
-                columnWidth={columnWidth}
-                rowCount={rowCount}
-                rowHeight={rowHeight}
-                cellComponent={PatternCell}
-                cellProps={cellProps}
-                style={{ height: '100%', width: '100%' }}
-                overscanCount={3}
-              />
-            </div>
-          )}
-        </div>
-      )}
+      {/* CSS grid 卡片网格（由 globals.css 的 .pattern-grid 控制响应式列数） */}
+      <div className="pattern-grid" style={{ flex: 1 }}>
+        {patterns.map((pattern) => (
+          <PatternCardV2
+            key={pattern.id}
+            pattern={pattern}
+            batchMode={batchMode}
+            isSelected={selectedIds.has(pattern.id)}
+            onSelect={onToggleSelect}
+            onWishlist={onWishlist}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
 
       {/* 移动分类弹窗 */}
       <Modal

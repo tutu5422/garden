@@ -658,7 +658,6 @@ h1, h2, h3, h4, h5, h6, .display-font {
 .patterns-layout {
   display: flex;
   height: calc(100vh - 3.5rem);
-  overflow: hidden;
   background: var(--skin-bg);
 }
 
@@ -666,7 +665,6 @@ h1, h2, h3, h4, h5, h6, .display-font {
   .patterns-layout {
     flex-direction: column;
     height: calc(100vh - 3.5rem); /* 手机端无顶部导航，只减 body padding-bottom (3.5rem) */
-    overflow: visible; /* 让 body 自然滚动，不封锁触摸滚动 */
   }
 }
 
@@ -748,9 +746,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
   .patterns-header {
     padding: 8px 12px;
     gap: 6px;
-    position: sticky;
     top: 0;
-    z-index: 10;
   }
   .patterns-header-search {
     max-width: 130px !important;
@@ -879,6 +875,9 @@ h1, h2, h3, h4, h5, h6, .display-font {
   background: var(--warm-surface);
   border-bottom: 1px solid var(--warm-header-border);
   flex-shrink: 0;
+  position: sticky;
+  top: 3.5rem;
+  z-index: 10;
 }
 
 /* 卡片网格 */
