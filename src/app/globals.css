@@ -698,10 +698,11 @@ h1, h2, h3, h4, h5, h6, .display-font {
   .patterns-header {
     padding: 8px 12px;
     gap: 6px;
-    position: relative !important;
-    left: auto !important;
-    right: auto !important;
-    top: auto !important;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    z-index: 10 !important;
   }
 }
 
@@ -878,7 +879,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
 @media (max-width: 767px) {
   .patterns-main {
     padding-left: 0;
-    padding-top: 0;
+    padding-top: 48px;
   }
 }
 
