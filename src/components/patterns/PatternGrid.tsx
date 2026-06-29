@@ -210,7 +210,7 @@ export default function PatternGrid({
 
   return (
     <div
-      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
       className="warm-antd"
     >
       {/* 批量操作栏 */}
@@ -257,7 +257,7 @@ export default function PatternGrid({
       )}
 
       {/* 虚拟滚动卡片网格 */}
-      <div ref={listRef} style={{ flex: 1, minHeight: 0 }}>
+      <div ref={listRef} style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         {gridH > 0 && gridW > 0 && columns > 0 && (
           <div style={{ height: '100%', width: '100%', padding, boxSizing: 'border-box' }}>
             <Grid
