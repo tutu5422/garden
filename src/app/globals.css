@@ -676,9 +676,11 @@ h1, h2, h3, h4, h5, h6, .display-font {
   color: var(--warm-sidebar-text);
   display: flex;
   flex-direction: column;
-  position: sticky;
+  position: fixed;
+  left: 0;
   top: 3.5rem;
-  height: calc(100vh - 3.5rem);
+  bottom: 0;
+  height: auto;
   overflow: hidden;
   border-right: 1px solid var(--skin-border);
 }
@@ -864,6 +866,13 @@ h1, h2, h3, h4, h5, h6, .display-font {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  padding-left: 240px;
+}
+
+@media (max-width: 767px) {
+  .patterns-main {
+    padding-left: 0;
+  }
 }
 
 /* 顶栏 */
