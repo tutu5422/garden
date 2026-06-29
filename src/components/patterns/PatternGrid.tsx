@@ -265,9 +265,9 @@ export default function PatternGrid({
         </div>
       )}
 
-      {/* 手机端：CSS grid 普通滚动（保证触摸滚动可靠） */}
+      {/* 手机端：CSS grid 普通滚动（body 自然滚动，header sticky 固定） */}
       {isMobileWidth ? (
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ flex: 1 }}>
           <div className="pattern-grid">
             {patterns.map((pattern) => (
               <PatternCardV2
