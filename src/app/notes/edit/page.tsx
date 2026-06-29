@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Upload, X, Check, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import PatternSearch from '@/components/patterns/PatternSearch'
 import {
   linkPatternNote,
@@ -20,10 +21,12 @@ interface Note {
 interface Collection { id: string; title: string }
 
 function compressImage(file: File, maxW: number, quality: number): Promise<{ full: string; thumb: string }> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader()
+    reader.onerror = () => reject(new Error('读取图片文件失败'))
     reader.onload = () => {
       const img = new window.Image()
+      img.onerror = () => reject(new Error('图片解码失败'))
       img.onload = () => {
         const scale = Math.min(1, maxW / Math.max(img.width, img.height))
         const w = Math.round(img.width * scale), h = Math.round(img.height * scale)
@@ -104,13 +107,23 @@ function EditForm() {
   const save = async () => {
     if (!form.title.trim()) return
     setUploading(true)
+    let cloudSyncFailed = false
     try {
-      const notes: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
+      let notes: Note[]
+      try {
+        notes = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
+      } catch {
+        notes = []
+      }
       const col = collections.find(c => c.id === form.collectionId)
 
       let image: string | undefined, imageThumb: string | undefined
       if (imageFile) {
-        try { const c = await compressImage(imageFile, 1200, 0.7); image = c.full; imageThumb = c.thumb } catch {}
+        try { const c = await compressImage(imageFile, 1200, 0.7); image = c.full; imageThumb = c.thumb }
+        catch (e) {
+          console.warn('[save] 图片压缩失败:', e)
+          toast.error('图片处理失败，已跳过图片')
+        }
       }
 
       let savedNoteId = noteId
@@ -128,18 +141,26 @@ function EditForm() {
         savedNoteId = note.id
         localStorage.setItem('minitu_notes', JSON.stringify([note, ...notes]))
         // Sync to cloud — await 确保云端已有该笔记行后再关联图解
-        const syncRes = await fetch('/api/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
-        }).catch((e) => {
-          console.warn('[sync] 笔记同步失败:', e);
-          return null;
-        });
-        if (!syncRes || !syncRes.ok) {
-          console.warn('[sync] 笔记同步返回异常:', syncRes?.status);
+        try {
+          const syncRes = await fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
+          })
+          if (!syncRes.ok) {
+            cloudSyncFailed = true
+            console.warn('[sync] 笔记同步返回异常:', syncRes.status)
+          }
+        } catch (e) {
+          cloudSyncFailed = true
+          console.warn('[sync] 笔记同步失败:', e)
         }
       } else {
+        const existing = notes.find(n => n.id === noteId)
+        if (!existing) {
+          toast.error('未找到该笔记，可能已被删除')
+          return
+        }
         let syncedNote: Note | undefined
         const updated = notes.map(n => {
           if (n.id !== noteId) return n
@@ -156,16 +177,19 @@ function EditForm() {
         localStorage.setItem('minitu_notes', JSON.stringify(updated))
         // Sync to cloud — await 确保云端已有该笔记行后再关联图解
         if (syncedNote) {
-          const syncRes = await fetch('/api/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ table: 'notes', action: 'upsert', data: syncedNote }),
-          }).catch((e) => {
-            console.warn('[sync] 笔记同步失败:', e);
-            return null;
-          });
-          if (!syncRes || !syncRes.ok) {
-            console.warn('[sync] 笔记同步返回异常:', syncRes?.status);
+          try {
+            const syncRes = await fetch('/api/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ table: 'notes', action: 'upsert', data: syncedNote }),
+            })
+            if (!syncRes.ok) {
+              cloudSyncFailed = true
+              console.warn('[sync] 笔记同步返回异常:', syncRes.status)
+            }
+          } catch (e) {
+            cloudSyncFailed = true
+            console.warn('[sync] 笔记同步失败:', e)
           }
         }
       }
@@ -197,8 +221,16 @@ function EditForm() {
         )
       }
 
+      if (cloudSyncFailed) {
+        toast.warning('已保存到本地，但云端同步失败，下次打开页面会自动重试')
+      } else {
+        toast.success(isNew ? '笔记已发布' : '笔记已保存')
+      }
       router.push('/notes')
-    } catch {} finally { setUploading(false) }
+    } catch (e: any) {
+      console.error('[save] 保存失败:', e)
+      toast.error('保存失败：' + (e?.message || '未知错误，请重试'))
+    } finally { setUploading(false) }
   }
 
   const handleTogglePattern = (patternId: string) => {
