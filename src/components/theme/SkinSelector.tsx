@@ -1,38 +1,17 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useTheme } from './SkinProvider'
 import { Check, ChevronDown, SwatchBook } from 'lucide-react'
 
 export default function SkinSelector() {
   const { skin, setSkin, skins, dark } = useTheme()
   const [open, setOpen] = useState(false)
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 })
-
-  useEffect(() => {
-    if (!open || !btnRef.current) return
-    const rect = btnRef.current.getBoundingClientRect()
-    setPos({ top: rect.bottom + 8, left: rect.left, width: rect.width })
-
-    const onResize = () => {
-      if (!btnRef.current) return
-      const r = btnRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 8, left: r.left, width: r.width })
-    }
-    window.addEventListener('resize', onResize)
-    window.addEventListener('scroll', onResize, true)
-    return () => {
-      window.removeEventListener('resize', onResize)
-      window.removeEventListener('scroll', onResize, true)
-    }
-  }, [open])
 
   return (
     <div className="relative">
       {/* 当前皮肤触发按钮 */}
       <button
-        ref={btnRef}
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-4 rounded-xl transition-all duration-300 group"
         style={{
@@ -59,22 +38,11 @@ export default function SkinSelector() {
         />
       </button>
 
-      {/* 遮罩层 — 点击关闭 */}
+      {/* 皮肤选择面板 */}
       {open && (
         <div
-          className="fixed inset-0 z-30"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      {/* 皮肤选择面板 — fixed 定位，脱离父级层叠上下文 */}
-      {open && (
-        <div
-          className="fixed z-40 rounded-xl overflow-hidden shadow-xl"
+          className="absolute z-20 mt-2 w-full rounded-xl overflow-hidden shadow-xl"
           style={{
-            top: pos.top,
-            left: pos.left,
-            width: pos.width,
             background: 'var(--skin-surface)',
             border: '2px solid var(--skin-border)',
             boxShadow: 'var(--shadow-xl)',
