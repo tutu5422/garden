@@ -1,7 +1,6 @@
 "use client";
-import { Sun, Moon, Monitor, Palette, Info, SwatchBook } from "lucide-react";
+import { Sun, Moon, Monitor, Palette, Info } from "lucide-react";
 import { useTheme } from "@/components/theme/SkinProvider";
-import SkinSelector from "@/components/theme/SkinSelector";
 import type { ThemeMode } from "@/lib/theme/skins";
 
 const modeOptions: { mode: ThemeMode; label: string; icon: typeof Sun; desc: string }[] = [
@@ -11,7 +10,7 @@ const modeOptions: { mode: ThemeMode; label: string; icon: typeof Sun; desc: str
 ];
 
 export default function SettingsPage() {
-  const { mode, dark, setMode, skin } = useTheme();
+  const { mode, dark, setMode } = useTheme();
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8 page-enter">
@@ -77,27 +76,14 @@ export default function SettingsPage() {
                  background: 'linear-gradient(135deg, rgba(var(--skin-accent-rgb), 0.08), rgba(var(--skin-primary-rgb), 0.06))',
                  border: '1px solid rgba(var(--skin-accent-rgb), 0.15)',
                }}>
-            <span className="text-3xl">{skin.emoji}</span>
+            <span className="text-3xl">📰</span>
             <div>
-              <p className="text-sm font-extrabold tracking-wider" style={{ color: 'var(--skin-text)' }}>{skin.name}</p>
+              <p className="text-sm font-extrabold tracking-wider" style={{ color: 'var(--skin-text)' }}>编辑狂想</p>
               <p className="text-xs" style={{ color: 'var(--skin-text-secondary)' }}>
-                {skin.description}
+                杂志玫红 × 电光金 · 独立深/浅双模
               </p>
             </div>
           </div>
-        </div>
-
-        {/* 皮肤主题 */}
-        <div className="card card-rounded-tl p-6 sm:p-8">
-          <div className="flex items-center gap-2 mb-6">
-            <SwatchBook className="size-5" style={{ color: 'var(--skin-accent)' }} />
-            <h2 className="font-extrabold text-base tracking-wider"
-                style={{ color: 'var(--skin-text)', fontFamily: "var(--font-display)" }}>
-              皮肤主题
-            </h2>
-          </div>
-
-          <SkinSelector />
         </div>
 
         <div className="card card-rounded-br p-6 sm:p-8">
@@ -116,7 +102,7 @@ export default function SettingsPage() {
               数据存储在浏览器本地 · 仅限主人访问 · minitu.online
             </p>
             <p className="text-[10px] leading-relaxed font-mono mt-2" style={{ color: 'var(--skin-text-secondary)', opacity: 0.5 }}>
-              {skin.name} — {skin.description}
+              编辑狂想 Editorial Rave — 杂志玫红 × 电光金 · 时尚杂志美学
             </p>
           </div>
         </div>
