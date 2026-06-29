@@ -14,7 +14,7 @@ export const viewport: Viewport = { themeColor: "#E8315B", width: "device-width"
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body className="min-h-screen antialiased pb-14 md:pb-0 transition-colors duration-300" style={{ backgroundColor: 'var(--skin-bg)', color: 'var(--skin-text)' }}>
+      <body className="min-h-screen antialiased pb-14 md:pb-0 md:pt-14 transition-colors duration-300" style={{ backgroundColor: 'var(--skin-bg)', color: 'var(--skin-text)' }}>
         <AntdRegistry>
           <ThemeProvider>
             <MusicProvider>

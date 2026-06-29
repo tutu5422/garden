@@ -36,9 +36,9 @@ export default function Nav() {
 
   return (
     <>
-      {/* Desktop / Tablet Top Nav — sticky, matches Navbar.tsx positioning */}
+      {/* Desktop / Tablet Top Nav — fixed at top */}
       <header
-        className="hidden md:block sticky top-0 z-50 w-full border-b-2 border-[var(--skin-border)]"
+        className="hidden md:block fixed top-0 z-50 w-full border-b-2 border-[var(--skin-border)]"
         style={{ backgroundColor: "var(--skin-surface)" }}
       >
         <div className="mx-auto flex h-14 max-w-6xl items-center px-4">
