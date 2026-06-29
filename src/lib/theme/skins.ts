@@ -1,5 +1,5 @@
-// 迷你兔 · 多皮肤主题系统 v2
-// 每个皮肤独立控制：配色 + 圆角 + 阴影 + 字体 + 卡片风格 + 动画
+// 迷你兔 · 多皮肤主题系统
+// 编辑狂想 + 森系纸墨 + 暖阳陶土 + 午夜蓝金
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -14,44 +14,6 @@ export interface ThemeColors {
   textSecondary: string
 }
 
-/** 非颜色维度的皮肤样式 */
-export interface ThemeStyle {
-  // 圆角体系
-  radiusSm: string    // 小 (按钮、输入框、标签)
-  radiusMd: string    // 中 (卡片)
-  radiusLg: string    // 大 (弹窗、Hero区域)
-  radiusXl: string    // 特大 (全宽卡片)
-
-  // 字体
-  fontDisplay: string // 标题字体
-  fontBody: string    // 正文字体
-
-  // 卡片样式
-  cardBg: string            // 卡片背景 (vs --skin-surface)
-  cardBorder: string        // 卡片边框色
-  cardBorderWidth: string   // 卡片边框宽度
-  cardShadow: string        // 卡片阴影
-  cardHover: string         // 悬停变换 (e.g. 'translateY(-4px)')
-  cardHoverShadow: string   // 悬停阴影
-  cardHoverBorder: string   // 悬停边框色
-
-  // 毛玻璃 (仅 "glass" 卡片风格时生效)
-  glassBg?: string
-  glassBlur?: string
-  glassBorder?: string
-
-  // 按钮样式
-  btnRadius: string
-  btnShadow: string
-
-  // 标签/徽标
-  tagRadius: string
-
-  // 页面级
-  pageBg: string  // 背景 (等于 colors.background，但可在上面叠加纹理)
-  sectionGap: string
-}
-
 export interface ThemeDefinition {
   id: string
   name: string
@@ -59,10 +21,9 @@ export interface ThemeDefinition {
   description: string
   light: ThemeColors
   dark: ThemeColors
-  style: ThemeStyle  // 每个皮肤的独立样式
 }
 
-// ========== 编辑狂想 · 时尚杂志美学（原始主题，保留不变）==========
+// ========== 编辑狂想 · 时尚杂志美学（原始主题，保持不变）==========
 
 export const EDITORIAL_RAVE: ThemeDefinition = {
   id: 'editorial-rave',
@@ -70,212 +31,114 @@ export const EDITORIAL_RAVE: ThemeDefinition = {
   emoji: '📰',
   description: '杂志玫红 × 电光金 · 时尚杂志美学',
   light: {
-    primary:       '#E8315B',
-    background:    '#F6F3EF',
-    surface:       '#FFFFFF',
-    muted:         '#F0EBE3',
-    border:        '#E0D9CE',
-    accent:        '#FFB800',
-    text:          '#12100E',
-    textSecondary: '#7A7268',
+    primary:       '#E8315B',   // 杂志玫红 — 主力色
+    background:    '#F6F3EF',   // 暖灰白 — 页面底
+    surface:       '#FFFFFF',   // 纯白卡片
+    muted:         '#F0EBE3',   // 暖灰
+    border:        '#E0D9CE',   // 暖边框
+    accent:        '#FFB800',   // 电光金 — 强调点缀
+    text:          '#12100E',   // 极黑 — 主文字
+    textSecondary: '#7A7268',   // 暖灰褐 — 辅文字
   },
   dark: {
-    primary:       '#FF5277',
-    background:    '#0E0C0A',
-    surface:       '#1C1815',
-    muted:         '#24201A',
-    border:        '#322C24',
-    accent:        '#FFB800',
-    text:          '#F5F0E8',
-    textSecondary: '#9A9084',
-  },
-  style: {
-    radiusSm:     '0.375rem',
-    radiusMd:     '0.75rem',
-    radiusLg:     '1rem',
-    radiusXl:     '1.25rem',
-
-    fontDisplay:  "'Noto Serif SC', 'STSong', 'Songti SC', 'Georgia', serif",
-    fontBody:     "'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
-
-    cardBg:           '#FFFFFF',
-    cardBorder:       '#E0D9CE',
-    cardBorderWidth:  '1px',
-    cardShadow:       '0 4px 8px rgba(0,0,0,0.08), 0 8px 16px rgba(0,0,0,0.06), 0 16px 32px rgba(0,0,0,0.04)',
-    cardHover:        'translateY(-6px)',
-    cardHoverShadow:  '0 16px 32px rgba(0,0,0,0.12), 0 32px 64px rgba(0,0,0,0.1), 0 48px 96px rgba(0,0,0,0.08)',
-    cardHoverBorder:  'var(--skin-primary)',
-
-    btnRadius:        '0.5rem',
-    btnShadow:        '0 2px 4px rgba(0,0,0,0.06), 0 4px 8px rgba(0,0,0,0.04)',
-
-    tagRadius:        '9999px',
-
-    pageBg:           'var(--skin-bg)',
-    sectionGap:       '3rem',
+    primary:       '#FF5277',   // 亮玫红 — 主力色
+    background:    '#0E0C0A',   // 深黑暖底
+    surface:       '#1C1815',   // 深棕卡片
+    muted:         '#24201A',   // 暗暖灰
+    border:        '#322C24',   // 暗金边
+    accent:        '#FFB800',   // 电光金
+    text:          '#F5F0E8',   // 暖白
+    textSecondary: '#9A9084',   // 灰褐
   },
 }
 
-// =====================================================================
-// 以下三个皮肤由 Devin+Kimi K2.7 重新定义，下轮迭代将重写为非颜色维度的全面改造
-// =====================================================================
-
 // ========== 森系纸墨 · Forest Paper ==========
+// 米纸底 + 墨绿 + 木色，手绘自然质感
+
 export const FOREST_PAPER: ThemeDefinition = {
   id: 'forest-paper',
   name: '森系纸墨',
   emoji: '🌿',
   description: '米纸宣纸 × 墨绿木色 · 自然手绘质感',
   light: {
-    primary:       '#2E5C45',
-    background:    '#F5F1E8',
-    surface:       '#FDFCF8',
-    muted:         '#EAE4D8',
-    border:        '#D9D2C3',
-    accent:        '#B89A6A',
-    text:          '#1A2F1F',
-    textSecondary: '#5A6B5E',
+    primary:       '#2E5C45',   // 森林绿
+    background:    '#F5F1E8',   // 暖米纸
+    surface:       '#FDFCF8',   // 白宣纸
+    muted:         '#EAE4D8',   // 旧纸色
+    border:        '#D9D2C3',   // 淡墨边
+    accent:        '#B89A6A',   // 木色金
+    text:          '#1A2F1F',   // 墨绿黑
+    textSecondary: '#5A6B5E',   // 苔绿灰
   },
   dark: {
-    primary:       '#5B9E7D',
-    background:    '#141C17',
-    surface:       '#1E2A22',
-    muted:         '#25362B',
-    border:        '#334A3D',
-    accent:        '#C4A76E',
-    text:          '#E9E5DA',
-    textSecondary: '#8A9B8A',
-  },
-  style: {
-    radiusSm:     '0.5rem',
-    radiusMd:     '0.875rem',
-    radiusLg:     '1.125rem',
-    radiusXl:     '1.5rem',
-
-    fontDisplay:  "'Noto Serif SC', 'STSong', 'Georgia', serif",
-    fontBody:     "'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
-
-    cardBg:           '#FDFCF8',
-    cardBorder:       '#D9D2C3',
-    cardBorderWidth:  '1px',
-    cardShadow:       '0 2px 8px rgba(0,0,0,0.06)',
-    cardHover:        'translateY(-4px)',
-    cardHoverShadow:  '0 8px 24px rgba(0,0,0,0.10)',
-    cardHoverBorder:  '#2E5C45',
-
-    btnRadius:        '0.625rem',
-    btnShadow:        '0 2px 4px rgba(0,0,0,0.06)',
-
-    tagRadius:        '0.375rem',
-
-    pageBg:           'var(--skin-bg)',
-    sectionGap:       '3rem',
+    primary:       '#5B9E7D',   // 翡翠绿
+    background:    '#141C17',   // 深森林
+    surface:       '#1E2A22',   // 深苔藓
+    muted:         '#25362B',   // 暗绿影
+    border:        '#334A3D',   // 深绿边
+    accent:        '#C4A76E',   // 旧金木
+    text:          '#E9E5DA',   // 羊皮纸白
+    textSecondary: '#8A9B8A',   // 鼠尾草灰
   },
 }
 
 // ========== 暖阳陶土 · Warm Terracotta ==========
+// 奶油色 + 陶土橙，地中海午后阳光
+
 export const WARM_TERRACOTTA: ThemeDefinition = {
   id: 'warm-terracotta',
   name: '暖阳陶土',
   emoji: '🌅',
   description: '奶油燕麦 × 陶土橙 · 地中海午后阳光',
   light: {
-    primary:       '#C65D3B',
-    background:    '#F9F1E8',
-    surface:       '#FFFBF5',
-    muted:         '#F3E6D8',
-    border:        '#E8D5C4',
-    accent:        '#E9A319',
-    text:          '#3D2B1F',
-    textSecondary: '#8B6B53',
+    primary:       '#C65D3B',   // 陶土橙
+    background:    '#F9F1E8',   // 奶油底
+    surface:       '#FFFBF5',   // 暖白
+    muted:         '#F3E6D8',   // 燕麦色
+    border:        '#E8D5C4',   // 沙色边
+    accent:        '#E9A319',   // 阳光金
+    text:          '#3D2B1F',   // 咖啡黑
+    textSecondary: '#8B6B53',   // 暖褐灰
   },
   dark: {
-    primary:       '#E27B56',
-    background:    '#1E1814',
-    surface:       '#2C231C',
-    muted:         '#382D25',
-    border:        '#4A3D33',
-    accent:        '#F4B942',
-    text:          '#F5E8D8',
-    textSecondary: '#B89A82',
-  },
-  style: {
-    radiusSm:     '0.75rem',
-    radiusMd:     '1rem',
-    radiusLg:     '1.5rem',
-    radiusXl:     '2rem',
-
-    fontDisplay:  "'Noto Serif SC', 'STSong', 'Georgia', serif",
-    fontBody:     "'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
-
-    cardBg:           '#FFFBF5',
-    cardBorder:       '#E8D5C4',
-    cardBorderWidth:  '1px',
-    cardShadow:       '0 4px 12px rgba(0,0,0,0.06)',
-    cardHover:        'translateY(-4px)',
-    cardHoverShadow:  '0 12px 32px rgba(0,0,0,0.10)',
-    cardHoverBorder:  '#C65D3B',
-
-    btnRadius:        '0.875rem',
-    btnShadow:        '0 2px 8px rgba(0,0,0,0.06)',
-
-    tagRadius:        '0.5rem',
-
-    pageBg:           'var(--skin-bg)',
-    sectionGap:       '3rem',
+    primary:       '#E27B56',   // 珊瑚陶土
+    background:    '#1E1814',   // 深咖啡
+    surface:       '#2C231C',   // 暖棕卡
+    muted:         '#382D25',   // 暗橡木
+    border:        '#4A3D33',   // 陶土影
+    accent:        '#F4B942',   // 落日金
+    text:          '#F5E8D8',   // 奶油白
+    textSecondary: '#B89A82',   // 暖沙灰
   },
 }
 
 // ========== 午夜蓝金 · Midnight Blue ==========
+// 深蓝 + 金色，沉稳奢华的夜间花园
+
 export const MIDNIGHT_BLUE: ThemeDefinition = {
   id: 'midnight-blue',
   name: '午夜蓝金',
   emoji: '🌙',
   description: '午夜蓝 × 月光金 · 沉稳奢华的夜间花园',
   light: {
-    primary:       '#1E3A8A',
-    background:    '#F4F6F9',
-    surface:       '#FFFFFF',
-    muted:         '#E8EDF3',
-    border:        '#D5DDE8',
-    accent:        '#C9A227',
-    text:          '#0F172A',
-    textSecondary: '#5A6B8A',
+    primary:       '#1E3A8A',   // 皇家蓝
+    background:    '#F4F6F9',   // 冰白
+    surface:       '#FFFFFF',   // 纯白
+    muted:         '#E8EDF3',   // 雾蓝
+    border:        '#D5DDE8',   // 霜边
+    accent:        '#C9A227',   // 皇家金
+    text:          '#0F172A',   // 午夜墨
+    textSecondary: '#5A6B8A',   // 钢蓝灰
   },
   dark: {
-    primary:       '#3B82F6',
-    background:    '#0B1120',
-    surface:       '#151E32',
-    muted:         '#1C2744',
-    border:        '#2A3A5C',
-    accent:        '#F0C050',
-    text:          '#F0F4F8',
-    textSecondary: '#8FA4BF',
-  },
-  style: {
-    radiusSm:     '0.25rem',
-    radiusMd:     '0.5rem',
-    radiusLg:     '0.75rem',
-    radiusXl:     '1rem',
-
-    fontDisplay:  "'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
-    fontBody:     "'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif",
-
-    cardBg:           '#FFFFFF',
-    cardBorder:       '#D5DDE8',
-    cardBorderWidth:  '1px',
-    cardShadow:       '0 4px 12px rgba(0,0,0,0.06)',
-    cardHover:        'translateY(-4px)',
-    cardHoverShadow:  '0 16px 32px rgba(0,0,0,0.10)',
-    cardHoverBorder:  '#1E3A8A',
-
-    btnRadius:        '0.25rem',
-    btnShadow:        '0 2px 4px rgba(0,0,0,0.06)',
-
-    tagRadius:        '0.25rem',
-
-    pageBg:           'var(--skin-bg)',
-    sectionGap:       '3rem',
+    primary:       '#3B82F6',   // 电光蓝
+    background:    '#0B1120',   // 深午夜
+    surface:       '#151E32',   // 夜蓝卡
+    muted:         '#1C2744',   // 暗海军
+    border:        '#2A3A5C',   // 影蓝边
+    accent:        '#F0C050',   // 月光金
+    text:          '#F0F4F8',   // 月光白
+    textSecondary: '#8FA4BF',   // 软钢蓝
   },
 }
 
@@ -290,6 +153,7 @@ export const THEMES: ThemeDefinition[] = [
 
 export const DEFAULT_SKIN_ID = EDITORIAL_RAVE.id
 
+// 向后兼容：保留 THEME 别名
 export const THEME = EDITORIAL_RAVE
 
 export function getThemeById(id: string): ThemeDefinition {
@@ -337,73 +201,42 @@ export function applyTheme(skinId: string, dark: boolean) {
   if (typeof document === 'undefined') return
   const skin = getThemeById(skinId)
   const palette = dark ? skin.dark : skin.light
-  const s = skin.style
   const root = document.documentElement
 
   root.classList.toggle('dark', dark)
 
   const vars: Record<string, string> = {
-    '--skin-primary':          palette.primary,
-    '--skin-primary-rgb':      hexToRgb(palette.primary),
-    '--skin-bg':               palette.background,
-    '--skin-bg-rgb':           hexToRgb(palette.background),
-    '--skin-surface':          palette.surface,
-    '--skin-surface-rgb':      hexToRgb(palette.surface),
-    '--skin-muted':            palette.muted,
-    '--skin-border':           palette.border,
-    '--skin-accent':           palette.accent,
-    '--skin-accent-rgb':       hexToRgb(palette.accent),
-    '--skin-text':             palette.text,
-    '--skin-text-secondary':   palette.textSecondary,
+    '--skin-primary':        palette.primary,
+    '--skin-primary-rgb':    hexToRgb(palette.primary),
+    '--skin-bg':             palette.background,
+    '--skin-bg-rgb':         hexToRgb(palette.background),
+    '--skin-surface':        palette.surface,
+    '--skin-surface-rgb':    hexToRgb(palette.surface),
+    '--skin-muted':          palette.muted,
+    '--skin-border':         palette.border,
+    '--skin-accent':         palette.accent,
+    '--skin-accent-rgb':     hexToRgb(palette.accent),
+    '--skin-text':           palette.text,
+    '--skin-text-secondary': palette.textSecondary,
 
-    // 样式变量
-    '--skin-radius-sm':        s.radiusSm,
-    '--skin-radius-md':        s.radiusMd,
-    '--skin-radius-lg':        s.radiusLg,
-    '--skin-radius-xl':        s.radiusXl,
-
-    '--font-display':          s.fontDisplay,
-    '--font-body':             s.fontBody,
-
-    '--skin-card-bg':          s.cardBg,
-    '--skin-card-border':      s.cardBorder,
-    '--skin-card-border-width': s.cardBorderWidth,
-    '--skin-card-shadow':      s.cardShadow,
-    '--skin-card-hover':       s.cardHover,
-    '--skin-card-hover-shadow': s.cardHoverShadow,
-    '--skin-card-hover-border': s.cardHoverBorder,
-
-    '--skin-glass-bg':         s.glassBg ?? 'rgba(255,255,255,0.1)',
-    '--skin-glass-blur':       s.glassBlur ?? '12px',
-    '--skin-glass-border':     s.glassBorder ?? 'rgba(255,255,255,0.15)',
-
-    '--skin-btn-radius':       s.btnRadius,
-    '--skin-btn-shadow':       s.btnShadow,
-
-    '--skin-tag-radius':       s.tagRadius,
-
-    '--skin-page-bg':          s.pageBg,
-    '--skin-section-gap':      s.sectionGap,
-
-    // shadcn/ui 兼容变量
-    '--background':            palette.background,
-    '--foreground':            palette.text,
-    '--card':                  s.cardBg,
-    '--card-foreground':       palette.text,
-    '--popover':               palette.surface,
-    '--popover-foreground':    palette.text,
-    '--primary':               palette.primary,
-    '--primary-foreground':    dark ? palette.background : '#FFFFFF',
-    '--secondary':             palette.muted,
-    '--secondary-foreground':  palette.text,
-    '--muted':                 palette.muted,
-    '--muted-foreground':      palette.textSecondary,
-    '--accent':                palette.accent,
-    '--accent-foreground':     palette.text,
-    '--destructive':           dark ? '#F87171' : '#DC2626',
-    '--border':                palette.border,
-    '--input':                 palette.border,
-    '--ring':                  palette.primary,
+    '--background':          palette.background,
+    '--foreground':          palette.text,
+    '--card':                palette.surface,
+    '--card-foreground':     palette.text,
+    '--popover':             palette.surface,
+    '--popover-foreground':  palette.text,
+    '--primary':             palette.primary,
+    '--primary-foreground':  dark ? palette.background : '#FFFFFF',
+    '--secondary':           palette.muted,
+    '--secondary-foreground':palette.text,
+    '--muted':               palette.muted,
+    '--muted-foreground':    palette.textSecondary,
+    '--accent':              palette.accent,
+    '--accent-foreground':   palette.text,
+    '--destructive':         dark ? '#F87171' : '#DC2626',
+    '--border':              palette.border,
+    '--input':               palette.border,
+    '--ring':                palette.primary,
   }
 
   Object.entries(vars).forEach(([key, value]) => {
