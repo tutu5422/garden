@@ -8,9 +8,8 @@ import type { Resource } from "@/lib/types";
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[];
   collectionId?: string; collectionName?: string;
-  createdAt: string; image?: string; imageThumb?: string;
+  createdAt: string; updatedAt?: string; image?: string; imageThumb?: string;
 }
-
 export default function NoteDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();

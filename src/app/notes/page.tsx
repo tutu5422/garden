@@ -7,9 +7,8 @@ import { updateLocalCollection } from '@/lib/db/local-store';
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[];
   collectionId?: string; collectionName?: string;
-  createdAt: string; image?: string; imageThumb?: string;
+  createdAt: string; updatedAt?: string; image?: string; imageThumb?: string;
 }
-
 interface Collection { id: string; title: string; }
 
 // 墓碑 key：记录已删除的笔记 ID，防止下次从云端合并时复活

@@ -15,7 +15,7 @@ import {
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[]
   collectionId?: string; collectionName?: string
-  createdAt: string; image?: string; imageThumb?: string
+  createdAt: string; updatedAt?: string; image?: string; imageThumb?: string
 }
 
 interface Collection { id: string; title: string }
