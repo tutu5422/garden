@@ -307,6 +307,8 @@ export async function POST(req: NextRequest) {
           console.error('[sync:notes] upsert FAILED:', noteErr, 'noteId:', note.id);
           return NextResponse.json({ error: '同步笔记失败', detail: noteErr, debug_data_keys: Object.keys(dbData) }, { status: 500 });
         }
+        // Log key fields for debugging cross-device sync issues
+        console.log('[sync:notes] OK id:', note.id, 'title:', (note.title || '').substring(0, 30), 'contentLen:', (note.content || '').length, 'updatedAt:', note.updatedAt);
         console.log('[sync:notes] upsert OK noteId:', note.id);
       } else if (table === 'collections') {
         const col = data;
