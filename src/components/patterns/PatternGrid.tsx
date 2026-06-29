@@ -22,7 +22,7 @@ const CARD_MIN_WIDTH = 220
 const CARD_MIN_WIDTH_MOBILE = 160
 const COVER_HEIGHT = 220
 const COVER_HEIGHT_MOBILE = 160
-const CARD_BODY_HEIGHT = 74 // 匹配 .warm-card-body CSS: padding(12+14) + title(~21) + tag-margin(6) + tag(~21)
+const CARD_BODY_HEIGHT = 74 // 匹配 .warm-card-body: padding(12+14)=26 + title(~22) + tag-margin(6) + tag(~20) = ~74
 const GRID_GAP = 20
 const GRID_GAP_MOBILE = 12
 const GRID_PADDING = 24
@@ -109,9 +109,16 @@ export default function PatternGrid({
   const [moveModalVisible, setMoveModalVisible] = useState(false)
   const [moveTargetId, setMoveTargetId] = useState('')
 
-  // 列表容器尺寸（用于虚拟滚动高度/宽度与列数计算）。
-  // 使用 callback ref + state：当列表容器挂载/卸载时正确触发测量，
-  // 避免空状态→有数据切换时 ResizeObserver 漏挂。
+  // 可靠检测手机/桌面宽度（直接通过 window，不需要 ResizeObserver）
+  const [isMobileWidth, setIsMobileWidth] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobileWidth(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // 桌面端：列表容器尺寸（用于虚拟滚动高度/宽度与列数计算）
   const [listEl, setListEl] = useState<HTMLDivElement | null>(null)
   const listRef = useCallback((el: HTMLDivElement | null) => setListEl(el), [])
   const [dims, setDims] = useState({ width: 0, height: 0 })
@@ -157,21 +164,17 @@ export default function PatternGrid({
     message.success(`已将 ${ids.length} 个图解移动到新分类`)
   }
 
-  // ===== 虚拟滚动网格参数 =====
-  const isMobile = dims.width > 0 && dims.width < 600
-  const cardMinW = isMobile ? CARD_MIN_WIDTH_MOBILE : CARD_MIN_WIDTH
-  const gap = isMobile ? GRID_GAP_MOBILE : GRID_GAP
-  const padding = isMobile ? GRID_PADDING_MOBILE : GRID_PADDING
-  const coverH = isMobile ? COVER_HEIGHT_MOBILE : COVER_HEIGHT
+  // ===== 桌面端虚拟滚动网格参数 =====
+  const cardMinW = isMobileWidth ? CARD_MIN_WIDTH_MOBILE : CARD_MIN_WIDTH
+  const gap = isMobileWidth ? GRID_GAP_MOBILE : GRID_GAP
+  const padding = isMobileWidth ? GRID_PADDING_MOBILE : GRID_PADDING
+  const coverH = isMobileWidth ? COVER_HEIGHT_MOBILE : COVER_HEIGHT
   const cardH = coverH + CARD_BODY_HEIGHT
-
-  // Grid 实际可用区域（去掉外边距 padding）
   const gridW = Math.max(0, dims.width - padding * 2)
   const gridH = Math.max(0, dims.height - padding * 2)
   const columns = Math.max(1, Math.floor((gridW + gap) / (cardMinW + gap)))
   const cardWidth = columns > 0 ? (gridW - (columns - 1) * gap) / columns : cardMinW
   const rowCount = Math.ceil(patterns.length / columns)
-  // 每个 cell 包含一张卡片 + 右侧/下侧 gap
   const columnWidth = cardWidth + gap
   const rowHeight = cardH + gap
 
@@ -210,7 +213,13 @@ export default function PatternGrid({
 
   return (
     <div
-      style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: isMobileWidth ? undefined : 'hidden',
+      }}
       className="warm-antd"
     >
       {/* 批量操作栏 */}
@@ -256,23 +265,42 @@ export default function PatternGrid({
         </div>
       )}
 
-      {/* 虚拟滚动卡片网格 */}
-      <div ref={listRef} style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-        {gridH > 0 && gridW > 0 && columns > 0 && (
-          <div style={{ height: '100%', width: '100%', padding, boxSizing: 'border-box' }}>
-            <Grid
-              columnCount={columns}
-              columnWidth={columnWidth}
-              rowCount={rowCount}
-              rowHeight={rowHeight}
-              cellComponent={PatternCell}
-              cellProps={cellProps}
-              style={{ height: '100%', width: '100%' }}
-              overscanCount={3}
-            />
+      {/* 手机端：CSS grid 普通滚动（保证触摸滚动可靠） */}
+      {isMobileWidth ? (
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          <div className="pattern-grid">
+            {patterns.map((pattern) => (
+              <PatternCardV2
+                key={pattern.id}
+                pattern={pattern}
+                batchMode={batchMode}
+                isSelected={selectedIds.has(pattern.id)}
+                onSelect={onToggleSelect}
+                onWishlist={onWishlist}
+                onDelete={onDelete}
+              />
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* 桌面端：虚拟滚动卡片网格 */
+        <div ref={listRef} style={{ flex: 1, minHeight: 0 }}>
+          {gridH > 0 && gridW > 0 && columns > 0 && (
+            <div style={{ height: '100%', width: '100%', padding, boxSizing: 'border-box' }}>
+              <Grid
+                columnCount={columns}
+                columnWidth={columnWidth}
+                rowCount={rowCount}
+                rowHeight={rowHeight}
+                cellComponent={PatternCell}
+                cellProps={cellProps}
+                style={{ height: '100%', width: '100%' }}
+                overscanCount={3}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 移动分类弹窗 */}
       <Modal
