@@ -17,6 +17,15 @@ export interface Track {
   syncedLyrics?: string    // 原始 LRC 格式（含时间戳）
   lyricsSource?: 'searched' | 'manual'
   lyricsHidden?: boolean
+  // 扩展字段（存储在 localStorage 扩展元数据中）
+  favorited?: boolean
+  addedAt?: string
+  trackNumber?: number
+  discNumber?: number
+  albumArtist?: string
+  genre?: string
+  year?: number
+  coverUrl?: string
 }
 
 export type LoopMode = 'none' | 'one' | 'all' | 'shuffle'

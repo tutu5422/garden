@@ -11,3 +11,5 @@ cookies.txt
 notes-rendered.html
 proposals/
 .hermes/
+public/music-covers/
+public/music-playlist.json

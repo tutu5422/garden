@@ -2,6 +2,7 @@ import type { NavItem } from '@/lib/types'
 
 export const mainNavItems: NavItem[] = [
   { label: '笔记', href: '/notes', icon: 'Library' },
+  { label: '音乐', href: '/music', icon: 'Music4' },
   { label: '织集', href: '/patterns', icon: 'Grid3X3' },
   { label: '合集', href: '/collections', icon: 'Layers' },
   { label: '时间线', href: '/timeline', icon: 'Calendar' },
@@ -10,6 +11,7 @@ export const mainNavItems: NavItem[] = [
 
 export const mobileNavItems: NavItem[] = [
   { label: '笔记', href: '/notes', icon: 'Library' },
+  { label: '音乐', href: '/music', icon: 'Music4' },
   { label: '织集', href: '/patterns', icon: 'Grid3X3' },
   { label: '合集', href: '/collections', icon: 'Layers' },
   { label: '时间线', href: '/timeline', icon: 'Calendar' },

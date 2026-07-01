@@ -12,6 +12,8 @@ import { useMusic, type Track, type LoopMode } from '@/lib/music/MusicContext'
 import { searchAndCacheLyrics, setLyrics, hideLyrics, parseFilename } from '@/lib/music/lyrics-store'
 import { resolveStorageUrl } from '@/lib/storage-url'
 import { MAX_FILE_SIZE } from '@/lib/constants/config'
+import { toggleFavorite, getFavoritedIds, getPlaylists, addTracksToPlaylist } from '@/lib/music/music-store'
+import Link from 'next/link'
 
 const MAX_SIZE = MAX_FILE_SIZE // 50 MB
 
@@ -232,7 +234,13 @@ export default function MiniPlayer() {
         <div className="p-5 w-80 animate-fade-in-scale space-y-4 border-2 border-[var(--skin-border)]"
              style={{ backgroundColor: 'var(--skin-surface)', borderRadius: '1rem 0.25rem 0.25rem 0.25rem' }}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold tracking-[0.15em] uppercase" style={{ color: 'var(--skin-primary)', fontFamily: 'var(--font-display)' }}>🎵 音乐</span>
+            <div className="flex items-center gap-2">
+              <Link href="/music?view=all"
+                className="text-xs font-extrabold tracking-[0.15em] uppercase transition-colors hover:opacity-70"
+                style={{ color: 'var(--skin-primary)', fontFamily: 'var(--font-display)' }}>
+                🎵 音乐
+              </Link>
+            </div>
             <div className="flex gap-1">
               <button onClick={cycleLoopMode} className="p-1.5 transition-colors hover:text-[var(--skin-primary)] relative" title={loopLabels[loopMode]}>
                 {loopIcons[loopMode]}
@@ -344,6 +352,29 @@ export default function MiniPlayer() {
             <div className="text-center pt-1">
               <div className="flex items-center justify-center gap-1.5">
                 <p className="text-sm font-extrabold truncate" style={{ fontFamily: 'var(--font-display)' }}>{currentTrack.title}</p>
+                {/* Favorite toggle */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const now = toggleFavorite(currentTrack.id)
+                    toast.success(now ? '已收藏 ❤️' : '已取消收藏')
+                  }}
+                  className="p-0.5 transition-all shrink-0 hover:scale-110"
+                  title="收藏">
+                  <Heart className={cn('size-3', getFavoritedIds().has(currentTrack.id) && 'fill-current')}
+                    style={{ color: getFavoritedIds().has(currentTrack.id) ? '#ff6e6e' : 'var(--skin-text-secondary)' }} />
+                </button>
+              </div>
+              <div className="flex items-center justify-center gap-2 mt-0.5">
+                {currentTrack.artist && (
+                  <span className="text-[10px] text-[var(--skin-text-secondary)] opacity-70">{currentTrack.artist}</span>
+                )}
+                {currentTrack.album && (
+                  <>
+                    <span className="text-[8px] text-[var(--skin-text-secondary)] opacity-30">·</span>
+                    <span className="text-[10px] text-[var(--skin-text-secondary)] opacity-70">{currentTrack.album}</span>
+                  </>
+                )}
               </div>
               <p className="text-[10px] text-[var(--skin-text-secondary)] mt-1 font-mono">{currentIndex + 1} / {playlist.length} · {loopLabels[loopMode]}</p>
 

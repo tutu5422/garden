@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useMusic, type LoopMode } from "@/lib/music/MusicContext";
-import { Play, Pause, SkipBack, SkipForward, Music, ListMusic, Repeat, Repeat1, Shuffle } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Music, ListMusic, Repeat, Repeat1, Shuffle, Heart } from "lucide-react";
+import { toggleFavorite, getFavoritedIds } from '@/lib/music/music-store'
+import Link from 'next/link'
+import { cn } from '@/lib/utils'
 
 const loopIcons: Record<LoopMode, any> = { none: Repeat, all: Repeat, one: Repeat1, shuffle: Shuffle };
 
@@ -41,9 +44,35 @@ export default function HomeMusicPlayer() {
   return (
     <div className="flex flex-col gap-3 py-1">
       <div className="text-center">
-        <p className="text-sm font-extrabold truncate px-1" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
-          {currentTrack?.title || "未选择"}
-        </p>
+        <div className="flex items-center justify-center gap-1.5">
+          <p className="text-sm font-extrabold truncate px-1 max-w-[200px]" style={{ fontFamily: "var(--font-display)", color: 'var(--skin-text)' }}>
+            {currentTrack?.title || "未选择"}
+          </p>
+          {currentTrack && (
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                toggleFavorite(currentTrack.id)
+              }}
+              className="p-0.5 shrink-0 transition-all hover:scale-110">
+              <Heart className={cn('size-3', getFavoritedIds().has(currentTrack.id) && 'fill-current')}
+                style={{ color: getFavoritedIds().has(currentTrack.id) ? '#ff6e6e' : 'rgba(255,255,255,0.4)' }} />
+            </button>
+          )}
+        </div>
+        {(currentTrack?.artist || currentTrack?.album) && (
+          <div className="flex items-center justify-center gap-1.5 mt-0.5">
+            {currentTrack.artist && (
+              <span className="text-[10px] opacity-60 text-white/70">{currentTrack.artist}</span>
+            )}
+            {currentTrack.album && (
+              <>
+                <span className="text-[8px] opacity-30 text-white/50">·</span>
+                <span className="text-[10px] opacity-60 text-white/70 truncate max-w-[120px]">{currentTrack.album}</span>
+              </>
+            )}
+          </div>
+        )}
         <div className="flex items-center justify-center gap-3 mt-1.5">
           <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">{currentIndex + 1}/{playlist.length}</span>
           <button onClick={(e) => { e.preventDefault(); cycleLoopMode(); }}

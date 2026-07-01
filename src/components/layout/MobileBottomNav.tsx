@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Library, Calendar, Layers, FileText, Grid3x3 } from 'lucide-react'
+import { Library, Calendar, Layers, FileText, Grid3x3, Music } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { mobileNavItems } from '@/lib/constants/navigation'
 
@@ -12,6 +12,7 @@ const iconMap: Record<string, React.ReactNode> = {
   Calendar: <Calendar className="size-5" />,
   FileText: <FileText className="size-5" />,
   Grid3x3: <Grid3x3 className="size-5" />,
+  Music4: <Music className="size-5" />,
 }
 
 export default function MobileBottomNav() {

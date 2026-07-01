@@ -21,7 +21,8 @@ import type {
 // Pre-computed: crypto.createHash('md5').update('garden-music-' + LOCAL_USER_ID).digest('hex') → UUID
 const MUSIC_PLAYLIST_ID = '254e932e-ac70-4320-8944-92107bcc4eb1';
 
-// Valid resource_type enum values in the PostgREST schema
+// Music playlists resource ID — deterministic UUID v5 derived from LOCAL_USER_ID
+const MUSIC_PLAYLISTS_ID = '354e932e-ac70-4320-8944-92107bcc4eb2';
 const VALID_TYPES = new Set(['article', 'book', 'link', 'image', 'tool']);
 
 function mapResourceType(type: string): string | null {
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
     // we know the user's pattern IDs (see below) — fetching it unscoped here
     // would leak other users' associations because the service key bypasses
     // the RLS policy that normally filters via the `resources` owner.
-    const [musicRes, notesRes, resRes, filesRes, colRes, patternRes, memoRes] = await Promise.all([
+    const [musicRes, notesRes, resRes, filesRes, colRes, patternRes, memoRes, playlistsRes] = await Promise.all([
       dbFetch(`resources?id=eq.${MUSIC_PLAYLIST_ID}&user_id=eq.${LOCAL_USER_ID}&select=metadata`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&resource_type=eq.article&metadata->>is_note=eq.true&order=created_at.desc&limit=${SYNC_PAGE_LIMIT}`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&or=(metadata->>is_note.is.null,metadata->>is_note.eq.false)&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
       dbFetch(`collections?select=*&user_id=eq.${LOCAL_USER_ID}&order=updated_at.desc`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&metadata->>is_pattern=eq.true&order=updated_at.desc&limit=${SYNC_PAGE_LIMIT}`),
       dbFetch(`resources?select=*&user_id=eq.${LOCAL_USER_ID}&resource_type=eq.article&metadata->>is_timeline_memo=eq.true&order=created_at.desc&limit=${SYNC_PAGE_LIMIT}`),
+      dbFetch(`resources?id=eq.${MUSIC_PLAYLISTS_ID}&user_id=eq.${LOCAL_USER_ID}&select=metadata`),
     ]);
 
     let musicPlaylist: MusicTrack[] = [];
@@ -196,6 +198,9 @@ export async function GET(req: NextRequest) {
         content: r.metadata?.content || r.title || '',
         createdAt: r.created_at,
       })),
+      musicPlaylists: playlistsRes.ok
+        ? ((playlistsRes.body as Pick<ResourceRow, 'metadata'>[])?.[0]?.metadata?.playlists || [])
+        : [],
     });
     response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
     return response;
@@ -405,6 +410,26 @@ export async function POST(req: NextRequest) {
         };
         const { ok: memoOk, error: memoErr } = await dbUpsertOwned('resources', dbData);
         if (!memoOk) return NextResponse.json({ error: '同步备忘失败', detail: memoErr }, { status: 500 });
+      } else if (table === 'music_playlists') {
+        // Store playlists as a resource row — deterministic UUID
+        const playlistsData = data;
+        const dbDataPlaylists = {
+          id: MUSIC_PLAYLISTS_ID,
+          title: '__music_playlists__',
+          description: null,
+          resource_type: 'article',
+          user_id: LOCAL_USER_ID,
+          status: 'active',
+          metadata: {
+            music_playlists: true,
+            playlists: playlistsData.playlists || [],
+            updated_at: new Date().toISOString(),
+          },
+          created_at: playlistsData.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const { ok: plOk, error: plErr } = await dbUpsertOwned('resources', dbDataPlaylists);
+        if (!plOk) return NextResponse.json({ error: '同步歌单失败', detail: plErr }, { status: 500 });
       }
     } else if (action === 'delete') {
       if (table === 'resources' || table === 'notes') {
