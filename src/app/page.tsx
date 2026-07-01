@@ -3,10 +3,31 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useMusic } from '@/lib/music/MusicContext';
 import {
   BookOpen, Calendar, Layers, FileText, Settings,
   ArrowUpRight, Music, Clock, Sparkles, ChevronDown, Grid3x3,
+  Disc3, MicVocal, Library,
 } from "lucide-react";
+
+// ===== 封面地图（首页快速展示用） =====
+interface CoverMap { [key: string]: string }
+let _homeCoverCache: CoverMap | null = null
+async function loadHomeCoverMap(): Promise<CoverMap> {
+  if (_homeCoverCache) return _homeCoverCache
+  try {
+    const res = await fetch('/music-covers-manifest.json')
+    const data = await res.json()
+    const map: CoverMap = {}
+    for (const e of data) {
+      if (e.coverUrl) {
+        map[`${e.artist}|${e.album}`] = e.coverUrl
+        if (e.album === '_default_') map[`${e.artist}|`] = e.coverUrl
+      }
+    }
+    _homeCoverCache = map; return map
+  } catch { return {} }
+}
 
 const HomeMusicPlayer = dynamic(() => import("@/components/music/HomeMusicPlayer"), { ssr: false });
 
@@ -46,6 +67,45 @@ export default function Home() {
   const [inProgressPatterns, setInProgressPatterns] = useState<Resource[]>([])
   const [wishlistPatterns, setWishlistPatterns] = useState<Resource[]>([])
   const [patternsLoaded, setPatternsLoaded] = useState(false)
+  const musicCtx = useMusic()
+  const [musicStats, setMusicStats] = useState({ tracks: 0, albums: 0, artists: 0 })
+  const [homeCoverMap, setHomeCoverMap] = useState<CoverMap>({})
+  const [featuredAlbums, setFeaturedAlbums] = useState<{ album: string; artist: string; coverUrl?: string }[]>([])
+
+  // Compute music stats from context
+  useEffect(() => {
+    if (!musicCtx?.playlist) return
+    const tracks = musicCtx.playlist
+    const albumSet = new Set<string>()
+    const artistSet = new Set<string>()
+    for (const t of tracks) {
+      if (t.album) albumSet.add(t.album)
+      if (t.artist) artistSet.add(t.artist)
+    }
+    setMusicStats({ tracks: tracks.length, albums: albumSet.size, artists: artistSet.size })
+  }, [musicCtx?.playlist])
+
+  // Load cover map
+  useEffect(() => { loadHomeCoverMap().then(setHomeCoverMap) }, [])
+
+  // Pick featured albums (ones with covers)
+  useEffect(() => {
+    if (!musicCtx?.playlist || Object.keys(homeCoverMap).length === 0) return
+    const seen = new Set<string>()
+    const result: { album: string; artist: string; coverUrl?: string }[] = []
+    for (const t of musicCtx.playlist) {
+      if (!t.album || seen.has(t.album)) continue
+      seen.add(t.album)
+      const key = `${t.artist || ''}|${t.album}`
+      const coverKey = `${t.artist || ''}|`
+      const coverUrl = homeCoverMap[key] || homeCoverMap[coverKey]
+      if (coverUrl) {
+        result.push({ album: t.album, artist: t.artist || '', coverUrl })
+        if (result.length >= 6) break
+      }
+    }
+    setFeaturedAlbums(result)
+  }, [musicCtx?.playlist, homeCoverMap])
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -457,20 +517,71 @@ export default function Home() {
           <SectionHead num="04" label="音乐 &amp; 文件" />
           {/* 手机端：仅音乐全宽；电脑端：音乐左 + 文件右 */}
           <div className="flex flex-col sm:grid sm:grid-cols-[2fr_1fr] gap-2 sm:gap-5">
-            <div className="block-gloss rounded-2xl p-4 sm:p-8 flex flex-col justify-center min-h-[160px] sm:min-h-[200px]"
+
+            {/* 音乐 — 迷你播放器 + 统计 + 精选专辑 */}
+            <div className="block-gloss rounded-2xl p-4 sm:p-6 flex flex-col"
                  style={{ background: `linear-gradient(135deg, ${C.crimson}dd, ${C.crimson}, ${C.dark})` }}>
-              <div className="flex items-center gap-2.5 mb-3 sm:mb-4">
+              {/* 正在播放 */}
+              <div className="flex items-center gap-2.5 mb-2">
                 <Music className="size-5 text-white/80" />
                 <span className="text-[10px] tracking-[0.25em] uppercase font-bold text-white/70 font-mono">正在播放</span>
               </div>
               <div className="text-white">
                 <HomeMusicPlayer />
               </div>
+
+              {/* 统计条 + 浏览 */}
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-[11px] text-white/60 font-mono">
+                    <span className="font-bold text-white/90">{musicStats.tracks || 158}首</span>
+                    <span className="w-px h-3 bg-white/10" />
+                    <span className="flex items-center gap-1">
+                      <Disc3 className="size-3" />
+                      {musicStats.albums || 111}专辑
+                    </span>
+                    <span className="w-px h-3 bg-white/10" />
+                    <span className="flex items-center gap-1">
+                      <MicVocal className="size-3" />
+                      {musicStats.artists || 96}歌手
+                    </span>
+                  </div>
+                  <Link href="/music"
+                    className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wider uppercase text-white/70 hover:text-white transition-colors">
+                    浏览全部 <ArrowUpRight className="size-3" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* 精选专辑封面 */}
+              {featuredAlbums.length > 0 && (
+                <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-none pb-1">
+                  {featuredAlbums.map(a => {
+                    const hue = a.album.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % 360
+                    return (
+                      <Link key={a.album} href="/music?view=albums"
+                        className="shrink-0 group/cover">
+                        <div className="size-12 sm:size-14 rounded-xl overflow-hidden ring-1 ring-white/10 shadow-md transition-all duration-300 group-hover/cover:ring-white/30 group-hover/cover:scale-105 group-hover/cover:shadow-lg">
+                          {a.coverUrl ? (
+                            <img src={a.coverUrl} alt={a.album} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[10px] font-black"
+                              style={{ background: `linear-gradient(135deg, hsl(${hue}, 60%, 40%), hsl(${(hue+50)%360}, 50%, 30%))`, color: `hsl(${hue}, 40%, 80%)` }}>
+                              {a.album.charAt(0)}
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[9px] text-white/50 text-center mt-1 truncate w-12 sm:w-14">{a.artist}</p>
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* 文件 — 仅电脑端显示 */}
             <Link href="/files"
-              className="hidden sm:flex rounded-2xl p-4 sm:p-8 flex-col justify-between cursor-pointer group min-h-[180px] sm:min-h-[200px] transition-all duration-400 hover:shadow-lg"
+              className="hidden sm:flex rounded-2xl p-4 sm:p-8 flex-col justify-between cursor-pointer group min-h-[180px] sm:min-h-[240px] transition-all duration-400 hover:shadow-lg"
               style={{ background: `linear-gradient(180deg, ${C.slate}08, ${C.slate}15)`, border: `1px solid ${C.slate}20` }}>
               <div>
                 <FileText className="size-6 sm:size-8 mb-2 sm:mb-3" style={{ color: C.slate }} />
