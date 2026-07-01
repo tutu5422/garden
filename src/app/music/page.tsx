@@ -168,6 +168,7 @@ export default function MusicLibraryPage() {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortMode>('default')
   const [selectedAlbum, setSelectedAlbum] = useState<string | null>(null)
+  const [selectedArtist, setSelectedArtist] = useState<string | null>(null)
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
   const [playlists, setPlaylists] = useState<MusicPlaylist[]>([])
   const [favIds, setFavIds] = useState<Set<string>>(new Set())
@@ -222,7 +223,7 @@ export default function MusicLibraryPage() {
 
   // ===== handlers =====
   const changeView = (v: View) => {
-    setView(v); setSelectedAlbum(null); setSelectedPlaylist(null); setHeroExpanded(v === 'all')
+    setView(v); setSelectedAlbum(null); setSelectedArtist(null); setSelectedPlaylist(null); setHeroExpanded(v === 'all')
     router.replace(`/music?view=${v}`, { scroll: false })
   }
 
@@ -373,8 +374,11 @@ export default function MusicLibraryPage() {
               <p className="text-xs mt-2" style={{ color: C.textSecondary }}>{a.trackCount} 首{a.year ? ` · ${a.year}` : ''}</p>
               <button
                 onClick={() => {
-                  ctx?.addTracks(a.tracks)
-                  setTimeout(() => ctx?.play(ctx.playlist.length - a.tracks.length), 100)
+                  ctx?.clearPlaylist()
+                  setTimeout(() => {
+                    ctx?.addTracks(a.tracks)
+                    setTimeout(() => ctx?.play(0), 100)
+                  }, 50)
                 }}
                 className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:shadow-lg hover:scale-105"
                 style={{ background: `linear-gradient(135deg, ${C.accent1}, ${C.accent2})`, color: '#fff' }}>
@@ -425,41 +429,83 @@ export default function MusicLibraryPage() {
     )
   }
 
-  const renderArtists = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-5">
-      {artists.map(ar => {
-        const h = ar.artist.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
-        return (
-          <div key={ar.artist}
-            className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-            style={{ background: C.card, border: `1px solid ${C.cardBorder}` }}>
-            <div className="p-5 sm:p-6 flex flex-col items-center">
-              <div className="size-16 sm:size-20 rounded-full flex items-center justify-center text-xl sm:text-2xl font-black mb-3 shadow-md"
-                style={{ background: `linear-gradient(135deg, hsl(${h}, 70%, 80%), hsl(${(h+50)%360}, 60%, 85%))`, color: `hsl(${h}, 50%, 25%)` }}>
-                {ar.artist.charAt(0).toUpperCase()}
-              </div>
-              <h3 className="text-sm font-bold text-center truncate w-full" style={{ color: C.text }}>{ar.artist}</h3>
-              <p className="text-xs mt-1" style={{ color: C.textSecondary }}>{ar.albumCount} 专辑 · {ar.trackCount} 首</p>
+  const renderArtists = () => {
+    if (selectedArtist) {
+      const ar = artists.find(x => x.artist === selectedArtist)
+      if (!ar) return null
+      return (
+        <div className="space-y-6">
+          <button onClick={() => setSelectedArtist(null)}
+            className="flex items-center gap-1 text-xs font-bold transition-colors hover:opacity-70" style={{ color: C.accent2 }}>
+            <ArrowUpRight className="size-3 rotate-180" />返回
+          </button>
+          <div className="flex items-end gap-6 pb-6 border-b" style={{ borderColor: C.cardBorder }}>
+            <div className="size-20 sm:size-28 rounded-full flex items-center justify-center text-2xl sm:text-4xl font-black shadow-lg shrink-0"
+              style={{ background: `linear-gradient(135deg, hsl(${ar.artist.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 70%, 80%), hsl(${(ar.artist.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360 + 50) % 360}, 60%, 85%))`, color: `hsl(${ar.artist.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360}, 50%, 25%)` }}>
+              {ar.artist.charAt(0).toUpperCase()}
             </div>
-            <div className="px-4 pb-4 max-h-28 overflow-y-auto space-y-0.5">
-              {ar.tracks.slice(0, 5).map(t => (
-                <button key={t.id} onClick={() => playTrack(t.id)}
-                  className="w-full text-left truncate py-1 text-xs transition-colors hover:opacity-80" style={{ color: C.textSecondary }}>
-                  {t.title}
-                </button>
-              ))}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl sm:text-4xl font-black mb-1" style={{ color: C.text }}>{ar.artist}</h1>
+              <p className="text-xs mt-1" style={{ color: C.textSecondary }}>{ar.albumCount} 专辑 · {ar.trackCount} 首</p>
+              <button
+                onClick={() => {
+                  ctx?.clearPlaylist()
+                  setTimeout(() => {
+                    ctx?.addTracks(ar.tracks)
+                    setTimeout(() => ctx?.play(0), 100)
+                  }, 50)
+                }}
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:shadow-lg hover:scale-105"
+                style={{ background: `linear-gradient(135deg, ${C.accent1}, ${C.accent2})`, color: '#fff' }}>
+                <Play className="size-4" />播放全部
+              </button>
             </div>
           </div>
-        )
-      })}
-      {artists.length === 0 && (
-        <div className="col-span-full text-center py-20">
-          <MicVocal className="size-14 mx-auto mb-4" style={{ color: C.textSecondary, opacity: 0.15 }} />
-          <p className="text-sm font-bold" style={{ color: C.textSecondary }}>暂无歌手</p>
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-3 px-3 py-2 text-[10px] font-bold uppercase tracking-widest" style={{ color: C.textSecondary }}>
+              <span className="w-7 text-center">#</span><span className="w-10" /><span className="flex-1">歌曲</span>
+            </div>
+            {ar.tracks.map((t, i) => <TrackRow key={t.id} track={t} i={i} />)}
+          </div>
         </div>
-      )}
-    </div>
-  )
+      )
+    }
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-5">
+        {artists.map(ar => {
+          const h = ar.artist.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
+          return (
+            <button key={ar.artist} onClick={() => setSelectedArtist(ar.artist)}
+              className="group text-left rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+              style={{ background: C.card, border: `1px solid ${C.cardBorder}` }}>
+              <div className="p-5 sm:p-6 flex flex-col items-center">
+                <div className="size-16 sm:size-20 rounded-full flex items-center justify-center text-xl sm:text-2xl font-black mb-3 shadow-md"
+                  style={{ background: `linear-gradient(135deg, hsl(${h}, 70%, 80%), hsl(${(h+50)%360}, 60%, 85%))`, color: `hsl(${h}, 50%, 25%)` }}>
+                  {ar.artist.charAt(0).toUpperCase()}
+                </div>
+                <h3 className="text-sm font-bold text-center truncate w-full" style={{ color: C.text }}>{ar.artist}</h3>
+                <p className="text-xs mt-1" style={{ color: C.textSecondary }}>{ar.albumCount} 专辑 · {ar.trackCount} 首</p>
+              </div>
+              <div className="px-4 pb-4 max-h-28 overflow-y-auto space-y-0.5">
+                {ar.tracks.slice(0, 5).map(t => (
+                  <button key={t.id} onClick={e => { e.stopPropagation(); playTrack(t.id) }}
+                    className="w-full text-left truncate py-1 text-xs transition-colors hover:opacity-80" style={{ color: C.textSecondary }}>
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+            </button>
+          )
+        })}
+        {artists.length === 0 && (
+          <div className="col-span-full text-center py-20">
+            <MicVocal className="size-14 mx-auto mb-4" style={{ color: C.textSecondary, opacity: 0.15 }} />
+            <p className="text-sm font-bold" style={{ color: C.textSecondary }}>暂无歌手</p>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const renderPlaylists = () => {
     if (selectedPlaylist) {
