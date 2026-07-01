@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect, type ChangeEvent } from 'reac
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Music, ListMusic, ChevronUp, Upload, Trash2, Repeat, Repeat1, Shuffle,
-  CheckSquare, Square, Plus
+  CheckSquare, Square, Plus, Heart
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
