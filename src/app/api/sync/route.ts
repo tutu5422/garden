@@ -412,7 +412,7 @@ export async function POST(req: NextRequest) {
         if (!memoOk) return NextResponse.json({ error: '同步备忘失败', detail: memoErr }, { status: 500 });
       } else if (table === 'music_playlists') {
         // Store playlists as a resource row — deterministic UUID
-        const playlistsData = data;
+        const playlistsData = data as { playlists?: any[]; created_at?: string };
         const dbDataPlaylists = {
           id: MUSIC_PLAYLISTS_ID,
           title: '__music_playlists__',
