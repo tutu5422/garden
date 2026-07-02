@@ -178,6 +178,14 @@ export default function MusicLibraryPage() {
   const [newPlName, setNewPlName] = useState('')
   const [heroExpanded, setHeroExpanded] = useState(true)
 
+  // 缓存原始完整曲库——"全部"视图使用此缓存，不受"播放全部"冲掉 playlist 的影响
+  const [fullTrackList, setFullTrackList] = useState<ExtendedTrack[]>([])
+  useEffect(() => {
+    if (!ctx?.playlist || fullTrackList.length > 0) return
+    if (ctx.playlist.length === 0) return
+    setFullTrackList(ctx.playlist as ExtendedTrack[])
+  }, [ctx?.playlist])
+
   const refresh = useCallback(() => {
     setPlaylists(getPlaylists()); setFavIds(getFavoritedIds())
   }, [])
@@ -189,7 +197,7 @@ export default function MusicLibraryPage() {
   }, [sp])
   useEffect(() => { loadCoverMap().then(setCoverMap) }, [])
 
-  const allTracks = (ctx?.playlist || []) as ExtendedTrack[]
+  const allTracks = fullTrackList.length > 0 ? fullTrackList : (ctx?.playlist || []) as ExtendedTrack[]
 
   const filteredTracks = useMemo(() => {
     let t = allTracks
@@ -228,8 +236,9 @@ export default function MusicLibraryPage() {
   }
 
   const playTrack = (id: string) => {
-    const idx = allTracks.findIndex(t => t.id === id)
-    if (idx >= 0) ctx?.play(idx)
+    if (!ctx) return
+    const idx = ctx.playlist.findIndex(t => t.id === id)
+    if (idx >= 0) ctx.play(idx)
   }
 
   // ===== Track row =====
@@ -249,6 +258,7 @@ export default function MusicLibraryPage() {
           color: C.text,
         }}
         onClick={() => playTrack(track.id)}
+        onDoubleClick={() => playTrack(track.id)}
       >
         {/* # / playing indicator */}
         <div className="w-7 shrink-0 text-center">
@@ -373,13 +383,7 @@ export default function MusicLibraryPage() {
               {a.albumArtist && <p className="text-sm font-medium" style={{ color: C.textSecondary }}>{a.albumArtist}</p>}
               <p className="text-xs mt-2" style={{ color: C.textSecondary }}>{a.trackCount} 首{a.year ? ` · ${a.year}` : ''}</p>
               <button
-                onClick={() => {
-                  ctx?.clearPlaylist()
-                  setTimeout(() => {
-                    ctx?.addTracks(a.tracks)
-                    setTimeout(() => ctx?.play(0), 100)
-                  }, 50)
-                }}
+                onClick={() => ctx?.playTracks(a.tracks, 0)}
                 className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:shadow-lg hover:scale-105"
                 style={{ background: `linear-gradient(135deg, ${C.accent1}, ${C.accent2})`, color: '#fff' }}>
                 <Play className="size-4" />播放全部
@@ -448,13 +452,7 @@ export default function MusicLibraryPage() {
               <h1 className="text-2xl sm:text-4xl font-black mb-1" style={{ color: C.text }}>{ar.artist}</h1>
               <p className="text-xs mt-1" style={{ color: C.textSecondary }}>{ar.albumCount} 专辑 · {ar.trackCount} 首</p>
               <button
-                onClick={() => {
-                  ctx?.clearPlaylist()
-                  setTimeout(() => {
-                    ctx?.addTracks(ar.tracks)
-                    setTimeout(() => ctx?.play(0), 100)
-                  }, 50)
-                }}
+                onClick={() => ctx?.playTracks(ar.tracks, 0)}
                 className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:shadow-lg hover:scale-105"
                 style={{ background: `linear-gradient(135deg, ${C.accent1}, ${C.accent2})`, color: '#fff' }}>
                 <Play className="size-4" />播放全部
@@ -624,8 +622,8 @@ export default function MusicLibraryPage() {
   // ===== 页面结构 =====
   return (
     <div className="min-h-screen" style={{ background: C.bgGradient }}>
-      {/* 🎯 Floating header — one row */}
-      <div className="sticky top-0 z-20 pt-2 sm:pt-3 pb-2 px-4 sm:px-6 md:px-8"
+      {/* 🎯 Fixed header — one row */}
+      <div className="fixed top-0 md:top-14 left-0 right-0 z-20 pt-2 sm:pt-3 pb-2 px-4 sm:px-6 md:px-8"
         style={{ background: 'rgba(250,245,255,0.8)', backdropFilter: 'blur(12px)' }}>
 
         {/* Single row: stats | nav (centered) | search+sort */}
@@ -685,7 +683,7 @@ export default function MusicLibraryPage() {
       </div>
 
       {/* Content */}
-      <main className="px-4 sm:px-6 md:px-8 pb-28 md:pb-36 animate-fade-in">
+      <main className="px-4 sm:px-6 md:px-8 pb-28 md:pb-36 animate-fade-in pt-14 md:pt-28">
         <div className="max-w-6xl mx-auto pt-4">
           {renderContent()}
         </div>
