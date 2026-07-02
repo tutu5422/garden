@@ -383,7 +383,12 @@ export default function MusicLibraryPage() {
               {a.albumArtist && <p className="text-sm font-medium" style={{ color: C.textSecondary }}>{a.albumArtist}</p>}
               <p className="text-xs mt-2" style={{ color: C.textSecondary }}>{a.trackCount} 首{a.year ? ` · ${a.year}` : ''}</p>
               <button
-                onClick={() => ctx?.playTracks(a.tracks, 0)}
+                onClick={() => {
+                  if (!ctx || a.tracks.length === 0) return
+                  const first = a.tracks[0]
+                  const idx = ctx.playlist.findIndex(t => t.id === first.id)
+                  if (idx >= 0) ctx.play(idx)
+                }}
                 className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:shadow-lg hover:scale-105"
                 style={{ background: `linear-gradient(135deg, ${C.accent1}, ${C.accent2})`, color: '#fff' }}>
                 <Play className="size-4" />播放全部
@@ -452,7 +457,12 @@ export default function MusicLibraryPage() {
               <h1 className="text-2xl sm:text-4xl font-black mb-1" style={{ color: C.text }}>{ar.artist}</h1>
               <p className="text-xs mt-1" style={{ color: C.textSecondary }}>{ar.albumCount} 专辑 · {ar.trackCount} 首</p>
               <button
-                onClick={() => ctx?.playTracks(ar.tracks, 0)}
+                onClick={() => {
+                  if (!ctx || ar.tracks.length === 0) return
+                  const first = ar.tracks[0]
+                  const idx = ctx.playlist.findIndex(t => t.id === first.id)
+                  if (idx >= 0) ctx.play(idx)
+                }}
                 className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:shadow-lg hover:scale-105"
                 style={{ background: `linear-gradient(135deg, ${C.accent1}, ${C.accent2})`, color: '#fff' }}>
                 <Play className="size-4" />播放全部
