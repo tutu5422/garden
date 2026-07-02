@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { THEME, applyTheme, getStoredMode, setStoredMode, resolveDark, type ThemeMode } from '@/lib/theme/skins'
 
 type ThemeContextType = {
@@ -66,17 +66,20 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
     setMode(next)
   }, [mode, setMode])
 
-  // 防止 hydration mismatch
+  // 防止 hydration mismatch：两个 value 都用 useMemo，避免每次渲染创建新对象导致全局重渲染
+  const unmountedValue = useMemo(() => ({ mode: 'system' as ThemeMode, dark: false, setMode, toggleMode }), [setMode, toggleMode])
+  const themeValue = useMemo(() => ({ mode, dark, setMode, toggleMode }), [mode, dark, setMode, toggleMode])
+
   if (!mounted) {
     return (
-      <ThemeContext.Provider value={{ mode: 'system', dark: false, setMode, toggleMode }}>
+      <ThemeContext.Provider value={unmountedValue}>
         {children}
       </ThemeContext.Provider>
     )
   }
 
   return (
-    <ThemeContext.Provider value={{ mode, dark, setMode, toggleMode }}>
+    <ThemeContext.Provider value={themeValue}>
       {children}
     </ThemeContext.Provider>
   )

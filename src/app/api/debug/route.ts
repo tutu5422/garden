@@ -9,6 +9,10 @@ import {
 } from '@/lib/vps-db';
 
 export async function GET(req: NextRequest) {
+  // 生产环境禁用 debug 路由，避免泄露内部信息
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not available' }, { status: 403 });
+  }
   if (!getPass()) return configMissingResponse();
   if (!(await isAuth(req))) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });

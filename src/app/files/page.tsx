@@ -4,6 +4,7 @@ import { Upload, File, Trash2, Download, FileText, Music, Image, Archive, Film, 
 import { toast } from "sonner";
 import { resolveStorageUrl } from "@/lib/storage-url";
 import { MAX_FILE_SIZE } from "@/lib/constants/config";
+import { isTombstoned, markDeleted, clearTombstone } from "@/lib/db/local-store";
 
 declare global {
   interface WindowEventMap {
@@ -21,11 +22,14 @@ async function pullFilesFromCloud(): Promise<void> {
     const data = await res.json();
     const cloudFiles = data.files || [];
     if (!cloudFiles.length) return;
+    // 合并前过滤掉墓碑中的 id，防止云端残留数据复活
+    const filteredCloudFiles = cloudFiles.filter((f: any) => !isTombstoned('files', f.id));
+    if (!filteredCloudFiles.length) return;
     const localStr = localStorage.getItem('minitu_files');
     const local = localStr ? JSON.parse(localStr) : [];
     const merged = new Map();
     for (const f of local) merged.set(f.id, f);
-    for (const f of cloudFiles) {
+    for (const f of filteredCloudFiles) {
       const existing = merged.get(f.id);
       if (!existing || new Date(f.createdAt) > new Date(existing.createdAt || 0)) {
         merged.set(f.id, f);
@@ -237,10 +241,14 @@ export default function Files() {
       await deleteBlob(f.id);
     }
     save(files.filter(x => x.id !== f.id));
+    // 写墓碑，防止 cloud→local 同步时云端残留数据复活
+    markDeleted('files', f.id);
     fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: 'files', action: 'delete', data: { id: f.id } }),
+    }).then((res) => {
+      if (res.ok) clearTombstone('files', f.id);
     }).catch(() => {});
   };
 

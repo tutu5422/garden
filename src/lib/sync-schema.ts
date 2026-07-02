@@ -99,6 +99,23 @@ const timelineMemoUpsertDataSchema = z.object({
   createdAt: isoString.optional(),
 });
 
+// Music playlists (custom user playlists). Each playlist is a record; the
+// full payload is { playlists: Playlist[], created_at? }.
+const musicPlaylistItemSchema = z.object({
+  id: idSchema,
+  name: z.string().optional().default(''),
+  description: z.string().optional(),
+  coverUrl: z.string().optional(),
+  trackIds: z.array(idSchema).optional().default([]),
+  createdAt: isoString.optional(),
+  updatedAt: isoString.optional(),
+}).passthrough();
+
+const musicPlaylistsUpsertDataSchema = z.object({
+  playlists: z.array(musicPlaylistItemSchema).optional().default([]),
+  created_at: isoString.optional(),
+});
+
 // ----- Delete data shape -------------------------------------------------
 
 const deleteDataSchema = z.object({
@@ -113,13 +130,14 @@ const deleteDataSchema = z.object({
 
 // ----- Top-level payload -------------------------------------------------
 
-export const SYNC_TABLES_UPSERT = ['resources', 'music_playlist', 'notes', 'collections', 'files', 'pattern_notes', 'timeline_memo'] as const;
+export const SYNC_TABLES_UPSERT = ['resources', 'music_playlist', 'music_playlists', 'notes', 'collections', 'files', 'pattern_notes', 'timeline_memo'] as const;
 export const SYNC_TABLES_DELETE = ['resources', 'notes', 'collections', 'files', 'pattern_notes', 'timeline_memo'] as const;
 export const SYNC_ACTIONS = ['upsert', 'delete'] as const;
 
 const upsertPayloadSchema = z.discriminatedUnion('table', [
   z.object({ table: z.literal('resources'), action: z.literal('upsert'), data: resourceUpsertDataSchema }),
   z.object({ table: z.literal('music_playlist'), action: z.literal('upsert'), data: musicPlaylistUpsertDataSchema }),
+  z.object({ table: z.literal('music_playlists'), action: z.literal('upsert'), data: musicPlaylistsUpsertDataSchema }),
   z.object({ table: z.literal('notes'), action: z.literal('upsert'), data: noteUpsertDataSchema }),
   z.object({ table: z.literal('collections'), action: z.literal('upsert'), data: collectionUpsertDataSchema }),
   z.object({ table: z.literal('files'), action: z.literal('upsert'), data: fileUpsertDataSchema }),
@@ -144,5 +162,6 @@ export type NoteUpsertData = z.infer<typeof noteUpsertDataSchema>;
 export type CollectionUpsertData = z.infer<typeof collectionUpsertDataSchema>;
 export type FileUpsertData = z.infer<typeof fileUpsertDataSchema>;
 export type MusicPlaylistUpsertData = z.infer<typeof musicPlaylistUpsertDataSchema>;
+export type MusicPlaylistsUpsertData = z.infer<typeof musicPlaylistsUpsertDataSchema>;
 export type PatternNoteUpsertData = z.infer<typeof patternNoteUpsertDataSchema>;
 export type TimelineMemoUpsertData = z.infer<typeof timelineMemoUpsertDataSchema>;

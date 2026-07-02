@@ -26,6 +26,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '缺少 table 或 action 参数' }, { status: 400 });
     }
 
+    // 表白名单：只允许访问指定的表
+    const ALLOWED_TABLES = new Set([
+      'resources', 'collections', 'tags', 'categories',
+      'pattern_notes', 'collection_resources', 'resource_tags',
+    ]);
+    const baseTable = (table as string).split('?')[0];
+    if (!ALLOWED_TABLES.has(baseTable)) {
+      return NextResponse.json({ error: '不允许的表' }, { status: 403 });
+    }
+
     let result;
 
     switch (action) {

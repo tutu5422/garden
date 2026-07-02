@@ -36,14 +36,22 @@ export interface QueueItem {
   createdAt: number;
   attempts: number;
   lastError?: string;
+  permanently_failed?: boolean;
 }
 
 type Listener = (length: number, flushing: boolean) => void;
+type ErrorListener = (error: string | null) => void;
 
 const listeners = new Set<Listener>();
+const errorListeners = new Set<ErrorListener>();
 let cachedLength = 0;
 let flushInFlight = false;
 let lastFlushAllSucceeded = true;
+let lastSyncError: string | null = null;
+
+// P1-5: 重试与队列上限
+const MAX_RETRY_ATTEMPTS = 10;
+const MAX_QUEUE_SIZE = 1000;
 
 // ---------------------------------------------------------------------------
 // IDB helpers
@@ -124,12 +132,36 @@ function notify(flushing: boolean) {
   }
 }
 
+function notifyError() {
+  for (const l of errorListeners) {
+    try { l(lastSyncError); } catch { /* non-fatal */ }
+  }
+}
+
 /** Subscribe to queue-length + flushing-state changes. Returns an unsubscribe fn. */
 export function subscribe(listener: Listener): () => void {
   listeners.add(listener);
   // Immediately emit the current state so new subscribers don't need to poll.
   try { listener(cachedLength, flushInFlight); } catch { /* ignore */ }
   return () => { listeners.delete(listener); };
+}
+
+/** Subscribe to last-sync-error changes. Returns an unsubscribe fn. */
+export function subscribeSyncError(listener: ErrorListener): () => void {
+  errorListeners.add(listener);
+  try { listener(lastSyncError); } catch { /* ignore */ }
+  return () => { errorListeners.delete(listener); };
+}
+
+/** 记录最近一次同步错误（供 SyncStatus 展示）。传 null 表示清空错误。 */
+export function setLastSyncError(error: string | null): void {
+  lastSyncError = error;
+  notifyError();
+}
+
+/** 获取最近一次同步错误。 */
+export function getLastSyncError(): string | null {
+  return lastSyncError;
 }
 
 /** Current cached queue length (no IDB round-trip). */
@@ -148,6 +180,7 @@ function uid(): string {
 /**
  * Add a failed write to the queue. Called by `syncToCloud` when the POST to
  * /api/sync fails or the browser is offline.
+ * P1-5: 队列上限 MAX_QUEUE_SIZE，超限拒绝入队并提示。
  */
 export async function enqueue(
   table: string,
@@ -155,6 +188,11 @@ export async function enqueue(
   data: unknown,
 ): Promise<void> {
   if (typeof window === 'undefined') return;
+  // 检查队列上限
+  if (cachedLength >= MAX_QUEUE_SIZE) {
+    setLastSyncError(`离线队列已满（${MAX_QUEUE_SIZE} 条），本次写入未入队，请连接网络后重试或清空队列`);
+    return;
+  }
   const item: QueueItem = {
     id: uid(),
     table,
@@ -202,14 +240,31 @@ export async function flush(): Promise<void> {
     items.sort((a, b) => a.createdAt - b.createdAt);
 
     let allOk = true;
+    let permanentFailureCount = 0;
     for (const item of items) {
+      // P1-5: 跳过已标记为永久失败的条目
+      if (item.permanently_failed) {
+        permanentFailureCount++;
+        continue;
+      }
       const ok = await replayOne(item);
       if (ok) {
         await txDelete(item.id).catch(() => {});
       } else {
         allOk = false;
-        // Bump attempts and persist the updated error info.
-        await txPut({ ...item, attempts: item.attempts + 1 }).catch(() => {});
+        const newAttempts = item.attempts + 1;
+        // P1-5: 超过最大重试次数则标记为永久失败，避免无限重试
+        const permanentlyFailed = newAttempts >= MAX_RETRY_ATTEMPTS;
+        await txPut({
+          ...item,
+          attempts: newAttempts,
+          lastError: permanentlyFailed ? `重试 ${MAX_RETRY_ATTEMPTS} 次仍失败，已标记为永久失败` : item.lastError,
+          permanently_failed: permanentlyFailed,
+        }).catch(() => {});
+        if (permanentlyFailed) {
+          permanentFailureCount++;
+          setLastSyncError(`部分同步项重试 ${MAX_RETRY_ATTEMPTS} 次仍失败，已停止重试（共 ${permanentFailureCount} 条）`);
+        }
       }
     }
     lastFlushAllSucceeded = allOk;
@@ -229,8 +284,14 @@ async function replayOne(item: QueueItem): Promise<boolean> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      setLastSyncError(`同步失败 [${item.table}/${item.action}]: HTTP ${res.status} ${errText.substring(0, 120)}`);
+    }
     return res.ok;
-  } catch {
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '网络错误';
+    setLastSyncError(`同步失败 [${item.table}/${item.action}]: ${msg}`);
     return false;
   }
 }
@@ -239,6 +300,7 @@ async function replayOne(item: QueueItem): Promise<boolean> {
 export async function clearQueue(): Promise<void> {
   await txClear().catch(() => {});
   await refreshLength();
+  setLastSyncError(null);
   notify(false);
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { apiBadRequest, apiNotFound, apiServerError } from '@/lib/api-error'
 import { LYRICS_FETCH_TIMEOUT_MS } from '@/lib/constants/config'
+import { configMissingResponse, getPass, isAuth } from '@/lib/auth'
 
 // 使用 lrclib.net 免费歌词 API
 // 文档: https://lrclib.net/docs
@@ -18,6 +19,11 @@ const UA = 'MiniTu/1.0 (personal music player)'
 const FETCH_TIMEOUT = LYRICS_FETCH_TIMEOUT_MS
 
 export async function GET(req: NextRequest) {
+  if (!getPass()) return configMissingResponse();
+  if (!(await isAuth(req))) {
+    return NextResponse.json({ error: '未登录' }, { status: 401 });
+  }
+
   const q = req.nextUrl.searchParams.get('q')
   const artist = req.nextUrl.searchParams.get('artist')
 

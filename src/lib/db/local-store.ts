@@ -2,6 +2,7 @@
 // 数据存在 localStorage，刷新页面后仍在
 
 import type { Resource, Category, Tag, PatternNoteRow } from '@/lib/types'
+import { broadcastSync } from '@/lib/utils/sync-broadcast'
 
 const RESOURCES_KEY = 'garden_resources'
 const CATEGORIES_KEY = 'garden_categories'
@@ -48,11 +49,104 @@ function uid(): string {
   return crypto.randomUUID?.() || 'u-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
+// ========== 通用墓碑机制 ==========
+// 记录本地已删除的行 id，防止下次 cloud→local 同步时云端残留的旧数据
+// （updatedAt 较新）按"云端优先"策略"复活"已删除的行。
+// 墓碑保留 30 天，超期自动清理；云端删除成功后立即清理对应墓碑。
+
+function tombstoneKey(table: string): string {
+  return `garden_deleted_${table}`
+}
+
+// 从 syncToCloud 的 data 中提取用于墓碑的 id。
+// pattern_notes 表无 id 列，使用 `pattern_id_note_id` 复合键作为墓碑 id。
+function tombstoneIdFromData(table: string, data: unknown): string | null {
+  const d = data as { id?: string; pattern_id?: string; note_id?: string }
+  if (d?.id) return d.id
+  if (table === 'pattern_notes' && d?.pattern_id && d?.note_id) {
+    return `${d.pattern_id}_${d.note_id}`
+  }
+  return null
+}
+
+// 标记删除（写时间戳 + id），去重并更新时间戳
+export function markDeleted(table: string, id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const key = tombstoneKey(table)
+    const list: Array<{ id: string; deletedAt: string }> = JSON.parse(localStorage.getItem(key) || '[]')
+    const existing = list.find(item => item.id === id)
+    if (existing) {
+      existing.deletedAt = new Date().toISOString()
+    } else {
+      list.push({ id, deletedAt: new Date().toISOString() })
+    }
+    localStorage.setItem(key, JSON.stringify(list))
+  } catch (e) {
+    console.error('[markDeleted] 写入墓碑失败:', table, id, e)
+  }
+}
+
+// 检查是否被标记删除
+export function isTombstoned(table: string, id: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const key = tombstoneKey(table)
+    const list: Array<{ id: string }> = JSON.parse(localStorage.getItem(key) || '[]')
+    return list.some(item => item.id === id)
+  } catch { return false }
+}
+
+// 清理过期墓碑（超过 30 天）
+export function cleanStaleTombstones(table: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const key = tombstoneKey(table)
+    const list: Array<{ id: string; deletedAt: string }> = JSON.parse(localStorage.getItem(key) || '[]')
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
+    const fresh = list.filter(item => new Date(item.deletedAt).getTime() > cutoff)
+    if (fresh.length !== list.length) {
+      localStorage.setItem(key, JSON.stringify(fresh))
+    }
+  } catch (e) {
+    console.error('[cleanStaleTombstones] 清理墓碑失败:', table, e)
+  }
+}
+
+// 云端删除成功后清理墓碑
+export function clearTombstone(table: string, id: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const key = tombstoneKey(table)
+    const list: Array<{ id: string }> = JSON.parse(localStorage.getItem(key) || '[]')
+    const filtered = list.filter(item => item.id !== id)
+    if (filtered.length !== list.length) {
+      localStorage.setItem(key, JSON.stringify(filtered))
+    }
+  } catch (e) {
+    console.error('[clearTombstone] 清理墓碑失败:', table, id, e)
+  }
+}
+
 // Fire-and-forget sync to cloud (non-blocking). On failure or offline, the
 // write is enqueued in the offline queue (IndexedDB) and replayed later.
-async function syncToCloud(table: string, action: string, data: unknown) {
+//
+// P1-3: per-table debounce (500ms) + per-id mutex 防并发写竞争。
+// 快速编辑时多次 upsert 同一 id 会被合并为最后一次，且同一 id 的请求串行化。
+//
+// P1-6: 失败时通过 setLastSyncError 暴露错误给 SyncStatus 组件展示。
+
+// per-table 的 pending debounce timer
+const syncDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+// per-id 的进行中 Promise，用于串行化同一 id 的写
+const syncInFlight = new Map<string, Promise<void>>();
+const SYNC_DEBOUNCE_MS = 500;
+
+/**
+ * 实际执行同步请求的内部函数（带错误暴露）。
+ */
+async function doSyncToCloud(table: string, action: string, data: unknown): Promise<void> {
   if (typeof window === 'undefined') return;
-  // Extract a short id prefix for log correlation (data shape varies by table).
   const logId = (data as { id?: string })?.id?.substring(0, 12) || '?';
   // If already offline, skip the doomed fetch and enqueue immediately.
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -69,6 +163,11 @@ async function syncToCloud(table: string, action: string, data: unknown) {
     if (!res.ok) {
       const err = await res.text().catch(() => '');
       console.warn('[syncToCloud]', table, action, logId, '→', res.status, err.substring(0, 200));
+      // P1-6: 暴露同步错误给 UI
+      const { setLastSyncError } = await import('@/lib/offline-queue');
+      setLastSyncError(`同步失败 [${table}/${action}]: HTTP ${res.status} ${err.substring(0, 120)}`);
+      // P1-4: 广播同步错误给其他标签页
+      broadcastSync({ type: 'sync-error', table, error: `HTTP ${res.status}` });
       // 4xx (except 401/429) are likely permanent (bad payload) — don't retry
       // forever. 5xx and network errors are transient → enqueue for replay.
       if (res.status >= 500 || res.status === 401 || res.status === 429) {
@@ -77,16 +176,81 @@ async function syncToCloud(table: string, action: string, data: unknown) {
       }
     } else {
       console.log('[syncToCloud]', table, action, logId, '✅');
+      // 同步成功：清空错误状态
+      const { setLastSyncError } = await import('@/lib/offline-queue');
+      setLastSyncError(null);
+      // P1-4: 广播同步成功给其他标签页，便于刷新视图
+      broadcastSync({ type: 'sync-success', table });
+      // 删除成功：清理对应墓碑并清理该表的过期墓碑
+      if (action === 'delete') {
+        const tsId = tombstoneIdFromData(table, data);
+        if (tsId) clearTombstone(table, tsId);
+        cleanStaleTombstones(table);
+      }
       // Best-effort: drain any backlog that may have accumulated.
       const { flush } = await import('@/lib/offline-queue');
       void flush();
     }
   } catch (e: any) {
     console.error('[syncToCloud] network error:', table, action, e.message);
+    // P1-6: 暴露网络错误给 UI
+    const { setLastSyncError } = await import('@/lib/offline-queue');
+    setLastSyncError(`同步失败 [${table}/${action}]: ${e?.message || '网络错误'}`);
+    // P1-4: 广播同步错误给其他标签页
+    broadcastSync({ type: 'sync-error', table, error: e?.message || 'network' });
     // Network error (offline / DNS / CORS) → enqueue for later replay.
     const { enqueue } = await import('@/lib/offline-queue');
     void enqueue(table, action, data);
   }
+}
+
+/**
+ * P1-3: 带 debounce + per-id mutex 的 syncToCloud 入口。
+ * - delete 操作立即执行（不 debounce，避免删除被合并丢失）
+ * - upsert 操作按 (table + id) debounce 500ms，同 id 的连续写合并为最后一次
+ * - 同一 id 的请求通过 syncInFlight 串行化，避免并发覆盖
+ */
+function syncToCloud(table: string, action: string, data: unknown): void {
+  if (typeof window === 'undefined') return;
+
+  // delete 立即执行，不 debounce
+  if (action === 'delete') {
+    void runSync(table, action, data);
+    return;
+  }
+
+  // upsert：按 (table + id) debounce，不同 id 互不影响
+  const id = (data as { id?: string })?.id || `${table}_${action}`;
+  const timerKey = `${table}:${id}`;
+  const existing = syncDebounceTimers.get(timerKey);
+  if (existing) clearTimeout(existing);
+
+  const timer = setTimeout(() => {
+    syncDebounceTimers.delete(timerKey);
+    void runSync(table, action, data);
+  }, SYNC_DEBOUNCE_MS);
+  syncDebounceTimers.set(timerKey, timer);
+}
+
+/**
+ * 执行同步：per-id mutex 串行化同一 id 的写。
+ */
+async function runSync(table: string, action: string, data: unknown): Promise<void> {
+  const id = (data as { id?: string })?.id || `${table}_${action}`;
+  const mutexKey = `${table}:${id}`;
+
+  // 等待同一 id 的进行中请求完成，避免并发覆盖
+  const prev = syncInFlight.get(mutexKey);
+  if (prev) {
+    // 让前一次完成后再执行本次（本次数据更新，覆盖前一次结果）
+    await prev.catch(() => {});
+  }
+
+  const p = doSyncToCloud(table, action, data).finally(() => {
+    syncInFlight.delete(mutexKey);
+  });
+  syncInFlight.set(mutexKey, p);
+  await p;
 }
 
 // ========== 分类 ==========
@@ -143,6 +307,9 @@ export function deleteLocalCategory(id: string) {
     }
   }
   write(CATEGORIES_KEY, cats.filter(c => c.id !== id))
+  // 通用墓碑：按 id 记录，防止 cloud→local 合并时复活
+  markDeleted('categories', id)
+  // 注：categories 为本地默认数据，无对应云端表，不做 syncToCloud
 }
 
 export function getDeletedCategoryNames(): Set<string> {
@@ -372,6 +539,8 @@ export function updateLocalResource(id: string, data: {
 export function deleteLocalResource(id: string) {
   const resources = getLocalResources().filter(r => r.id !== id)
   write(RESOURCES_KEY, resources)
+  // 写墓碑，防止 cloud→local 同步时云端残留数据复活
+  markDeleted('resources', id)
   syncToCloud('resources', 'delete', { id })
 }
 
@@ -380,7 +549,10 @@ export function deleteLocalResources(ids: string[]) {
   const idSet = new Set(ids)
   const resources = getLocalResources().filter(r => !idSet.has(r.id))
   write(RESOURCES_KEY, resources)
-  ids.forEach(id => syncToCloud('resources', 'delete', { id }))
+  ids.forEach(id => {
+    markDeleted('resources', id)
+    syncToCloud('resources', 'delete', { id })
+  })
 }
 
 // ========== 精选合集 ==========
@@ -428,6 +600,8 @@ export function updateLocalCollection(id: string, data: Partial<Pick<LocalCollec
 
 export function deleteLocalCollection(id: string) {
   write(COLLECTIONS_KEY, getLocalCollections().filter(c => c.id !== id))
+  // 写墓碑，防止 cloud→local 同步时云端残留数据复活
+  markDeleted('collections', id)
   syncToCloud('collections', 'delete', { id })
 }
 
@@ -492,6 +666,8 @@ export function unlinkPatternNoteLocally(patternId: string, noteId: string) {
   const filtered = notes.filter(n => !(n.pattern_id === patternId && n.note_id === noteId))
   saveLocalPatternNotes(filtered)
   if (target) {
+    // 写墓碑（复合键），防止 cloud→local 同步时云端残留关联复活
+    markDeleted('pattern_notes', `${patternId}_${noteId}`)
     syncToCloud('pattern_notes', 'delete', { pattern_id: patternId, note_id: noteId })
   }
 }

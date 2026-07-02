@@ -1,6 +1,6 @@
 'use client'
 
-import { getLocalResource, getLocalResourcesFiltered, deleteLocalResources, getLocalCollections } from '@/lib/db/local-store'
+import { getLocalResource, getLocalResourcesFiltered, deleteLocalResources, getLocalCollections, isTombstoned, clearTombstone, cleanStaleTombstones } from '@/lib/db/local-store'
 import type { Resource } from '@/lib/types'
 
 // 本地缓存 — 避免每次打开笔记都等接口
@@ -77,10 +77,13 @@ export async function syncCollectionsFromCloud(): Promise<void> {
     const cloudCols = data.collections || []
     if (!cloudCols.length) return
 
+    // 合并前过滤掉墓碑中的 id，防止云端残留数据复活
+    const filteredCloudCols = cloudCols.filter((c: any) => !isTombstoned('collections', c.id))
+
     // Merge: cloud wins on newer updatedAt
     const merged = new Map<string, any>()
     for (const c of localCols) merged.set(c.id, { ...c })
-    for (const c of cloudCols) {
+    for (const c of filteredCloudCols) {
       const existing = merged.get(c.id)
       if (!existing || !(existing as any).updatedAt || new Date(c.updatedAt) > new Date((existing as any).updatedAt || 0)) {
         merged.set(c.id, {
@@ -115,7 +118,7 @@ export async function deleteResourcesHybrid(ids: string[]): Promise<string[]> {
   if (ids.length === 0) return []
   const failed: string[] = []
 
-  // 本地删除（立即生效）
+  // 本地删除（立即生效，并写墓碑）
   deleteLocalResources(ids)
 
   // 云端删除（通过 /api/sync 服务端代理）
@@ -126,11 +129,18 @@ export async function deleteResourcesHybrid(ids: string[]): Promise<string[]> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ table: 'resources', action: 'delete', data: { id } }),
       })
-      if (!res.ok) failed.push(id)
+      if (!res.ok) {
+        failed.push(id)
+      } else {
+        // 云端删除成功，清理墓碑
+        clearTombstone('resources', id)
+      }
     } catch {
       failed.push(id)
     }
   }
+  // 清理过期墓碑
+  cleanStaleTombstones('resources')
 
   // 清缓存
   if (typeof window !== 'undefined') {

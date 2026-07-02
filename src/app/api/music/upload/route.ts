@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
+import { MAX_FILE_SIZE } from '@/lib/constants/config';
 import { vpsStorageEnabled, vpsStorageUrl, vpsUpload } from '@/lib/vps-db';
+import { validateFileType } from '@/lib/utils/file-types';
 
 export async function POST(req: NextRequest) {
   if (!getPass()) return configMissingResponse();
@@ -24,6 +26,17 @@ export async function POST(req: NextRequest) {
 
     if (!vpsStorageEnabled()) {
       return NextResponse.json({ error: 'VPS 存储未配置' }, { status: 500 });
+    }
+
+    // 限制文件大小
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: `文件过大，最大 ${MAX_FILE_SIZE / 1024 / 1024}MB` }, { status: 413 });
+    }
+
+    // 文件类型校验：仅允许音频格式，扩展名 + MIME 双重校验
+    const typeCheck = validateFileType(file.name, file.type, ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac']);
+    if (!typeCheck.ok) {
+      return NextResponse.json({ error: typeCheck.reason || '仅支持音频文件' }, { status: 400 });
     }
 
     const buffer = await file.arrayBuffer();

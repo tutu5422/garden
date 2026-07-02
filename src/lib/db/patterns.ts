@@ -1,5 +1,36 @@
 import type { Resource, PatternNoteRow } from '@/lib/types'
 
+/** 图解 metadata 结构（存储在 Resource.metadata 上） */
+export interface PatternMetadata {
+  is_pattern?: boolean
+  patternStatus?: string        // 'not-started' | 'in-progress' | 'completed' | 'paused' | 'wishlist'
+  patternProgress?: number
+  patternDifficulty?: string
+  patternBrand?: string
+  patternLastUsedAt?: string
+  patternCover?: string
+  patternFileUrl?: string
+  patternAuthor?: string
+  patternUrl?: string
+  [key: string]: unknown
+}
+
+/** 图解关联的笔记结构（来自 garden_notes localStorage） */
+export interface PatternNote {
+  id: string
+  title: string
+  content?: string
+  image?: string | null
+  imageThumb?: string | null
+  tags?: string[]
+  collectionId?: string | null
+  collectionName?: string | null
+  type?: string
+  createdAt?: string
+  updatedAt?: string
+  [key: string]: unknown
+}
+
 export interface PatternFilters {
   search?: string
   status?: string        // patternStatus: 'not-started' | 'in-progress' | 'completed' | 'paused' | 'wishlist'
@@ -36,7 +67,7 @@ export async function getPatternsForNote(noteId: string): Promise<Resource[]> {
 /**
  * 图解关联的笔记列表 — 仅本地。
  */
-export async function getNotesForPattern(patternId: string): Promise<any[]> {
+export async function getNotesForPattern(patternId: string): Promise<PatternNote[]> {
   return getLocalNotesForPattern(patternId)
 }
 
@@ -57,7 +88,7 @@ export async function unlinkPatternNote(patternId: string, noteId: string): Prom
 /**
  * 创建图解资源（不包含文件上传，仅 metadata）— 仅本地。
  */
-export async function createPattern(data: { title: string; metadata: any }): Promise<Resource | null> {
+export async function createPattern(data: { title: string; metadata: PatternMetadata }): Promise<Resource | null> {
   return createLocalPattern(data)
 }
 
@@ -106,8 +137,8 @@ function saveLocalPatternNoteLinks(links: PatternNoteRow[]) {
 
 function getLocalPatterns(): Resource[] {
   return getLocalResourcesFromStore().filter(r => {
-    const meta = r.metadata || {}
-    return (meta as any).is_pattern === true
+    const meta = (r.metadata || {}) as PatternMetadata
+    return meta.is_pattern === true
   })
 }
 
@@ -118,11 +149,11 @@ function getLocalPattern(id: string): Resource | null {
 function getLocalPatternsFiltered(filters: PatternFilters = {}): { data: Resource[]; count: number } {
   let list = getLocalPatterns()
 
-  if (filters.status) list = list.filter(r => (r.metadata as any).patternStatus === filters.status)
-  if (filters.difficulty) list = list.filter(r => (r.metadata as any).patternDifficulty === filters.difficulty)
+  if (filters.status) list = list.filter(r => ((r.metadata || {}) as PatternMetadata).patternStatus === filters.status)
+  if (filters.difficulty) list = list.filter(r => ((r.metadata || {}) as PatternMetadata).patternDifficulty === filters.difficulty)
   if (filters.brand) {
     const q = filters.brand.toLowerCase()
-    list = list.filter(r => ((r.metadata as any).patternBrand || '').toLowerCase().includes(q))
+    list = list.filter(r => (((r.metadata || {}) as PatternMetadata).patternBrand || '').toLowerCase().includes(q))
   }
   if (filters.search) {
     const q = filters.search.toLowerCase()
@@ -148,11 +179,11 @@ function getLocalPatternsForNote(noteId: string): Resource[] {
   return getLocalPatterns().filter(r => patternIds.includes(r.id))
 }
 
-function getLocalNotesForPattern(patternId: string): any[] {
+function getLocalNotesForPattern(patternId: string): PatternNote[] {
   if (typeof window === 'undefined') return []
   try {
     const raw = localStorage.getItem('garden_notes') || '[]'
-    const allNotes: any[] = JSON.parse(raw)
+    const allNotes: PatternNote[] = JSON.parse(raw)
     const links = getLocalPatternNoteLinks()
     const noteIds = links.filter(l => l.pattern_id === patternId).map(l => l.note_id)
     return allNotes.filter(n => noteIds.includes(n.id))
@@ -184,7 +215,7 @@ function uid(): string {
   return crypto.randomUUID?.() || 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)
 }
 
-function createLocalPattern(data: { title: string; metadata: any }): Resource {
+function createLocalPattern(data: { title: string; metadata: PatternMetadata }): Resource {
   const resources = getLocalResourcesFromStore()
   const pattern: Resource = {
     id: uid(),
@@ -217,7 +248,7 @@ function updateLocalPatternStatus(id: string, status: string, progress?: number)
   const resources = getLocalResourcesFromStore()
   const idx = resources.findIndex(r => r.id === id)
   if (idx === -1) return false
-  const meta = (resources[idx].metadata || {}) as any
+  const meta = (resources[idx].metadata || {}) as PatternMetadata
   meta.patternStatus = status
   meta.patternProgress = progress !== undefined ? progress : (meta.patternProgress || 0)
   meta.patternLastUsedAt = new Date().toISOString()

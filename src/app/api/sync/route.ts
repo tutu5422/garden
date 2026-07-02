@@ -309,7 +309,11 @@ export async function POST(req: NextRequest) {
         };
         const { ok: noteOk, error: noteErr } = await dbUpsertOwned('resources', dbData);
         if (!noteOk) {
-          return NextResponse.json({ error: '同步笔记失败', detail: noteErr, debug_data_keys: Object.keys(dbData) }, { status: 500 });
+          const errBody: Record<string, unknown> = { error: '同步笔记失败', detail: noteErr };
+          if (process.env.NODE_ENV === 'development') {
+            errBody.debug_data_keys = Object.keys(dbData);
+          }
+          return NextResponse.json(errBody, { status: 500 });
         }
       } else if (table === 'collections') {
         const col = data;
@@ -327,19 +331,47 @@ export async function POST(req: NextRequest) {
         // Upsert collection
         const { ok: ok3, error: err3 } = await dbUpsertOwned('collections', dbData);
         if (!ok3) return NextResponse.json({ error: '同步合集失败', detail: err3 }, { status: 500 });
-        // Sync resource associations via junction table
-        const resourceIds: string[] = col.resourceIds || [];
-        // Delete old associations
-        await dbFetch(`collection_resources?collection_id=eq.${col.id}`, { method: 'DELETE' });
-        // Insert new associations
-        if (resourceIds.length > 0) {
-          const rows = resourceIds.map((rid: string) => ({
+        // Sync resource associations via junction table.
+        // P0-6: 旧实现先 DELETE 全部旧关联再 POST 新关联，若 DELETE 成功而
+        // POST 失败，合集的所有关联会永久丢失。改为 diff 方式：先拉取云端现
+        // 有关联，仅删除真正移除的行、仅 upsert 新增的行，避免全量替换。
+        const newResourceIds: Set<string> = new Set(col.resourceIds || []);
+        // 拉取该合集当前云端关联（scoped by collection_id，collection 本身
+        // user-owned，此处为 app-layer 防御）
+        const existingRes = await dbFetch(
+          `collection_resources?select=resource_id&collection_id=eq.${col.id}`,
+        );
+        const existingIds: Set<string> = new Set(
+          existingRes.ok ? ((existingRes.body as { resource_id: string }[]) || []).map(r => r.resource_id) : [],
+        );
+        // 计算差集
+        const toAdd: string[] = [];
+        for (const rid of newResourceIds) {
+          if (!existingIds.has(rid)) toAdd.push(rid);
+        }
+        const toDelete: string[] = [];
+        for (const rid of existingIds) {
+          if (!newResourceIds.has(rid)) toDelete.push(rid);
+        }
+        // 删除真正移除的关联（逐行 scoped DELETE，失败不影响新增）
+        for (const rid of toDelete) {
+          await dbFetch(
+            `collection_resources?collection_id=eq.${col.id}&resource_id=eq.${rid}`,
+            { method: 'DELETE' },
+          );
+        }
+        // upsert 新增的关联（on_conflict 维持幂等，重复行不会报错）
+        if (toAdd.length > 0) {
+          const rows = toAdd.map((rid: string) => ({
             collection_id: col.id,
             resource_id: rid,
           }));
-          await dbFetch('collection_resources', {
+          await dbFetch('collection_resources?on_conflict=collection_id,resource_id', {
             method: 'POST',
             body: JSON.stringify(rows),
+            headers: {
+              Prefer: 'return=minimal, resolution=merge-duplicates',
+            },
           });
         }
       } else if (table === 'files') {
@@ -412,7 +444,8 @@ export async function POST(req: NextRequest) {
         if (!memoOk) return NextResponse.json({ error: '同步备忘失败', detail: memoErr }, { status: 500 });
       } else if (table === 'music_playlists') {
         // Store playlists as a resource row — deterministic UUID
-        const playlistsData = data as { playlists?: any[]; created_at?: string };
+        // data is now typed via the discriminated union (MusicPlaylistsUpsertData)
+        const playlistsData = data;
         const dbDataPlaylists = {
           id: MUSIC_PLAYLISTS_ID,
           title: '__music_playlists__',

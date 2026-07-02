@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPass, isAuth } from '@/lib/auth';
+import { MAX_FILE_SIZE } from '@/lib/constants/config';
 import { dbConfigOk, dbFetch, dbUpsertOwned, resolveStorageUrl, vpsUpload } from '@/lib/vps-db';
 
 /**
@@ -65,6 +66,11 @@ export async function POST(req: NextRequest) {
     // 只接受 PDF
     if (file.type && file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       return NextResponse.json({ error: '仅支持 PDF 文件' }, { status: 400 });
+    }
+
+    // 限制文件大小
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: `文件过大，最大 ${MAX_FILE_SIZE / 1024 / 1024}MB` }, { status: 413 });
     }
 
     const title = (form.get('title') as string)?.trim() || file.name.replace(/\.pdf$/i, '');

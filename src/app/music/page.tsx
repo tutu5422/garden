@@ -18,6 +18,7 @@ import {
   ArrowUpRight, Pencil,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { List } from 'react-window'
 
 // ===== 视图 =====
 type View = 'all' | 'albums' | 'artists' | 'playlists' | 'favorites'
@@ -159,6 +160,107 @@ function TrackActions({ track, onClose, onAdd }: { track: ExtendedTrack; onClose
 // ===================================================================
 // 🔥 主页面
 // ===================================================================
+
+// ===== P1-15: react-window 虚拟化曲目列表 =====
+// 长列表（全部视图）使用虚拟化，避免数百条曲目全量渲染。
+interface TrackRowProps {
+  tracks: ExtendedTrack[]
+  currentId: string | undefined
+  isPlaying: boolean
+  favIds: Set<string>
+  menuTrackId: string | null
+  view: View
+  coverMap: CoverMap
+  plId?: string
+  onPlay: (id: string) => void
+  onToggleFav: (id: string) => void
+  onRemoveFromPl: (plId: string, trackId: string) => void
+  onSetMenuTrack: (id: string | null) => void
+}
+
+const TRACK_ROW_HEIGHT = 60
+
+const VirtualTrackRow = ({
+  index, style, ariaAttributes,
+  tracks, currentId, isPlaying, favIds, menuTrackId, view, coverMap, plId,
+  onPlay, onToggleFav, onRemoveFromPl, onSetMenuTrack,
+}: {
+  index: number
+  style: React.CSSProperties
+  ariaAttributes: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' }
+} & TrackRowProps) => {
+  const track = tracks[index]
+  if (!track) return null
+  const isCur = track.id === currentId
+  const isPlay = isCur && isPlaying
+  const isFav = favIds.has(track.id)
+  const showMenu = menuTrackId === track.id
+  return (
+    <div
+      {...ariaAttributes}
+      style={style}
+      className={cn(
+        'group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200',
+        'hover:shadow-sm',
+      )}
+      onClick={() => onPlay(track.id)}
+      onDoubleClick={() => onPlay(track.id)}
+    >
+      <div className="w-7 shrink-0 text-center">
+        {isPlay ? (
+          <EQBar playing size="sm" color={C.accent1} />
+        ) : (
+          <span className={cn('text-xs font-mono font-bold', isCur && 'text-pink-500')} style={{ color: isCur ? C.accent1 : C.textSecondary }}>
+            {isCur ? '▶' : (index + 1)}
+          </span>
+        )}
+      </div>
+      <AlbumArt album={track.album || track.artist || track.title} size="sm" coverUrl={getCoverUrl(track.artist || '', track.album, coverMap)} />
+      <div className="flex-1 min-w-0">
+        <div className={cn('text-sm truncate', isCur && 'font-bold')}>{track.title}</div>
+        <div className="flex items-center gap-2 mt-0.5 text-xs" style={{ color: C.textSecondary }}>
+          {track.artist && <span className="truncate">{track.artist}</span>}
+          {track.album && view === 'all' && <><span>·</span><span className="truncate">{track.album}</span></>}
+        </div>
+      </div>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        {plId && (
+          <button onClick={e => { e.stopPropagation(); onRemoveFromPl(plId, track.id) }}
+            className="p-1.5 rounded-full hover:bg-rose-50 transition-colors" title="移除">
+            <X className="size-3" style={{ color: '#f43f5e' }} />
+          </button>
+        )}
+        <button onClick={e => { e.stopPropagation(); onToggleFav(track.id) }}
+          className="p-1.5 rounded-full hover:bg-pink-50 transition-all" title={isFav ? '取消收藏' : '收藏'}>
+          <Heart className={cn('size-3.5', isFav && 'fill-current')} style={{ color: isFav ? '#f43f5e' : C.textSecondary }} />
+        </button>
+        <div className="relative">
+          <button onClick={e => { e.stopPropagation(); onSetMenuTrack(showMenu ? null : track.id) }}
+            className="p-1.5 rounded-full hover:bg-purple-50 transition-colors">
+            <MoreHorizontal className="size-3.5" style={{ color: C.textSecondary }} />
+          </button>
+          {showMenu && <TrackActions track={track} onClose={() => onSetMenuTrack(null)} />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function VirtualTrackList(props: TrackRowProps) {
+  const { tracks } = props
+  if (tracks.length === 0) return null
+  return (
+    <List
+      rowComponent={VirtualTrackRow}
+      rowCount={tracks.length}
+      rowHeight={TRACK_ROW_HEIGHT}
+      rowProps={props}
+      overscanCount={6}
+      style={{ height: 'min(calc(100vh - 240px), ' + Math.max(tracks.length * TRACK_ROW_HEIGHT, 120) + 'px)', minHeight: 240 }}
+    />
+  )
+}
+
 export default function MusicLibraryPage() {
   const sp = useSearchParams()
   const ctx = useMusic()
@@ -354,10 +456,21 @@ export default function MusicLibraryPage() {
         <span className="w-10" />
         <span className="flex-1">歌曲</span>
       </div>
-      <div className="space-y-0.5">
-        {filteredTracks.map((t, i) => <TrackRow key={t.id} track={t} i={i} />)}
-      </div>
-      {filteredTracks.length === 0 && (
+      {filteredTracks.length > 0 ? (
+        <VirtualTrackList
+          tracks={filteredTracks}
+          currentId={currentId}
+          isPlaying={!!isPlaying}
+          favIds={favIds}
+          menuTrackId={menuTrackId}
+          view={view}
+          coverMap={coverMap}
+          onPlay={playTrack}
+          onToggleFav={(id) => { toggleFavorite(id); setFavIds(getFavoritedIds()) }}
+          onRemoveFromPl={(plId, trackId) => { removeTrackFromPlaylist(plId, trackId); refresh() }}
+          onSetMenuTrack={setMenuTrackId}
+        />
+      ) : (
         <div className="text-center py-20">
           <Music2 className="size-16 mx-auto mb-4" style={{ color: C.textSecondary, opacity: 0.15 }} />
           <p className="text-sm font-bold" style={{ color: C.textSecondary }}>

@@ -7,8 +7,10 @@ import { Plus, SlidersHorizontal, CheckSquare, X, Trash2 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { Grid } from 'react-window'
 import { getResourcesHybrid, deleteResourcesHybrid } from '@/lib/db/cache-queries'
 import { getLocalCategories, getLocalCollections, getLocalTags, getLocalResourcesFiltered } from '@/lib/db/local-store'
+import { subscribeSyncBroadcast } from '@/lib/utils/sync-broadcast'
 import type { Resource } from '@/lib/types'
 import ResourceCard from './ResourceCard'
 import ResourceFilters from './ResourceFilters'
@@ -55,7 +57,17 @@ export default function ResourcesContent() {
     }
     window.addEventListener('focus', refresh)
     window.addEventListener('storage', refresh)
-    return () => { window.removeEventListener('focus', refresh); window.removeEventListener('storage', refresh) }
+    // P1-4: 监听 BroadcastChannel 跨标签页同步事件，协调刷新
+    const unsubBroadcast = subscribeSyncBroadcast((msg) => {
+      if (msg.type === 'sync-success' || msg.type === 'write' || msg.type === 'request-refresh') {
+        refresh()
+      }
+    })
+    return () => {
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('storage', refresh)
+      unsubBroadcast()
+    }
   }, [])
 
   // 日期在客户端初始化，避免 SSR hydration 不一致
@@ -133,7 +145,7 @@ export default function ResourcesContent() {
                   ))}
                 </div>
               ) : (
-                <WaterfallGrid resources={resources} />
+                <VirtualResourceGrid resources={resources} />
               )}
             </div>
           )}
@@ -180,27 +192,73 @@ function getWaterfallHeight(resource: Resource): number {
   return [90, 100, 110, 120][h % 4]
 }
 
-function WaterfallGrid({ resources }: { resources: Resource[] }) {
+// ===== P1-15: react-window 虚拟化资源网格 =====
+// 资源数量大时使用 FixedSizeGrid 虚拟化，避免全量渲染。
+// 列数根据容器宽度自适应（最小列宽 260px），行高固定 280px。
+
+const RESOURCE_CELL_HEIGHT = 280
+const MIN_COL_WIDTH = 260
+const GRID_GAP = 12
+
+interface ResourceCellProps {
+  resources: Resource[]
+  columnCount: number
+}
+
+const ResourceCell = ({
+  columnIndex, rowIndex, style, ariaAttributes,
+  resources, columnCount,
+}: {
+  columnIndex: number
+  rowIndex: number
+  style: React.CSSProperties
+  ariaAttributes: { 'aria-colindex': number; role: 'gridcell' }
+} & ResourceCellProps) => {
+  const index = rowIndex * columnCount + columnIndex
+  const resource = resources[index]
+  if (!resource) return <div {...ariaAttributes} style={style} />
   return (
-    <>
-      <style>{`
-        @media (min-width: 640px) {
-          .waterfall { column-count: 2 !important; }
-        }
-        @media (min-width: 1024px) {
-          .waterfall { column-count: 3 !important; }
-        }
-      `}</style>
-      <div className="waterfall" style={{ columnCount: 1, columnGap: '0.75rem' }}>
-        {resources.map((resource) => {
-          const coverH = getWaterfallHeight(resource)
-          return (
-            <div key={resource.id} style={{ breakInside: 'avoid', marginBottom: '0.75rem' }}>
-              <ResourceCard resource={resource} coverHeight={coverH} />
-            </div>
-          )
-        })}
-      </div>
-    </>
+    <div {...ariaAttributes} style={{ ...style, padding: GRID_GAP / 2 }}>
+      <ResourceCard resource={resource} coverHeight={180} />
+    </div>
+  )
+}
+
+function VirtualResourceGrid({ resources }: { resources: Resource[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const update = () => setWidth(el.clientWidth)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const columnCount = width > 0 ? Math.max(1, Math.floor((width + GRID_GAP) / (MIN_COL_WIDTH + GRID_GAP))) : 1
+  const columnWidth = width > 0 ? (width + GRID_GAP) / columnCount - GRID_GAP : MIN_COL_WIDTH
+  const rowCount = Math.ceil(resources.length / Math.max(1, columnCount))
+  const totalHeight = rowCount * RESOURCE_CELL_HEIGHT
+
+  const cellProps: ResourceCellProps = { resources, columnCount }
+
+  return (
+    <div ref={containerRef} style={{ width: '100%' }}>
+      {width > 0 && resources.length > 0 && (
+        <Grid
+          cellComponent={ResourceCell}
+          cellProps={cellProps}
+          columnCount={columnCount}
+          columnWidth={columnWidth}
+          rowCount={rowCount}
+          rowHeight={RESOURCE_CELL_HEIGHT}
+          overscanCount={4}
+          style={{ height: totalHeight, width: '100%' }}
+        />
+      )}
+    </div>
   )
 }

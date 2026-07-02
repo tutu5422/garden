@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { resolveAudioUrl } from './audio-cache'
 
@@ -208,6 +208,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const currentTrackIdRef = useRef<string | null>(null)  // 当前已加载曲目 ID
   const loadAndPlayRef = useRef(false)                   // play() 标记：加载完成后自动播放
   const playingRef = useRef(false)                       // 实时 playing 状态，避免闭包过期
+  const abortControllerRef = useRef<AbortController | null>(null) // 切歌竞态：中断前一次网络请求
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null) // 3s 兜底定时器
+  const canplayThroughHandlerRef = useRef<(() => void) | null>(null) // canplaythrough 监听器引用，便于 cleanup 移除
 
   // 初始化：合并本地 + 云端数据（云端优先）
   useEffect(() => {
@@ -328,6 +331,21 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const cacheKey = track.storagePath || track.id
     const seq = ++loadTrackSeqRef.current
 
+    // 中断前一次切歌的网络请求与定时器/监听
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current)
+      fallbackTimerRef.current = null
+    }
+    // 清理前一次 effect 残留的 canplaythrough 监听
+    if (canplayThroughHandlerRef.current) {
+      const audio = getAudio()
+      audio?.removeEventListener('canplaythrough', canplayThroughHandlerRef.current)
+      canplayThroughHandlerRef.current = null
+    }
+
     const setupAudio = () => {
       const audio = getAudio()!
 
@@ -349,12 +367,20 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           } else {
             const onReady = () => {
               audio.removeEventListener('canplaythrough', onReady)
+              canplayThroughHandlerRef.current = null
+              if (fallbackTimerRef.current) {
+                clearTimeout(fallbackTimerRef.current)
+                fallbackTimerRef.current = null
+              }
               doRealPlay()
             }
+            canplayThroughHandlerRef.current = onReady
             audio.addEventListener('canplaythrough', onReady)
             // 3 秒兜底
-            setTimeout(() => {
+            fallbackTimerRef.current = setTimeout(() => {
+              fallbackTimerRef.current = null
               audio.removeEventListener('canplaythrough', onReady)
+              canplayThroughHandlerRef.current = null
               doRealPlay()
             }, 3000)
           }
@@ -362,11 +388,40 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       }
 
       // 后台缓存，下次播放自动使用
-      resolveAudioUrl(cacheKey, track.url).catch(() => {})
+      resolveAudioUrl(cacheKey, track.url, undefined, signal).catch(() => {})
     }
 
     setupAudio()
+
+    // cleanup：卸载或切歌前，移除监听 + 清理定时器 + 中断网络请求
+    return () => {
+      const audio = getAudio()
+      if (audio && canplayThroughHandlerRef.current) {
+        audio.removeEventListener('canplaythrough', canplayThroughHandlerRef.current)
+      }
+      canplayThroughHandlerRef.current = null
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current)
+        fallbackTimerRef.current = null
+      }
+    }
   }, [currentIndex, playlist])
+
+  // 组件卸载时清理兜底定时器与进行中的网络请求
+  useEffect(() => {
+    return () => {
+      const audio = getAudio()
+      if (audio && canplayThroughHandlerRef.current) {
+        audio.removeEventListener('canplaythrough', canplayThroughHandlerRef.current)
+      }
+      canplayThroughHandlerRef.current = null
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current)
+        fallbackTimerRef.current = null
+      }
+      abortControllerRef.current?.abort()
+    }
+  }, [])
 
   // 音量
   useEffect(() => {
@@ -530,13 +585,20 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const contextValue = useMemo(() => ({
+    playlist, currentIndex, playing, volume, muted, loopMode, currentTrack,
+    currentTime, duration, lyricsVersion, notifyLyricsUpdated,
+    play, pause, togglePlay, seek, next, prev, setVolume, setMuted, cycleLoopMode,
+    addTrack, addTracks, removeTrack, clearPlaylist, playTracks, updateTrackLyrics,
+  }), [
+    playlist, currentIndex, playing, volume, muted, loopMode, currentTrack,
+    currentTime, duration, lyricsVersion, notifyLyricsUpdated,
+    play, pause, togglePlay, seek, next, prev, setVolume, setMuted, cycleLoopMode,
+    addTrack, addTracks, removeTrack, clearPlaylist, playTracks, updateTrackLyrics,
+  ])
+
   return (
-    <MusicContext.Provider value={{
-      playlist, currentIndex, playing, volume, muted, loopMode, currentTrack,
-      currentTime, duration, lyricsVersion, notifyLyricsUpdated,
-      play, pause, togglePlay, seek, next, prev, setVolume, setMuted, cycleLoopMode,
-      addTrack, addTracks, removeTrack, clearPlaylist, playTracks, updateTrackLyrics,
-    }}>
+    <MusicContext.Provider value={contextValue}>
       {children}
     </MusicContext.Provider>
   )
