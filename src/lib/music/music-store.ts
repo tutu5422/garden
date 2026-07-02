@@ -80,6 +80,32 @@ export function getPlaylists(): MusicPlaylist[] {
   return readStore<MusicPlaylist[]>(PLAYLISTS_KEY, [])
 }
 
+// ===== 云同步 =====
+function syncPlaylistsToCloud() {
+  if (typeof window === 'undefined') return
+  try {
+    const playlists = readStore<MusicPlaylist[]>(PLAYLISTS_KEY, [])
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'music_playlists',
+        action: 'upsert',
+        data: { playlists, created_at: new Date().toISOString() },
+      }),
+    }).catch(() => {})
+  } catch { /* silent */ }
+}
+
+export async function loadPlaylistsFromCloud(): Promise<MusicPlaylist[]> {
+  try {
+    const res = await fetch('/api/sync?types=playlists', { method: 'GET' })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.musicPlaylists || []
+  } catch { return [] }
+}
+
 export function createPlaylist(name: string, description?: string): MusicPlaylist {
   const playlists = getPlaylists()
   const now = new Date().toISOString()
@@ -93,6 +119,7 @@ export function createPlaylist(name: string, description?: string): MusicPlaylis
   }
   playlists.push(playlist)
   writeStore(PLAYLISTS_KEY, playlists)
+  syncPlaylistsToCloud()
   return playlist
 }
 
@@ -106,11 +133,13 @@ export function updatePlaylist(id: string, updates: Partial<MusicPlaylist>) {
     updatedAt: new Date().toISOString(),
   }
   writeStore(PLAYLISTS_KEY, playlists)
+  syncPlaylistsToCloud()
 }
 
 export function deletePlaylist(id: string) {
   const playlists = getPlaylists().filter(p => p.id !== id)
   writeStore(PLAYLISTS_KEY, playlists)
+  syncPlaylistsToCloud()
 }
 
 export function addTracksToPlaylist(playlistId: string, trackIds: string[]) {
@@ -123,6 +152,7 @@ export function addTracksToPlaylist(playlistId: string, trackIds: string[]) {
   pl.trackIds.push(...newIds)
   pl.updatedAt = new Date().toISOString()
   writeStore(PLAYLISTS_KEY, playlists)
+  syncPlaylistsToCloud()
 }
 
 export function removeTrackFromPlaylist(playlistId: string, trackId: string) {
@@ -132,6 +162,7 @@ export function removeTrackFromPlaylist(playlistId: string, trackId: string) {
   pl.trackIds = pl.trackIds.filter(id => id !== trackId)
   pl.updatedAt = new Date().toISOString()
   writeStore(PLAYLISTS_KEY, playlists)
+  syncPlaylistsToCloud()
 }
 
 export function reorderPlaylistTracks(playlistId: string, trackIds: string[]) {

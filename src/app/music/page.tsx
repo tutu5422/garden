@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useMusic } from '@/lib/music/MusicContext'
 import {
   getPlaylists, createPlaylist, deletePlaylist,
-  addTracksToPlaylist, removeTrackFromPlaylist,
+  updatePlaylist, addTracksToPlaylist, removeTrackFromPlaylist,
   getFavoritedIds, toggleFavorite,
   groupByAlbum, groupByArtist,
   type ExtendedTrack, type MusicPlaylist,
@@ -15,7 +15,7 @@ import {
   Play, Pause, SkipBack, SkipForward,
   Plus, Search, X, MoreHorizontal,
   Trash2, Sparkles, Waves, Library,
-  ArrowUpRight,
+  ArrowUpRight, Pencil,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -134,7 +134,7 @@ function fmtDate(iso?: string) {
 }
 
 // ===== 曲目菜单（添加到歌单） =====
-function TrackActions({ track, onClose }: { track: ExtendedTrack; onClose: () => void }) {
+function TrackActions({ track, onClose, onAdd }: { track: ExtendedTrack; onClose: () => void; onAdd?: () => void }) {
   const playlists = getPlaylists()
   return (
     <div className="absolute right-0 top-8 z-50 w-48 py-2 rounded-xl shadow-xl border backdrop-blur-xl animate-fade-in-scale"
@@ -146,7 +146,7 @@ function TrackActions({ track, onClose }: { track: ExtendedTrack; onClose: () =>
         <div className="px-3 py-2 text-xs" style={{ color: C.textSecondary }}>暂无歌单</div>
       ) : playlists.map(pl => (
         <button key={pl.id}
-          onClick={() => { addTracksToPlaylist(pl.id, [track.id]); onClose() }}
+          onClick={() => { addTracksToPlaylist(pl.id, [track.id]); onClose(); onAdd?.() }}
           className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors hover:bg-pink-50 text-left"
           style={{ color: C.text }}>
           <Plus className="size-3" style={{ color: C.accent1 }} />{pl.name}
@@ -176,6 +176,8 @@ export default function MusicLibraryPage() {
   const [menuTrackId, setMenuTrackId] = useState<string | null>(null)
   const [showCreatePl, setShowCreatePl] = useState(false)
   const [newPlName, setNewPlName] = useState('')
+  const [editingPlaylist, setEditingPlaylist] = useState<string | null>(null)
+  const [editPlaylistName, setEditPlaylistName] = useState('')
   const [heroExpanded, setHeroExpanded] = useState(true)
 
   // 缓存原始完整曲库——"全部"视图使用此缓存，不受"播放全部"冲掉 playlist 的影响
@@ -297,7 +299,7 @@ export default function MusicLibraryPage() {
               className="p-1.5 rounded-full hover:bg-purple-50 transition-colors">
               <MoreHorizontal className="size-3.5" style={{ color: C.textSecondary }} />
             </button>
-            {showMenu && <TrackActions track={track} onClose={() => setMenuTrackId(null)} />}
+            {showMenu && <TrackActions track={track} onClose={() => setMenuTrackId(null)} onAdd={refresh} />}
           </div>
         </div>
       </div>
@@ -531,7 +533,29 @@ export default function MusicLibraryPage() {
               <ListMusic className="size-6" style={{ color: C.accent1 }} />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-black" style={{ color: C.text }}>{pl.name}</h2>
+              {editingPlaylist === pl.id ? (
+                <div className="flex items-center gap-2">
+                  <input autoFocus value={editPlaylistName} onChange={e => setEditPlaylistName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && editPlaylistName.trim()) {
+                        updatePlaylist(pl.id, { name: editPlaylistName.trim() }); setEditingPlaylist(null); refresh()
+                      }
+                      if (e.key === 'Escape') setEditingPlaylist(null)
+                    }}
+                    className="flex-1 bg-transparent text-xl font-black outline-none border-b-2" style={{ color: C.text, borderColor: C.accent1 }} />
+                  <button onClick={() => { if (editPlaylistName.trim()) { updatePlaylist(pl.id, { name: editPlaylistName.trim() }); setEditingPlaylist(null); refresh() } }}
+                    className="px-3 py-1 text-xs font-bold rounded-full" style={{ background: `linear-gradient(135deg, ${C.accent1}, ${C.accent2})`, color: '#fff' }}>保存</button>
+                  <button onClick={() => setEditingPlaylist(null)} className="px-3 py-1 text-xs rounded-full hover:bg-white/50" style={{ color: C.textSecondary }}>取消</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-black" style={{ color: C.text }}>{pl.name}</h2>
+                  <button onClick={() => { setEditingPlaylist(pl.id); setEditPlaylistName(pl.name) }}
+                    className="p-1 rounded-full hover:bg-white/50 transition-colors opacity-0 group-hover:opacity-100" title="重命名">
+                    <Pencil className="size-3.5" style={{ color: C.textSecondary }} />
+                  </button>
+                </div>
+              )}
               <p className="text-xs mt-1" style={{ color: C.textSecondary }}>{pl.trackIds.length} 首</p>
             </div>
             <button onClick={() => { if (confirm('删除此歌单？')) { deletePlaylist(pl.id); refresh(); setSelectedPlaylist(null) } }}
@@ -574,7 +598,7 @@ export default function MusicLibraryPage() {
             const h = pl.name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
             return (
               <button key={pl.id} onClick={() => setSelectedPlaylist(pl.id)}
-                className="group text-left rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                className="group text-left rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative"
                 style={{ background: C.card, border: `1px solid ${C.cardBorder}` }}>
                 <div className="aspect-square flex items-center justify-center"
                   style={{ background: `linear-gradient(135deg, hsl(${h}, 70%, 80%), hsl(${(h+50)%360}, 60%, 85%))` }}>
@@ -584,6 +608,11 @@ export default function MusicLibraryPage() {
                   <h3 className="text-sm font-bold truncate" style={{ color: C.text }}>{pl.name}</h3>
                   <p className="text-xs mt-1" style={{ color: C.textSecondary }}>{pl.trackIds.length} 首</p>
                 </div>
+                <button onClick={e => { e.stopPropagation(); if (confirm('删除此歌单？')) { deletePlaylist(pl.id); refresh() } }}
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-white/80 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-50 shadow-sm"
+                  title="删除歌单">
+                  <Trash2 className="size-3.5" style={{ color: '#f43f5e' }} />
+                </button>
               </button>
             )
           })}

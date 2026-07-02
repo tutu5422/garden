@@ -1,194 +1,26 @@
 [
   {
-    "artist": "AWOLNATION",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/awolnation/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
+    "artist": "布衣乐队",
+    "album": "喝不完的酒",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/布衣乐队/喝不完的酒.jpg",
     "status": "done"
   },
   {
-    "artist": "Adele",
-    "album": "Hello",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/adele/hello.jpg",
+    "artist": "AWOLNATION",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/AWOLNATION/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Mr. Miss",
+    "album": "先生小姐",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Mr. Miss/先生小姐.jpg",
     "status": "done"
   },
   {
     "artist": "Annie Lennox",
     "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/annie-lennox/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Bella Ferraro",
-    "album": "Forgot You",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/bella-ferraro/forgot-you.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Beyoncé",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/beyonce/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Beyond",
-    "album": "Beyond经典",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/beyond/beyond经典.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Christina Grimmie",
-    "album": "With Love",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/christina-grimmie/with-love.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Danny Elfman",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/danny-elfman/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Eisblume",
-    "album": "Ewig",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/eisblume/ewig.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Ellie Goulding",
-    "album": "Fifty Shades of Grey (Original Motion Picture Soundtrack)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/ellie-goulding/fifty-shades-of-grey-original-motion-picture-soundtrack.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Frank Sinatra",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/frank-sinatra/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Indila",
-    "album": "Mini World (Deluxe)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/indila/mini-world-deluxe.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Jessie Ware",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/jessie-ware/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Juanes",
-    "album": "Mi Sangre",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/juanes/mi-sangre.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Kalle Moraeus",
-    "album": "Underbart",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/kalle-moraeus/underbart.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Laura Welsh",
-    "album": "Fifty Shades of Grey (Original Motion Picture Soundtrack)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/laura-welsh/fifty-shades-of-grey-original-motion-picture-soundtrack.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Leon Roccstar Youngblood",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/leon-youngblood/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Mahan Moin",
-    "album": "The World Is Mine",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/mahan-moin/the-world-is-mine.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Naomi Striemer",
-    "album": "Giving It to God",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/naomi-striemer/giving-it-to-god.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Rauf & Faik",
-    "album": "YOSHLAR.COM",
-    "coverUrl": null,
-    "status": "not_found"
-  },
-  {
-    "artist": "Rauf & Faik",
-    "album": "Колыбельная",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/rauf-faik/unknown.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Rauf & Faik",
-    "album": "это ли счастье?",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/rauf-faik/unknown.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Sanna Nielsen",
-    "album": "Melodifestivalen 10 år på turné 2002-2011",
-    "coverUrl": null,
-    "status": "not_found"
-  },
-  {
-    "artist": "Sia",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/sia/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Sissel",
-    "album": "Sissel",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/sissel/sissel.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Skylar Grey",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/skylar-grey/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "The Rolling Stones",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/the-rolling-stones/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "The Weeknd",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/the-weeknd/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Vaults",
-    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/vaults/fifty-shades-of-grey-music-from-and-inspired-by-the-movie.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Y2K",
-    "album": "What is Love?",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/y2k/what-is-love.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Кино",
-    "album": "Группа крови",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/unknown/unknown.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "周云蓬",
-    "album": "清炒苦瓜",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/周云蓬/清炒苦瓜.jpg",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Annie-Lennox/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
     "status": "done"
   },
   {
@@ -198,21 +30,57 @@
     "status": "not_found"
   },
   {
-    "artist": "好妹妹乐队",
-    "album": "春生",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/好妹妹乐队/春生.jpg",
+    "artist": "蒋雪儿",
+    "album": "莫问归期",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/蒋雪儿/莫问归期.jpg",
     "status": "done"
   },
   {
-    "artist": "好妹妹乐队",
-    "album": "送你一朵山茶花",
-    "coverUrl": null,
-    "status": "not_found"
+    "artist": "The Weeknd",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/The-Weeknd/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
+    "status": "done"
   },
   {
-    "artist": "宋扬",
-    "album": "等风和你",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/宋扬/等风和你.jpg",
+    "artist": "Beyond",
+    "album": "Beyond经典",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/beyond/beyond经典.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "万晓利",
+    "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/万晓利/你在红楼-我在西游.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "糖衣娃娃",
+    "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/糖衣娃娃/你在红楼-我在西游.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "痛仰乐队",
+    "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/痛仰乐队/你在红楼-我在西游.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "刺猬",
+    "album": "生之响往",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/刺猬/生之响往.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "皇后皮箱",
+    "album": "超时空歌女的快活",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/皇后皮箱/超时空歌女的快活.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Christina Grimmie",
+    "album": "With Love",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/christina-grimmie/with-love.jpg",
     "status": "done"
   },
   {
@@ -222,46 +90,82 @@
     "status": "not_found"
   },
   {
+    "artist": "Y2K",
+    "album": "What is Love?",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Y2K/What-is-Love.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Adele",
+    "album": "Hello",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/adele/hello.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "戴荃",
+    "album": "中国好歌曲第二季 第5期",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/戴荃/default.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "The Rolling Stones",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/The-Rolling-Stones/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Bella Ferraro",
+    "album": "Forgot You",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Bella-Ferraro/Forgot-You.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "好妹妹乐队",
+    "album": "送你一朵山茶花",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/好妹妹乐队/送你一朵山茶花.jpg",
+    "status": "done"
+  },
+  {
     "artist": "小爱的妈",
     "album": "兰惜",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/小爱的妈/兰惜.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "黄霑",
+    "album": "黄飞鸿系列电影原声精装版",
     "coverUrl": null,
     "status": "not_found"
   },
   {
-    "artist": "小诗",
-    "album": "菁华浮梦",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/小诗/菁华浮梦.jpg",
+    "artist": "林玉英",
+    "album": "酒廊情思",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/林玉英/default.jpg",
     "status": "done"
   },
   {
-    "artist": "尚雯婕",
-    "album": "Graceland+",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/尚雯婕/graceland.jpg",
+    "artist": "Leon Roccstar Youngblood",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Leon-Roccstar-Youngblood/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
     "status": "done"
   },
   {
-    "artist": "张云雷",
-    "album": "张云雷 现场合集",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/张云雷/张云雷-现场合集.jpg",
+    "artist": "费玉清",
+    "album": "梦驼铃",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/费玉清/梦驼铃.jpg",
     "status": "done"
   },
   {
-    "artist": "张蔷",
-    "album": "别再问我什么是迪斯科",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/张蔷/别再问我什么是迪斯科.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "新凤霞",
-    "album": "新凤霞 唱腔集",
+    "artist": "黄霑",
+    "album": "青蛇 电影原声带",
     "coverUrl": null,
     "status": "not_found"
   },
   {
-    "artist": "有声的木林",
-    "album": "抖音神曲集结号",
-    "coverUrl": null,
-    "status": "not_found"
+    "artist": "Danny Elfman",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Danny-Elfman/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
+    "status": "done"
   },
   {
     "artist": "李荣浩",
@@ -270,32 +174,128 @@
     "status": "done"
   },
   {
-    "artist": "李荣浩",
-    "album": "模特",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/李荣浩/模特.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "杨开闻",
-    "album": "诺尼木伦",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/杨开闻/诺尼木伦.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "杭盖",
-    "album": "四季",
+    "artist": "Erik Grönwall",
+    "album": "Higher",
     "coverUrl": null,
     "status": "not_found"
   },
   {
-    "artist": "杭盖",
-    "album": "回到你身旁",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/杭盖/回到你身旁.jpg",
+    "artist": "Two Steps From Hell",
+    "album": "Battlecry",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/two-steps-from-hell/default.jpg",
     "status": "done"
   },
   {
-    "artist": "杭盖",
-    "album": "酒歌",
+    "artist": "Justin Garner",
+    "album": "Heartwork",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/justin-garner/default.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "龚琳娜",
+    "album": "下山（梦幻西游方寸山门派曲）",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "梁凡",
+    "album": "阿楚姑娘",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/梁凡/阿楚姑娘.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "刺猬",
+    "album": "盼暖春来",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/刺猬/盼暖春来.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "有声的木林",
+    "album": "抖音神曲集结号｜新歌热播",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "马頔",
+    "album": "孤岛",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/马頔/孤岛.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Mahan Moin",
+    "album": "The World Is Mine",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/mahan-moin/the-world-is-mine.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Jessie Ware",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Jessie-Ware/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
+    "status": "done"
+  },
+  {
+    "artist": "黄霑",
+    "album": "鹿鼎记电影版原声大碟",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "Кино",
+    "album": "Группа крови",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Кино/Группа-крови.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Beyoncé",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Beyoncé/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
+    "status": "done"
+  },
+  {
+    "artist": "苏阳",
+    "album": "河水南流",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/苏阳/河水南流.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "新凤霞",
+    "album": "评剧: 新风霞 唱腔集",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "简约情人",
+    "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/简约情人/你在红楼-我在西游.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "张云雷",
+    "album": " ",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "Vaults",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Vaults/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
+    "status": "done"
+  },
+  {
+    "artist": "痛仰乐队",
+    "album": "不要停止我的音乐",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/痛仰乐队/不要停止我的音乐.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Frank Sinatra",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Frank-Sinatra/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Juanes",
+    "album": "La Camisa Negra",
     "coverUrl": null,
     "status": "not_found"
   },
@@ -306,34 +306,214 @@
     "status": "done"
   },
   {
-    "artist": "潘粤明",
-    "album": "白夜追凶 原声带",
-    "coverUrl": null,
-    "status": "not_found"
-  },
-  {
     "artist": "等什么君",
     "album": "关山酒",
     "coverUrl": "https://storage.minitu.online/storage/music/covers/等什么君/关山酒.jpg",
     "status": "done"
   },
   {
+    "artist": "邓力源&奇幻之旅",
+    "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/邓力源and奇幻之旅/你在红楼-我在西游.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "周云蓬",
+    "album": "第八届台北诗歌节诗歌专辑",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/周云蓬/第八届台北诗歌节诗歌专辑.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "大乔小乔",
+    "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/大乔小乔/你在红楼-我在西游.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "MATZKA",
+    "album": "东南美",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/MATZKA/东南美.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Rauf & Faik",
+    "album": "Колыбельная",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "Sia",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Sia/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
+    "status": "done"
+  },
+  {
+    "artist": "与非门乐队",
+    "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/与非门乐队/你在红楼-我在西游.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "周云蓬",
+    "album": "清炒苦瓜",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/周云蓬/清炒苦瓜.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "尚雯婕",
+    "album": "Graceland+",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "张云雷",
+    "album": "张云雷 现场合集",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/张云雷/张云雷-现场合集.jpg",
+    "status": "done"
+  },
+  {
     "artist": "苏阳",
-    "album": "河水南流",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/苏阳/河水南流.jpg",
+    "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/苏阳/你在红楼-我在西游.jpg",
     "status": "done"
   },
   {
-    "artist": "蒋雪儿",
-    "album": "莫问归期",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/蒋雪儿/莫问归期.jpg",
+    "artist": "Maria Arredondo",
+    "album": "Not Going Under",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/maria-arredondo/default.jpg",
     "status": "done"
   },
   {
-    "artist": "费玉清",
-    "album": "梦驼铃",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/费玉清/梦驼铃.jpg",
+    "artist": "杭盖",
+    "album": "酒歌",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/杭盖/酒歌.jpg",
     "status": "done"
+  },
+  {
+    "artist": "Eisblume",
+    "album": "Ewig",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/eisblume/ewig.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "FrogMonster",
+    "album": "Remember Our Summer",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/FrogMonster/Remember-Our-Summer.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "李荣浩",
+    "album": "模特",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/李荣浩/模特.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Rauf & Faik",
+    "album": "YOSHLAR.COM",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Rauf-and-Faik/YOSHLAR.COM.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Ellie Goulding",
+    "album": "Fifty Shades of Grey (Original Motion Picture Soundtrack)",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "Naomi Striemer",
+    "album": "Giving It to God",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/naomi-striemer/giving-it-to-god.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "宋扬",
+    "album": "等风和你",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/宋扬/等风和你.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "黄霑",
+    "album": "倩女幽魂三部曲  电影原声大碟",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "刺猬",
+    "album": "火车驶向云外，梦安魂于九霄",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/刺猬/火车驶向云外，梦安魂于九霄.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Sissel",
+    "album": "Sissel",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Sissel/Sissel.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Indila",
+    "album": "Mini World (Deluxe)",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "Rauf & Faik",
+    "album": "это ли счастье?",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "Kalle Moraeus",
+    "album": "Underbart",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/kalle-moraeus/underbart.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "潘粤明",
+    "album": "白夜追凶 原声带",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "张蔷",
+    "album": "别再问我什么是迪斯科",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/张蔷/别再问我什么是迪斯科.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Rileigh Grey",
+    "album": "单曲",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/rileigh-grey/default.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "小诗",
+    "album": "菁华浮梦",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/小诗/菁华浮梦.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "九连真人",
+    "album": "莫欺少年穷（demo）",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/九连真人/莫欺少年穷（demo）.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Amy Diamond",
+    "album": "En Helt Ny Jul",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Amy-Diamond/En-Helt-Ny-Jul.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "液氧罐头",
+    "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/液氧罐头/你在红楼-我在西游.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "黄霑 徐克 罗大佑",
+    "album": "天下大乱花木兰之杨佩佩大战金庸戏剧主题曲全记录",
+    "coverUrl": null,
+    "status": "not_found"
   },
   {
     "artist": "陈小春",
@@ -342,10 +522,10 @@
     "status": "done"
   },
   {
-    "artist": "马頔",
-    "album": "孤岛",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/马頔/孤岛.jpg",
-    "status": "done"
+    "artist": "Sanna Nielsen",
+    "album": "Melodifestivalen 10 År På Turné 2002-2011",
+    "coverUrl": null,
+    "status": "not_found"
   },
   {
     "artist": "黄中原",
@@ -354,261 +534,129 @@
     "status": "not_found"
   },
   {
-    "artist": "黄霑",
-    "album": "天下大乱花木兰之杨佩佩大战金庸戏剧主题曲全记录",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/黄霑/天下大乱花木兰之杨佩佩大战金庸戏剧主题曲全记录.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "黄霑",
-    "album": "倩女幽魂三部曲 电影原声大碟",
-    "coverUrl": null,
-    "status": "not_found"
-  },
-  {
-    "artist": "黄霑",
-    "album": "青蛇 电影原声带",
-    "coverUrl": null,
-    "status": "not_found"
-  },
-  {
-    "artist": "黄霑",
-    "album": "鹿鼎记电影版原声大碟",
-    "coverUrl": null,
-    "status": "not_found"
-  },
-  {
-    "artist": "黄霑",
-    "album": "黄飞鸿系列电影原声精装版",
-    "coverUrl": null,
-    "status": "not_found"
-  },
-  {
-    "artist": "龚琳娜",
-    "album": "下山（梦幻西游方寸山门派曲）",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/龚琳娜/下山-梦幻西游方寸山门派曲.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "简约情人",
+    "artist": "二手玫瑰",
     "album": "你在红楼 我在西游",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/二手玫瑰/你在红楼-我在西游.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Laura Welsh",
+    "album": "Fifty Shades of Grey (Original Motion Picture Soundtrack)",
     "coverUrl": null,
     "status": "not_found"
   },
   {
     "artist": "Achim Reichel",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/achim-reichel/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Amy Diamond",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/amy-diamond/default.jpg",
+    "album": "Melancholie und Sturmflut (Bonus Tracks Edition)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Achim-Reichel/Melancholie-und-Sturmflut-(Bonus-Tracks-Edition).jpg",
     "status": "done"
   },
   {
     "artist": "Click#15",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/click-15/default.jpg",
+    "album": "Get Funky",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Click#15/Get-Funky.jpg",
     "status": "done"
   },
   {
     "artist": "Delacey",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/delacey/default.jpg",
+    "album": "Dream It Possible",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Delacey/Dream-It-Possible.jpg",
     "status": "done"
   },
   {
-    "artist": "Erik Grönwall",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/erik-gr-nwall/default.jpg",
+    "artist": "杭盖",
+    "album": "四季",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/杭盖/四季.jpg",
     "status": "done"
   },
   {
-    "artist": "FrogMonster",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/frogmonster/default.jpg",
+    "artist": "杨开闻",
+    "album": "诺尼木伦",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/杨开闻/诺尼木伦.jpg",
     "status": "done"
   },
   {
-    "artist": "Justin Garner",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/justin-garner/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "MATZKA",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/matzka/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Maria Arredondo",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/maria-arredondo/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Mr. Miss",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/mr-miss/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Rileigh Grey",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/rileigh-grey/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Simon & Garfunkel",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/simon-garfunkel/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "Two Steps From Hell",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/two-steps-from-hell/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "bongo cat",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/bongo-cat/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "万晓利",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/万晓利/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "与非门乐队",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/与非门乐队/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "九连真人",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/九连真人/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "二手玫瑰",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/二手玫瑰/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "刺猬",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/刺猬/default.jpg",
+    "artist": "Skylar Grey",
+    "album": "Fifty Shades of Grey (Music From and Inspired by the Movie)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Skylar-Grey/Fifty-Shades-of-Grey-(Music-From-and-Inspired-by-the-Movie).jpg",
     "status": "done"
   },
   {
     "artist": "南无",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/南无/default.jpg",
+    "album": "春来了",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/南无/春来了.jpg",
     "status": "done"
   },
   {
-    "artist": "原声带",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/原声带/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "叶矛",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/叶矛/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "大乔小乔",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/大乔小乔/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "布衣乐队",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/布衣乐队/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "戴荃",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/戴荃/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "林玉英",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/林玉英/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "梁凡",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/梁凡/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "液氧罐头",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/液氧罐头/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "王洁实",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/王洁实/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "痛仰乐队",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/痛仰乐队/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "皇后皮箱",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/皇后皮箱/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "糖衣娃娃",
-    "album": "_default_",
-    "coverUrl": null,
-    "status": "not_found"
-  },
-  {
-    "artist": "邓力源&奇幻之旅",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/邓力源-奇幻之旅/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "陈力",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/陈力/default.jpg",
-    "status": "done"
-  },
-  {
-    "artist": "陶天然",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/陶天然/default.jpg",
+    "artist": "九连真人",
+    "album": "北风 (demo)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/九连真人/北风-(demo).jpg",
     "status": "done"
   },
   {
     "artist": "面孔乐队",
-    "album": "_default_",
-    "coverUrl": "https://storage.minitu.online/storage/music/covers/面孔乐队/default.jpg",
+    "album": "港湾",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/面孔乐队/港湾.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "杭盖",
+    "album": "回到你身旁",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/杭盖/回到你身旁.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "原声带",
+    "album": "守望先锋 OST",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/原声带/default.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "陈力",
+    "album": "红楼梦 电视原声带",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/陈力/default.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "好妹妹乐队",
+    "album": "春生",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/好妹妹乐队/春生.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Simon & Garfunkel",
+    "album": "Sounds of Silence",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "叶矛",
+    "album": "红楼梦 电视原声带",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/叶矛/default.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "陈小春",
+    "album": "单曲",
+    "coverUrl": null,
+    "status": "not_found"
+  },
+  {
+    "artist": "王洁实",
+    "album": "红楼梦 电视原声带",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/王洁实/default.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "bongo cat",
+    "album": "单曲",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/bongo-cat/default.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "陶天然",
+    "album": "单曲",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/陶天然/default.jpg",
     "status": "done"
   }
 ]

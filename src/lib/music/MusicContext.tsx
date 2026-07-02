@@ -55,6 +55,7 @@ interface MusicContextType {
   addTracks: (tracks: Track[]) => void
   removeTrack: (id: string) => void
   clearPlaylist: () => void
+  playTracks: (tracks: Track[], startIndex?: number) => void
   updateTrackLyrics: (trackId: string, lyricsData: { lyrics?: string; syncedLyrics?: string; lyricsSource?: 'searched' | 'manual'; lyricsHidden?: boolean }) => void
 }
 
@@ -393,6 +394,19 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }, [playlist, currentIndex])
 
   const pause = useCallback(() => { getAudio()?.pause(); setPlaying(false); writePlayback({ playing: false }) }, [])
+
+  /** 播放指定曲目列表，不持久化到 localStorage/cloud（用于"播放全部"临时队列） */
+  const playTracks = useCallback((tracks: Track[], startIndex?: number) => {
+    if (tracks.length === 0) return
+    loadAndPlayRef.current = true
+    playingRef.current = true
+    setPlaylist(tracks)
+    setCurrentIndex(startIndex ?? 0)
+    setPlaying(true)
+    writePlayback({ currentIndex: startIndex ?? 0, playing: true })
+    // 注意：故意不调 writeMeta —— 不把临时队列写入本地存储和云端
+  }, [])
+
   const seek = useCallback((time: number) => {
     if (!getAudio()) return
     const dur = getAudio().duration
@@ -521,7 +535,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       playlist, currentIndex, playing, volume, muted, loopMode, currentTrack,
       currentTime, duration, lyricsVersion, notifyLyricsUpdated,
       play, pause, togglePlay, seek, next, prev, setVolume, setMuted, cycleLoopMode,
-      addTrack, addTracks, removeTrack, clearPlaylist, updateTrackLyrics,
+      addTrack, addTracks, removeTrack, clearPlaylist, playTracks, updateTrackLyrics,
     }}>
       {children}
     </MusicContext.Provider>
