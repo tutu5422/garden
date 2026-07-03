@@ -304,19 +304,23 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // 同步 playingRef 避免闭包过期
   useEffect(() => { playingRef.current = playing }, [playing])
 
-  // 播放结束处理
+  // 播放结束处理（使用 ref 存放最新回调引用，避免闭包过期）
+  // refs 在 handleNext/handleShuffleNext 定义之后赋值（见下方）
+  const handleNextRef = useRef<() => void>(() => {})
+  const handleShuffleNextRef = useRef<() => void>(() => {})
+
   useEffect(() => {
     const audio = getAudio()
     if (!audio) return
     const onEnded = () => {
       if (loopMode === 'one') { audio.currentTime = 0; audio.play().catch(() => {}) }
-      else if (loopMode === 'shuffle') handleShuffleNext()
-      else if (loopMode === 'all') handleNext()
+      else if (loopMode === 'shuffle') handleShuffleNextRef.current()
+      else if (loopMode === 'all') handleNextRef.current()
       else setPlaying(false)
     }
     audio.addEventListener('ended', onEnded)
     return () => audio.removeEventListener('ended', onEnded)
-  }, [loopMode, currentIndex, playlist])
+  }, [loopMode])
 
   // 切换曲目（含音频缓存检查）
   useEffect(() => {
@@ -512,6 +516,10 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     writePlayback({ currentIndex: nxt, currentTime: 0 })
   }, [playlist, currentIndex])
 
+  // 同步最新回调到 ref（供 onEnded effect 使用，避免闭包过期）
+  handleNextRef.current = handleNext
+  handleShuffleNextRef.current = handleShuffleNext
+
   const next = useCallback(() => { loopMode === 'shuffle' ? handleShuffleNext() : handleNext() }, [loopMode, handleNext, handleShuffleNext])
 
   const prev = useCallback(() => {
@@ -553,6 +561,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const removeTrack = useCallback((id: string) => {
+    const audio = getAudio()
     const track = playlist.find(t => t.id === id)
     if (track?.storagePath) {
       fetch('/api/music/delete', {
@@ -562,9 +571,29 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       }).catch(() => {})
     }
     setPlaylist(prev => {
+      const idx = prev.findIndex(t => t.id === id)
+      const wasPlaying = id === prev[currentIndex]?.id
       const updated = prev.filter(t => t.id !== id)
       writeMeta(updated)
-      if (currentIndex >= updated.length) setCurrentIndex(Math.max(0, updated.length - 1))
+      let newIndex = currentIndex
+      if (wasPlaying) {
+        // 删除的是当前播放曲目 → 切到下一首（或末尾）
+        newIndex = Math.min(currentIndex, updated.length - 1)
+        if (newIndex >= 0 && newIndex < updated.length) {
+          // 触发加载新曲目：标记需要加载并播放，effect 会处理
+          loadAndPlayRef.current = true
+          playingRef.current = true
+          currentTrackIdRef.current = null  // 强制 effect 重新加载
+        } else {
+          // 没有剩余曲目
+          audio?.pause()
+          setPlaying(false)
+        }
+      } else if (idx >= 0 && idx < currentIndex) {
+        // 删除的曲目在当前曲目前面 → 索引前移
+        newIndex = currentIndex - 1
+      }
+      setCurrentIndex(Math.max(0, newIndex))
       return updated
     })
   }, [currentIndex, playlist])

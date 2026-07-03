@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMusic } from '@/lib/music/MusicContext'
 import {
@@ -8,6 +8,7 @@ import {
   updatePlaylist, addTracksToPlaylist, removeTrackFromPlaylist,
   getFavoritedIds, toggleFavorite,
   groupByAlbum, groupByArtist,
+  loadPlaylistsFromCloud,
   type ExtendedTrack, type MusicPlaylist,
 } from '@/lib/music/music-store'
 import {
@@ -110,6 +111,15 @@ function AlbumArt({ album, size = 'md', coverUrl }: { album: string; size?: 'sm'
 function EQBar({ playing, size = 'sm', color }: { playing: boolean; size?: 'sm'|'md'; color?: string }) {
   const bars = size === 'sm' ? [3,5,2,4,3] : [4,7,3,9,5,8,4,6]
   const c = color || C.accent1
+  // 随机持续时间只在 mount 时生成一次，避免每次渲染产生不同值（兼容 React 19 compiler）
+  const durationsRef = useRef<number[] | null>(null)
+  if (!durationsRef.current) {
+    durationsRef.current = bars.map(() => 0.4 + Math.random() * 0.3)
+  }
+  const delaysRef = useRef<number[] | null>(null)
+  if (!delaysRef.current) {
+    delaysRef.current = bars.map((_, i) => i * 0.08)
+  }
   return (
     <span className="inline-flex items-end gap-px" style={{ height: size === 'sm' ? 12 : 20 }}>
       {bars.map((h, i) => (
@@ -117,8 +127,8 @@ function EQBar({ playing, size = 'sm', color }: { playing: boolean; size?: 'sm'|
           style={{
             height: h,
             background: c,
-            animationDuration: `${0.4 + Math.random() * 0.3}s`,
-            animationDelay: `${i * 0.08}s`,
+            animationDuration: `${durationsRef.current![i]}s`,
+            animationDelay: `${delaysRef.current![i]}s`,
             opacity: playing ? 1 : 0.3,
           }}
         />
@@ -282,11 +292,10 @@ export default function MusicLibraryPage() {
   const [editPlaylistName, setEditPlaylistName] = useState('')
   const [heroExpanded, setHeroExpanded] = useState(true)
 
-  // 缓存原始完整曲库——"全部"视图使用此缓存，不受"播放全部"冲掉 playlist 的影响
+  // 缓存原始完整曲库——"全部"视图使用此缓存，每次 ctx.playlist 变化时同步更新
   const [fullTrackList, setFullTrackList] = useState<ExtendedTrack[]>([])
   useEffect(() => {
-    if (!ctx?.playlist || fullTrackList.length > 0) return
-    if (ctx.playlist.length === 0) return
+    if (!ctx?.playlist || ctx.playlist.length === 0) return
     setFullTrackList(ctx.playlist as ExtendedTrack[])
   }, [ctx?.playlist])
 
@@ -295,6 +304,27 @@ export default function MusicLibraryPage() {
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
+
+  // 加载云端歌单（云端优先，补充本地独有）
+  useEffect(() => {
+    const loadCloudPlaylists = async () => {
+      const cloudPlaylists = await loadPlaylistsFromCloud()
+      if (cloudPlaylists.length > 0) {
+        const localPlaylists = getPlaylists()
+        const merged = new Map<string, MusicPlaylist>()
+        for (const p of cloudPlaylists) merged.set(p.id, p)
+        for (const p of localPlaylists) {
+          if (!merged.has(p.id)) merged.set(p.id, p)
+        }
+        const allPlaylists = Array.from(merged.values())
+        try {
+          localStorage.setItem('minitu_music_playlists', JSON.stringify(allPlaylists))
+        } catch {}
+        setPlaylists(allPlaylists)
+      }
+    }
+    loadCloudPlaylists()
+  }, [])
   useEffect(() => {
     const v = sp.get('view')
     if (v && v !== view) setView(v as View)

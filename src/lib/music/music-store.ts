@@ -172,6 +172,7 @@ export function reorderPlaylistTracks(playlistId: string, trackIds: string[]) {
   pl.trackIds = trackIds
   pl.updatedAt = new Date().toISOString()
   writeStore(PLAYLISTS_KEY, playlists)
+  syncPlaylistsToCloud()
 }
 
 // ===== 收藏管理 =====
@@ -190,7 +191,25 @@ export function toggleFavorite(trackId: string): boolean {
     favs.delete(trackId)
   }
   writeStore(FAVORITES_KEY, Array.from(favs))
+  syncFavoritesToCloud()
   return nowFav
+}
+
+// ===== 收藏云同步 =====
+function syncFavoritesToCloud() {
+  if (typeof window === 'undefined') return
+  try {
+    const favorites = readStore<string[]>(FAVORITES_KEY, [])
+    fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'music_favorites',
+        action: 'upsert',
+        data: { favorites, created_at: new Date().toISOString() },
+      }),
+    }).catch(() => {})
+  } catch { /* silent */ }
 }
 
 export function isFavorited(trackId: string): boolean {

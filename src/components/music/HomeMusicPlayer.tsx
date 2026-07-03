@@ -22,13 +22,14 @@ function EmptyState() {
 export default function HomeMusicPlayer() {
   const ctx = useMusic();
 
+  const [showList, setShowList] = useState(false);
+  const [seeking, setSeeking] = useState(false);
+  const [seekValue, setSeekValue] = useState(0);
+
   if (!ctx) return <EmptyState />;
 
   const { playlist, currentIndex, currentTrack, playing, loopMode,
     currentTime, duration, togglePlay, play, seek, next, prev, cycleLoopMode } = ctx;
-  const [showList, setShowList] = useState(false);
-  const [seeking, setSeeking] = useState(false);
-  const [seekValue, setSeekValue] = useState(0);
 
   const fmtTime = (s: number) => {
     if (!isFinite(s) || s < 0) return '0:00';
@@ -37,9 +38,15 @@ export default function HomeMusicPlayer() {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  if (playlist.length === 0) return <EmptyState />;
-
   const LoopIcon = loopIcons[loopMode];
+
+  if (playlist.length === 0) {
+    return (
+      <div className="flex flex-col gap-3 py-1">
+        <EmptyState />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3 py-1">
