@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, type ChangeEvent } from 'react'
-import { createPortal } from 'react-dom'
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Music, ListMusic, ChevronUp, Upload, Trash2, Repeat, Repeat1, Shuffle,
@@ -79,11 +78,8 @@ async function uploadViaPresignedUrl(file: File, id: string): Promise<{ storageP
 }
 
 export default function MiniPlayer() {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
-
   const ctx = useMusic();
-  if (!mounted || !ctx) return null;
+  if (!ctx) return null;
 
   const { playlist, currentIndex, currentTrack, playing, volume, muted, loopMode,
     currentTime, duration, togglePlay, play, seek, next, prev, setVolume, setMuted, cycleLoopMode, addTrack, removeTrack, notifyLyricsUpdated, updateTrackLyrics } = ctx;
@@ -221,19 +217,18 @@ export default function MiniPlayer() {
 
   // --- Collapsed state ---
   if (playlist.length === 0 && !expanded) {
-    return createPortal(
+    return (
       <div className="fixed bottom-20 md:bottom-4 right-4 z-40">
         <button onClick={() => setExpanded(true)} className="border-2 border-[var(--skin-border)] bg-[var(--skin-surface)] size-12 flex items-center justify-center transition-all duration-200 hover:border-[var(--skin-primary)] hover:scale-105"
                 style={{ borderRadius: '50%' }}>
           <Music className="size-5" style={{ color: 'var(--skin-primary)' }} />
         </button>
-      </div>,
-      document.body
+      </div>
     )
   }
 
   // --- Expanded state ---
-  return createPortal(
+  return (
     <div className="fixed bottom-20 md:bottom-4 right-4 z-40">
       {expanded ? (
         <div className="p-5 w-80 animate-fade-in-scale space-y-4 border-2 border-[var(--skin-border)]"
@@ -517,7 +512,6 @@ export default function MiniPlayer() {
           )}
         </button>
       )}
-    </div>,
-    document.body
+    </div>
   )
 }
