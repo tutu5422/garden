@@ -299,8 +299,14 @@ export default function MusicLibraryPage() {
           background: isCur ? C.activeTrack : 'transparent',
           color: C.text,
         }}
-        onClick={() => playTrack(track.id)}
-        onDoubleClick={() => playTrack(track.id)}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return
+          playTrack(track.id)
+        }}
+        onDoubleClick={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return
+          playTrack(track.id)
+        }}
       >
         {/* # / playing indicator */}
         <div className="w-7 shrink-0 text-center">
