@@ -78,12 +78,7 @@ async function uploadViaPresignedUrl(file: File, id: string): Promise<{ storageP
 }
 
 export default function MiniPlayer() {
-  const ctx = useMusic();
-  if (!ctx) return null;
-
-  const { playlist, currentIndex, currentTrack, playing, volume, muted, loopMode,
-    currentTime, duration, togglePlay, play, seek, next, prev, setVolume, setMuted, cycleLoopMode, addTrack, removeTrack, notifyLyricsUpdated, updateTrackLyrics } = ctx;
-
+  // Hooks must be before any early return (React rules)
   const [expanded, setExpanded] = useState(false)
   const [showPlaylist, setShowPlaylist] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -99,6 +94,12 @@ export default function MiniPlayer() {
   const [seekValue, setSeekValue] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lrcInputRef = useRef<HTMLInputElement>(null)
+
+  const ctx = useMusic();
+  if (!ctx) return null;
+
+  const { playlist, currentIndex, currentTrack, playing, volume, muted, loopMode,
+    currentTime, duration, togglePlay, play, seek, next, prev, setVolume, setMuted, cycleLoopMode, addTrack, removeTrack, notifyLyricsUpdated, updateTrackLyrics } = ctx;
 
   // Refresh import file list when panel opens
   useEffect(() => {
