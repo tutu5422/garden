@@ -148,12 +148,14 @@ function TrackActions({ track, onClose, onAdd }: { track: ExtendedTrack; onClose
   const playlists = getPlaylists()
   const menuRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose()
     }
-    // Delay to avoid immediately closing on the MoreHorizontal click
-    const timer = setTimeout(() => document.addEventListener('mousedown', handleClickOutside), 0)
-    return () => { clearTimeout(timer); document.removeEventListener('mousedown', handleClickOutside) }
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }, 0)
+    return () => { clearTimeout(timer); document.removeEventListener('mousedown', handleClickOutside); document.removeEventListener('touchstart', handleClickOutside) }
   }, [onClose])
   return (
     <div ref={menuRef} className="absolute right-0 top-full mt-1 z-50 w-48 py-2 rounded-xl shadow-xl border backdrop-blur-xl animate-fade-in-scale"
@@ -329,7 +331,7 @@ export default function MusicLibraryPage() {
           </div>
         </div>
         {/* Actions */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {plId && (
             <button onClick={e => { e.stopPropagation(); removeTrackFromPlaylist(plId, track.id); refresh() }}
               className="p-1.5 rounded-full hover:bg-rose-50 transition-colors" title="移除">
@@ -341,9 +343,10 @@ export default function MusicLibraryPage() {
             <Heart className={cn('size-3.5', isFav && 'fill-current')} style={{ color: isFav ? '#f43f5e' : C.textSecondary }} />
           </button>
           <div className="relative">
-            <button onClick={e => { e.stopPropagation(); setMenuTrackId(showMenu ? null : track.id) }}
-              className="p-1.5 rounded-full hover:bg-purple-50 transition-colors">
-              <MoreHorizontal className="size-3.5" style={{ color: C.textSecondary }} />
+            <button onTouchEnd={e => { e.stopPropagation(); setMenuTrackId(showMenu ? null : track.id) }}
+              onClick={e => { e.stopPropagation(); setMenuTrackId(showMenu ? null : track.id) }}
+              className="p-2 md:p-1.5 rounded-full hover:bg-purple-50 transition-colors">
+              <MoreHorizontal className="size-4 md:size-3.5" style={{ color: C.textSecondary }} />
             </button>
             {showMenu && <TrackActions track={track} onClose={() => setMenuTrackId(null)} onAdd={refresh} />}
           </div>
