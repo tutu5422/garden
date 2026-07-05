@@ -169,66 +169,58 @@ function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-white/10 bg-gray-900 p-6"
+        className="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-2xl border border-white/10 bg-gray-900 p-4"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+        {/* Header — compact */}
+        <div className="flex items-start justify-between mb-2">
           <div>
-            <h2 className="text-xl font-bold text-white">{s.name} <span className="text-sm text-gray-500">{s.code}</span></h2>
-            <p className="text-sm text-gray-400">{s.industry}</p>
+            <h2 className="text-base font-bold text-white">{s.name} <span className="text-xs text-gray-500 font-normal">{s.code}</span></h2>
+            <p className="text-xs text-gray-500">{s.industry}</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white"><X className="size-5" /></button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold">{s.composite.toFixed(0)}分</span>
+            <button onClick={onClose} className="text-gray-500 hover:text-white"><X className="size-4" /></button>
+          </div>
         </div>
 
-        {/* Key metrics */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        {/* Key metrics — one compact row */}
+        <div className="grid grid-cols-8 gap-1.5 mb-3">
           {[
-            { label: '最新价', value: s.close?.toFixed(2) },
-            { label: 'PE(TTM)', value: s.pe_ttm?.toFixed(1) || '—' },
-            { label: '股息率', value: s.div_yield > 0 ? `${s.div_yield.toFixed(1)}%` : '—', highlight: true },
-            { label: 'ROE', value: s.roe ? `${s.roe.toFixed(0)}%` : '—' },
-          ].map((m, i) => (
-            <div key={i} className={`text-center p-3 rounded-lg border ${m.highlight ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5 bg-white/5'}`}>
-              <div className="text-xs text-gray-500">{m.label}</div>
-              <div className={`text-lg font-bold ${m.highlight ? 'text-amber-400' : 'text-white'}`}>{m.value}</div>
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          {[
+            { label: '价格', value: s.close?.toFixed(2) },
+            { label: 'PE', value: s.pe_ttm?.toFixed(1) || '—' },
             { label: 'PB', value: s.pb?.toFixed(2) || '—' },
-            { label: '连续分红', value: s.consecutive_div_years ? `${s.consecutive_div_years}年` : '—' },
-            { label: '负债率', value: s.liability_ratio ? `${s.liability_ratio}%` : '—' },
-            { label: '综合评分', value: `${s.composite.toFixed(0)}分`, highlight: true },
+            { label: '股息', value: s.div_yield > 0 ? `${s.div_yield.toFixed(1)}%` : '—' },
+            { label: 'ROE', value: s.roe ? `${s.roe.toFixed(0)}%` : '—' },
+            { label: '负债', value: s.liability_ratio ? `${s.liability_ratio}%` : '—' },
+            { label: '分红', value: s.consecutive_div_years ? `${s.consecutive_div_years}年` : '—' },
+            { label: '跌幅', value: `${s.drawdown.toFixed(0)}%↓` },
           ].map((m, i) => (
-            <div key={i} className={`text-center p-3 rounded-lg border ${m.highlight ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5 bg-white/5'}`}>
-              <div className="text-xs text-gray-500">{m.label}</div>
-              <div className={`text-lg font-bold ${m.highlight ? 'text-amber-400' : 'text-white'}`}>{m.value}</div>
+            <div key={i} className="text-center p-1.5 rounded-lg border border-white/5 bg-white/5">
+              <div className="text-[10px] text-gray-500 leading-tight">{m.label}</div>
+              <div className="text-xs font-bold text-white leading-tight mt-0.5">{m.value}</div>
             </div>
           ))}
         </div>
 
-        {/* K-line chart or position bar */}
-        <div className="mb-6 rounded-xl border border-white/5 bg-white/5 p-4">
+        {/* K-line chart */}
+        <div className="mb-3 rounded-xl border border-white/5 bg-white/5 p-3">
           {klineOption ? (
             <>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">📈 {s.name} 走势 + PE</span>
-                <span className="text-xs text-gray-600">前复权 · {kline?.length || 0}个交易日</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-gray-500">📈 {s.name} 走势 + PE</span>
+                <span className="text-[10px] text-gray-600">前复权 · {kline?.length || 0}日</span>
               </div>
-              <ReactECharts option={klineOption} style={{ height: 280 }} />
+              <ReactECharts option={klineOption} style={{ height: 200 }} />
             </>
           ) : (
             <>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">📊 10年价格区间位置</span>
-                <span className="text-xs text-gray-600">
-                  高 ¥{estimatedHigh.toFixed(2)} · 现 ¥{s.close.toFixed(2)} · {s.price_pct.toFixed(0)}%分位
-                </span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-gray-500">📊 10年价格区间</span>
+                <span className="text-[10px] text-gray-600">高 ¥{estimatedHigh.toFixed(2)} · 现 ¥{s.close.toFixed(2)} · {s.price_pct.toFixed(0)}%分位</span>
               </div>
-              <ReactECharts option={rangeOption} style={{ height: 60 }} />
-              <div className="flex justify-between text-xs text-gray-600 mt-1">
+              <ReactECharts option={rangeOption} style={{ height: 50 }} />
+              <div className="flex justify-between text-[10px] text-gray-600 mt-0.5">
                 <span>0% (最低)</span>
                 <span className={s.price_pct < 20 ? 'text-green-400' : 'text-gray-500'}>{s.price_pct < 20 ? '🟢 低位区' : ''}</span>
                 <span>100% (最高)</span>
@@ -237,30 +229,27 @@ function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
           )}
         </div>
 
-        {/* Score breakdown */}
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-3">📊 评分明细</h3>
-          <div className="space-y-2">
+        {/* Score breakdown — compact 2-column */}
+        <div>
+          <h3 className="text-xs font-semibold text-gray-400 mb-2">📊 评分明细</h3>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             {scoreItems.map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 w-24">{item.label}</span>
-                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${(item.score / item.max) * 100}%`, background: 'linear-gradient(90deg, #22c55e, #eab308)' }}
-                  />
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-[11px] text-gray-500 w-16 flex-shrink-0">{item.label}</span>
+                <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${(item.score / item.max) * 100}%`, background: 'linear-gradient(90deg, #22c55e, #eab308)' }} />
                 </div>
-                <span className="text-xs text-gray-400 w-16 text-right">{item.score.toFixed(1)}/{item.max}</span>
-                <span className="text-xs text-gray-600 w-16">{item.detail}</span>
+                <span className="text-[10px] text-gray-400 w-10 text-right flex-shrink-0">{item.score.toFixed(1)}</span>
+                <span className="text-[10px] text-gray-600 w-14 truncate flex-shrink-0">{item.detail}</span>
               </div>
             ))}
           </div>
-          <div className="mt-3 pt-3 border-t border-white/5 flex justify-between text-sm">
+          <div className="mt-2 pt-2 border-t border-white/5 flex justify-between text-xs">
             <span className="text-gray-400">综合</span>
             <span className="font-bold text-amber-400">{s.composite.toFixed(0)} / 100</span>
           </div>
           {(s.penalty && s.penalty > 0) && (
-            <div className="mt-2 text-xs text-red-400">
+            <div className="mt-1 text-[10px] text-red-400">
               ⚠️ 扣分 {s.penalty}分: {s.penalty_reasons?.join(', ')}
             </div>
           )}
