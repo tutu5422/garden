@@ -177,7 +177,7 @@ function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
         {/* Price position chart */}
         <div className="mb-6 rounded-xl border border-white/5 bg-white/5 p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-500">📊 5年价格区间位置</span>
+            <span className="text-xs text-gray-500">📊 10年价格区间位置</span>
             <span className="text-xs text-gray-600">
               高 ¥{estimatedHigh.toFixed(2)} · 现 ¥{s.close.toFixed(2)} · {s.price_pct.toFixed(0)}%分位
             </span>
