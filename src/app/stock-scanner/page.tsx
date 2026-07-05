@@ -1,0 +1,427 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import ReactECharts from 'echarts-for-react'
+import { Search, X } from 'lucide-react'
+
+/* ================================================================
+   Types
+   ================================================================ */
+
+interface StockScore {
+  code: string; name: string; industry: string
+  close: number; pe_ttm: number | null; pb: number | null
+  div_yield: number; consecutive_div_years?: number
+  roe: number | null; liability_ratio?: number
+  price_pct: number; pe_pct: number; pb_pct: number
+  drawdown: number
+  price_score: number; pe_score: number; pb_score: number
+  div_score?: number; roe_score?: number
+  ind_score: number; dd_score: number; div_consist_score?: number
+  penalty?: number; penalty_reasons?: string[]
+  composite: number; signal: 'strong' | 'focus' | 'watch' | 'none'
+}
+
+interface ScoresMeta {
+  type: string; date: string; count: number; filtered_count: number
+  scores: StockScore[]; top10: StockScore[]; generated_at: string
+  error?: string  // for API error responses
+}
+
+/* ================================================================
+   Helpers
+   ================================================================ */
+
+const SIGNAL_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  strong: { label: '🔴 强烈', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+  focus:  { label: '🟡 重点', color: '#eab308', bg: 'rgba(234,179,8,0.1)' },
+  watch:  { label: '🟢 关注', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+  none:   { label: '—',     color: '#6b7280', bg: 'rgba(107,114,128,0.05)' },
+}
+
+const INDUSTRIES = [
+  '银行', '房地产', '白酒', '食品饮料', '医药', '半导体', '软件',
+  '新能源', '煤炭', '钢铁', '建材', '建筑', '电力', '石油', '汽车',
+  '家电', '保险', '证券', '军工', '通信', '农业', '化工', '有色',
+]
+
+/* ================================================================
+   Stock Card
+   ================================================================ */
+
+function StockCard({ s, onClick }: { s: StockScore; onClick: () => void }) {
+  const sig = SIGNAL_MAP[s.signal] || SIGNAL_MAP.none
+  const pe = s.pe_ttm ? s.pe_ttm.toFixed(1) : '—'
+  const dd = s.drawdown.toFixed(0)
+  const div = s.div_yield > 0 ? `${s.div_yield.toFixed(1)}%` : '—'
+  const roe = s.roe ? `${s.roe.toFixed(0)}%` : '—'
+
+  return (
+    <div
+      onClick={onClick}
+      className="group cursor-pointer rounded-xl p-4 border border-white/10 bg-white/5
+                 hover:bg-white/10 hover:border-white/20 transition-all duration-200"
+      style={{ backdropFilter: 'blur(8px)' }}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div>
+          <div className="font-semibold text-white text-sm">{s.name}</div>
+          <div className="text-xs text-gray-500">{s.code}</div>
+        </div>
+        <span className="text-xs px-2 py-0.5 rounded-full border" style={{ color: sig.color, borderColor: sig.color, background: sig.bg }}>
+          {s.composite.toFixed(0)}分
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1.5 text-xs">
+        <div className="flex justify-between"><span className="text-gray-500">PE</span><span className="text-gray-300">{pe}</span></div>
+        <div className="flex justify-between"><span className="text-gray-500">股息</span><span className="text-amber-400">{div}</span></div>
+        <div className="flex justify-between"><span className="text-gray-500">ROE</span><span className="text-gray-300">{roe}</span></div>
+        <div className="flex justify-between"><span className="text-gray-500">跌幅</span><span className="text-red-400">{dd}%↓</span></div>
+      </div>
+
+      <div className="mt-2 pt-2 border-t border-white/5 text-xs text-gray-500 truncate">
+        {s.industry?.substring(0, 20) || '—'}
+      </div>
+    </div>
+  )
+}
+
+/* ================================================================
+   Detail Modal with ECharts
+   ================================================================ */
+
+function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
+  // Kline data will be fetched from VPS in next iteration
+  const chartOption = useMemo(() => ({
+    backgroundColor: 'transparent',
+    grid: { left: 50, right: 20, top: 30, bottom: 30 },
+    xAxis: { type: 'category', data: [], show: false },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+    series: [{
+      type: 'line', data: [], smooth: true,
+      lineStyle: { color: '#22c55e', width: 2 },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [{ offset: 0, color: 'rgba(34,197,94,0.15)' }, { offset: 1, color: 'rgba(34,197,94,0)' }] } }
+    }],
+    tooltip: { trigger: 'axis' as const },
+  }), [])
+
+  const scoreItems = [
+    { label: '价格分位', score: s.price_score, max: 20, detail: `${s.price_pct.toFixed(0)}%分位` },
+    { label: 'PE分位', score: s.pe_score, max: 15, detail: s.pe_ttm && s.pe_ttm > 0 ? `PE ${s.pe_ttm.toFixed(1)}` : '' },
+    { label: '股息率', score: s.div_score || 0, max: 15, detail: s.div_yield > 0 ? `${s.div_yield.toFixed(1)}%×${s.consecutive_div_years || 0}年` : '无分红' },
+    { label: 'ROE', score: s.roe_score || 0, max: 10, detail: s.roe ? `${s.roe.toFixed(0)}%` : '—' },
+    { label: '行业PE', score: s.ind_score, max: 15, detail: '' },
+    { label: 'PB分位', score: s.pb_score, max: 10, detail: `${s.pb_pct.toFixed(0)}%分位` },
+    { label: '距高跌幅', score: s.dd_score, max: 10, detail: `跌${s.drawdown.toFixed(0)}%` },
+    { label: '分红连续', score: s.div_consist_score || 0, max: 5, detail: s.consecutive_div_years ? `${s.consecutive_div_years}年` : '' },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-white/10 bg-gray-900 p-6"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-white">{s.name} <span className="text-sm text-gray-500">{s.code}</span></h2>
+            <p className="text-sm text-gray-400">{s.industry}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white"><X className="size-5" /></button>
+        </div>
+
+        {/* Key metrics */}
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          {[
+            { label: '最新价', value: s.close?.toFixed(2) },
+            { label: 'PE(TTM)', value: s.pe_ttm?.toFixed(1) || '—' },
+            { label: '股息率', value: s.div_yield > 0 ? `${s.div_yield.toFixed(1)}%` : '—', highlight: true },
+            { label: 'ROE', value: s.roe ? `${s.roe.toFixed(0)}%` : '—' },
+          ].map((m, i) => (
+            <div key={i} className={`text-center p-3 rounded-lg border ${m.highlight ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5 bg-white/5'}`}>
+              <div className="text-xs text-gray-500">{m.label}</div>
+              <div className={`text-lg font-bold ${m.highlight ? 'text-amber-400' : 'text-white'}`}>{m.value}</div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          {[
+            { label: 'PB', value: s.pb?.toFixed(2) || '—' },
+            { label: '连续分红', value: s.consecutive_div_years ? `${s.consecutive_div_years}年` : '—' },
+            { label: '负债率', value: s.liability_ratio ? `${s.liability_ratio}%` : '—' },
+            { label: '综合评分', value: `${s.composite.toFixed(0)}分`, highlight: true },
+          ].map((m, i) => (
+            <div key={i} className={`text-center p-3 rounded-lg border ${m.highlight ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5 bg-white/5'}`}>
+              <div className="text-xs text-gray-500">{m.label}</div>
+              <div className={`text-lg font-bold ${m.highlight ? 'text-amber-400' : 'text-white'}`}>{m.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Chart placeholder */}
+        <div className="mb-6 rounded-xl border border-white/5 bg-white/5 p-4">
+          <div className="text-xs text-gray-500 mb-2">📈 前复权走势 (数据加载中...)</div>
+          <ReactECharts option={chartOption} style={{ height: 250 }} />
+        </div>
+
+        {/* Score breakdown */}
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-gray-300 mb-3">📊 评分明细</h3>
+          <div className="space-y-2">
+            {scoreItems.map((item, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <span className="text-xs text-gray-500 w-24">{item.label}</span>
+                <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${(item.score / item.max) * 100}%`, background: 'linear-gradient(90deg, #22c55e, #eab308)' }}
+                  />
+                </div>
+                <span className="text-xs text-gray-400 w-16 text-right">{item.score.toFixed(1)}/{item.max}</span>
+                <span className="text-xs text-gray-600 w-16">{item.detail}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 pt-3 border-t border-white/5 flex justify-between text-sm">
+            <span className="text-gray-400">综合</span>
+            <span className="font-bold text-amber-400">{s.composite.toFixed(0)} / 100</span>
+          </div>
+          {(s.penalty && s.penalty > 0) && (
+            <div className="mt-2 text-xs text-red-400">
+              ⚠️ 扣分 {s.penalty}分: {s.penalty_reasons?.join(', ')}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ================================================================
+   Main Page
+   ================================================================ */
+
+export default function StockScannerPage() {
+  const [scores, setScores] = useState<StockScore[]>([])
+  const [meta, setMeta] = useState<ScoresMeta | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [selected, setSelected] = useState<StockScore | null>(null)
+  const [search, setSearch] = useState('')
+  const [industryFilter, setIndustryFilter] = useState('')
+  const [minScore, setMinScore] = useState(55)
+  const [tab, setTab] = useState<'scanner' | 'industry'>('scanner')
+
+  useEffect(() => {
+    fetch('/api/stock/scores')
+      .then(r => r.json())
+      .then((data: ScoresMeta) => {
+        if (data.error) { setError(data.error as string); return }
+        setScores(data.scores || [])
+        setMeta(data)
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filtered = useMemo(() => {
+    let list = scores
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter(s => s.name.includes(q) || s.code.includes(q))
+    }
+    if (industryFilter) {
+      list = list.filter(s => s.industry?.includes(industryFilter))
+    }
+    list = list.filter(s => s.composite >= minScore)
+    return list.sort((a, b) => b.composite - a.composite)
+  }, [scores, search, industryFilter, minScore])
+
+  const counts = useMemo(() => ({
+    strong: scores.filter(s => s.signal === 'strong').length,
+    focus: scores.filter(s => s.signal === 'focus').length,
+    watch: scores.filter(s => s.signal === 'watch').length,
+  }), [scores])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="text-gray-400 animate-pulse">加载中...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="text-red-400">加载失败: {error}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold mb-1">📊 A股低位扫描</h1>
+          <p className="text-sm text-gray-500">
+            数据更新: {meta?.date || '—'} · 覆盖 {meta?.count || scores.length} 只 · 
+            过滤 {meta?.filtered_count || '—'} 只 · 中证800
+          </p>
+        </div>
+
+        {/* Signal cards */}
+        <div className="grid grid-cols-4 gap-3 mb-6">
+          {[
+            { label: '🔴 强烈', count: counts.strong, color: '#ef4444' },
+            { label: '🟡 重点', count: counts.focus, color: '#eab308' },
+            { label: '🟢 关注', count: counts.watch, color: '#22c55e' },
+            { label: '📋 总计', count: scores.length, color: '#6b7280' },
+          ].map((c, i) => (
+            <div key={i} className="text-center p-3 rounded-xl border border-white/5 bg-white/5">
+              <div className="text-xs text-gray-500">{c.label}</div>
+              <div className="text-2xl font-bold mt-1" style={{ color: c.color }}>{c.count}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-4 bg-white/5 rounded-lg p-1 w-fit">
+          {[
+            { id: 'scanner' as const, label: '🏷️ 市场扫描' },
+            { id: 'industry' as const, label: '📈 行业大盘' },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-1.5 rounded-md text-sm transition-all ${
+                tab === t.id ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'scanner' ? (
+          <>
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-gray-500" />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="搜索股票代码或名称..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-white
+                             placeholder:text-gray-600 focus:outline-none focus:border-white/20"
+                />
+              </div>
+              <select
+                value={industryFilter}
+                onChange={e => setIndustryFilter(e.target.value)}
+                className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300
+                           focus:outline-none focus:border-white/20 appearance-none cursor-pointer"
+              >
+                <option value="">全部行业</option>
+                {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+              </select>
+              <select
+                value={minScore}
+                onChange={e => setMinScore(Number(e.target.value))}
+                className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300
+                           focus:outline-none focus:border-white/20 appearance-none cursor-pointer"
+              >
+                <option value={0}>全部分数</option>
+                <option value={70}>≥70分 (关注+)</option>
+                <option value={55}>≥55分 (所有)</option>
+              </select>
+            </div>
+
+            {/* Stock grid */}
+            {filtered.length === 0 ? (
+              <div className="text-center py-20 text-gray-600">无匹配结果</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {filtered.map(s => (
+                  <StockCard key={s.code} s={s} onClick={() => setSelected(s)} />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          /* Industry Overview Tab */
+          <IndustryOverview scores={scores} />
+        )}
+
+        {/* Detail Modal */}
+        {selected && <StockDetail s={selected} onClose={() => setSelected(null)} />}
+      </div>
+    </div>
+  )
+}
+
+/* ================================================================
+   Industry Overview
+   ================================================================ */
+
+function IndustryOverview({ scores }: { scores: StockScore[] }) {
+  const industries = useMemo(() => {
+    const map: Record<string, { pe_values: number[]; pb_values: number[]; count: number }> = {}
+    for (const s of scores) {
+      const ind = s.industry?.substring(0, 2) || '其他'
+      if (!map[ind]) map[ind] = { pe_values: [], pb_values: [], count: 0 }
+      if (s.pe_ttm && s.pe_ttm > 0) map[ind].pe_values.push(s.pe_ttm)
+      if (s.pb && s.pb > 0) map[ind].pb_values.push(s.pb)
+      map[ind].count++
+    }
+    return Object.entries(map)
+      .map(([name, data]) => ({
+        name,
+        count: data.count,
+        pe_median: data.pe_values.length ? median(data.pe_values) : 0,
+        pb_median: data.pb_values.length ? median(data.pb_values) : 0,
+      }))
+      .sort((a, b) => a.pe_median - b.pe_median)
+  }, [scores])
+
+  const maxPE = Math.max(...industries.map(i => i.pe_median), 1)
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs text-gray-500 mb-3">
+        行业PE中位数排序（基于中证800成分股）· 仅作相对参考
+      </div>
+      {industries.map(ind => (
+        <div key={ind.name} className="flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-colors">
+          <span className="text-sm text-gray-300 w-20 truncate">{ind.name}</span>
+          <span className="text-xs text-gray-600 w-10">{ind.count}只</span>
+          <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.min(100, (ind.pe_median / maxPE) * 100)}%`,
+                background: ind.pe_median < 15 ? 'linear-gradient(90deg, #22c55e, #eab308)' :
+                            ind.pe_median < 30 ? 'linear-gradient(90deg, #eab308, #f97316)' :
+                            'linear-gradient(90deg, #f97316, #ef4444)'
+              }}
+            />
+          </div>
+          <span className="text-xs text-gray-400 w-16 text-right">PE {ind.pe_median.toFixed(1)}</span>
+          <span className="text-xs text-gray-600 w-16 text-right">PB {ind.pb_median.toFixed(2)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function median(arr: number[]): number {
+  const sorted = [...arr].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
