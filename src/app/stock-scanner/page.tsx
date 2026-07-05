@@ -92,9 +92,54 @@ function StockCard({ s, onClick }: { s: StockScore; onClick: () => void }) {
    ================================================================ */
 
 function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
-  // Position chart: current price within 5-year range
+  const [kline, setKline] = useState<{d:string;c:number;pe:number|null;pb:number|null}[] | null>(null)
+  
+  useEffect(() => {
+    fetch(`https://storage.minitu.online/storage/stock-klines/${s.code}.json`)
+      .then(r => r.json())
+      .then(data => setKline(Array.isArray(data) ? data : null))
+      .catch(() => setKline(null))
+  }, [s.code])
+
+  // K-line chart option
+  const klineOption = useMemo(() => {
+    if (!kline || kline.length === 0) return null
+    const dates = kline.map(k => k.d)
+    const closes = kline.map(k => k.c)
+    const pes = kline.map(k => k.pe)
+    const pbs = kline.map(k => k.pb)
+    
+    return {
+      backgroundColor: 'transparent',
+      tooltip: { trigger: 'axis' as const },
+      legend: { data: ['收盘价', 'PE', 'PB'], bottom: 0, textStyle: { color: '#6b7280', fontSize: 10 } },
+      grid: { left: 55, right: 55, top: 10, bottom: 35 },
+      xAxis: { type: 'category' as const, data: dates, 
+        axisLabel: { show: true, fontSize: 9, color: '#6b7280', formatter: (v:string) => v.slice(5) },
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
+      yAxis: [
+        { type: 'value' as const, name: '价格', nameTextStyle: { color: '#6b7280', fontSize: 9 },
+          splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+          axisLabel: { color: '#6b7280', fontSize: 9 } },
+        { type: 'value' as const, name: 'PE', nameTextStyle: { color: '#eab308', fontSize: 9 },
+          splitLine: { show: false },
+          axisLabel: { color: '#eab308', fontSize: 9 } },
+      ],
+      series: [
+        { name: '收盘价', type: 'line', data: closes, yAxisIndex: 0,
+          lineStyle: { color: '#22c55e', width: 1.5 },
+          areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1,
+            colorStops: [{offset:0,color:'rgba(34,197,94,0.15)'},{offset:1,color:'rgba(34,197,94,0)'}] } },
+          showSymbol: false },
+        { name: 'PE', type: 'line', data: pes, yAxisIndex: 1,
+          lineStyle: { color: '#eab308', width: 1 }, showSymbol: false },
+      ],
+      dataZoom: [{ type: 'inside', start: 0, end: 100 }],
+    }
+  }, [kline])
+  
+  // Position bar (simpler version when no kline data)
   const estimatedHigh = s.close / (1 + s.drawdown / 100)
-  const estimatedLow = estimatedHigh * 0.3 // rough estimate
   const positionPct = Math.max(0, Math.min(100, s.price_pct))
   
   const rangeOption = useMemo(() => ({
@@ -103,20 +148,10 @@ function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
     xAxis: { type: 'value' as const, min: 0, max: 100, show: false },
     yAxis: { type: 'category' as const, data: [''], show: false },
     series: [
-      // Background bar (full range)
       { type: 'bar', data: [100], barWidth: 20, itemStyle: { color: 'rgba(255,255,255,0.08)', borderRadius: 10 }, z: 1 },
-      // Low zone marker (<20%)
       { type: 'bar', data: [20], barWidth: 20, itemStyle: { color: 'rgba(34,197,94,0.15)', borderRadius: 0 }, z: 2, barGap: '-100%' },
-      // Current position dot
       { type: 'scatter', data: [[positionPct, 0]], symbolSize: 16, itemStyle: { color: positionPct < 20 ? '#22c55e' : positionPct < 50 ? '#eab308' : '#ef4444' }, z: 3 },
     ],
-    tooltip: { trigger: 'axis' as const },
-    // Threshold lines
-    markLine: {
-      silent: true, symbol: 'none',
-      lineStyle: { type: 'dashed' as const, color: 'rgba(255,255,255,0.15)' },
-      data: [{ xAxis: 20, label: { formatter: '20%低位线', color: '#22c55e', fontSize: 10 } }],
-    },
   }), [positionPct])
 
   const scoreItems = [
@@ -174,20 +209,32 @@ function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
           ))}
         </div>
 
-        {/* Price position chart */}
+        {/* K-line chart or position bar */}
         <div className="mb-6 rounded-xl border border-white/5 bg-white/5 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-500">📊 10年价格区间位置</span>
-            <span className="text-xs text-gray-600">
-              高 ¥{estimatedHigh.toFixed(2)} · 现 ¥{s.close.toFixed(2)} · {s.price_pct.toFixed(0)}%分位
-            </span>
-          </div>
-          <ReactECharts option={rangeOption} style={{ height: 60 }} />
-          <div className="flex justify-between text-xs text-gray-600 mt-1">
-            <span>0% (最低)</span>
-            <span className={s.price_pct < 20 ? 'text-green-400' : 'text-gray-500'}>{s.price_pct < 20 ? '🟢 低位区' : ''}</span>
-            <span>100% (最高)</span>
-          </div>
+          {klineOption ? (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500">📈 {s.name} 走势 + PE</span>
+                <span className="text-xs text-gray-600">前复权 · {kline?.length || 0}个交易日</span>
+              </div>
+              <ReactECharts option={klineOption} style={{ height: 280 }} />
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500">📊 10年价格区间位置</span>
+                <span className="text-xs text-gray-600">
+                  高 ¥{estimatedHigh.toFixed(2)} · 现 ¥{s.close.toFixed(2)} · {s.price_pct.toFixed(0)}%分位
+                </span>
+              </div>
+              <ReactECharts option={rangeOption} style={{ height: 60 }} />
+              <div className="flex justify-between text-xs text-gray-600 mt-1">
+                <span>0% (最低)</span>
+                <span className={s.price_pct < 20 ? 'text-green-400' : 'text-gray-500'}>{s.price_pct < 20 ? '🟢 低位区' : ''}</span>
+                <span>100% (最高)</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Score breakdown */}
