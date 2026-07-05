@@ -92,20 +92,32 @@ function StockCard({ s, onClick }: { s: StockScore; onClick: () => void }) {
    ================================================================ */
 
 function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
-  // Kline data will be fetched from VPS in next iteration
-  const chartOption = useMemo(() => ({
+  // Position chart: current price within 5-year range
+  const estimatedHigh = s.close / (1 + s.drawdown / 100)
+  const estimatedLow = estimatedHigh * 0.3 // rough estimate
+  const positionPct = Math.max(0, Math.min(100, s.price_pct))
+  
+  const rangeOption = useMemo(() => ({
     backgroundColor: 'transparent',
-    grid: { left: 50, right: 20, top: 30, bottom: 30 },
-    xAxis: { type: 'category', data: [], show: false },
-    yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
-    series: [{
-      type: 'line', data: [], smooth: true,
-      lineStyle: { color: '#22c55e', width: 2 },
-      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-        colorStops: [{ offset: 0, color: 'rgba(34,197,94,0.15)' }, { offset: 1, color: 'rgba(34,197,94,0)' }] } }
-    }],
+    grid: { left: 60, right: 30, top: 10, bottom: 30 },
+    xAxis: { type: 'value' as const, min: 0, max: 100, show: false },
+    yAxis: { type: 'category' as const, data: [''], show: false },
+    series: [
+      // Background bar (full range)
+      { type: 'bar', data: [100], barWidth: 20, itemStyle: { color: 'rgba(255,255,255,0.08)', borderRadius: 10 }, z: 1 },
+      // Low zone marker (<20%)
+      { type: 'bar', data: [20], barWidth: 20, itemStyle: { color: 'rgba(34,197,94,0.15)', borderRadius: 0 }, z: 2, barGap: '-100%' },
+      // Current position dot
+      { type: 'scatter', data: [[positionPct, 0]], symbolSize: 16, itemStyle: { color: positionPct < 20 ? '#22c55e' : positionPct < 50 ? '#eab308' : '#ef4444' }, z: 3 },
+    ],
     tooltip: { trigger: 'axis' as const },
-  }), [])
+    // Threshold lines
+    markLine: {
+      silent: true, symbol: 'none',
+      lineStyle: { type: 'dashed' as const, color: 'rgba(255,255,255,0.15)' },
+      data: [{ xAxis: 20, label: { formatter: '20%低位线', color: '#22c55e', fontSize: 10 } }],
+    },
+  }), [positionPct])
 
   const scoreItems = [
     { label: '价格分位', score: s.price_score, max: 20, detail: `${s.price_pct.toFixed(0)}%分位` },
@@ -162,10 +174,20 @@ function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
           ))}
         </div>
 
-        {/* Chart placeholder */}
+        {/* Price position chart */}
         <div className="mb-6 rounded-xl border border-white/5 bg-white/5 p-4">
-          <div className="text-xs text-gray-500 mb-2">📈 前复权走势 (数据加载中...)</div>
-          <ReactECharts option={chartOption} style={{ height: 250 }} />
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-gray-500">📊 5年价格区间位置</span>
+            <span className="text-xs text-gray-600">
+              高 ¥{estimatedHigh.toFixed(2)} · 现 ¥{s.close.toFixed(2)} · {s.price_pct.toFixed(0)}%分位
+            </span>
+          </div>
+          <ReactECharts option={rangeOption} style={{ height: 60 }} />
+          <div className="flex justify-between text-xs text-gray-600 mt-1">
+            <span>0% (最低)</span>
+            <span className={s.price_pct < 20 ? 'text-green-400' : 'text-gray-500'}>{s.price_pct < 20 ? '🟢 低位区' : ''}</span>
+            <span>100% (最高)</span>
+          </div>
         </div>
 
         {/* Score breakdown */}
