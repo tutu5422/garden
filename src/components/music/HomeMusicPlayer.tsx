@@ -63,31 +63,33 @@ export default function HomeMusicPlayer() {
               }}
               className="p-0.5 shrink-0 transition-all hover:scale-110">
               <Heart className={cn('size-3', getFavoritedIds().has(currentTrack.id) && 'fill-current')}
-                style={{ color: getFavoritedIds().has(currentTrack.id) ? '#ff6e6e' : 'rgba(255,255,255,0.4)' }} />
+                style={{ color: getFavoritedIds().has(currentTrack.id) ? '#ff6e6e' : 'var(--skin-text-secondary)' }} />
             </button>
           )}
         </div>
         {(currentTrack?.artist || currentTrack?.album) && (
           <div className="flex items-center justify-center gap-1.5 mt-0.5">
             {currentTrack.artist && (
-              <span className="text-[10px] opacity-60 text-white/70">{currentTrack.artist}</span>
+              <span className="text-[10px] opacity-60" style={{ color: 'var(--skin-text-secondary)' }}>{currentTrack.artist}</span>
             )}
             {currentTrack.album && (
               <>
-                <span className="text-[8px] opacity-30 text-white/50">·</span>
-                <span className="text-[10px] opacity-60 text-white/70 truncate max-w-[120px]">{currentTrack.album}</span>
+                <span className="text-[8px] opacity-30" style={{ color: 'var(--skin-text-secondary)' }}>·</span>
+                <span className="text-[10px] opacity-60 truncate max-w-[120px]" style={{ color: 'var(--skin-text-secondary)' }}>{currentTrack.album}</span>
               </>
             )}
           </div>
         )}
         <div className="flex items-center justify-center gap-3 mt-1.5">
-          <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">{currentIndex + 1}/{playlist.length}</span>
+          <span className="text-[10px] font-mono" style={{ color: 'var(--skin-text-secondary)' }}>{currentIndex + 1}/{playlist.length}</span>
           <button onClick={(e) => { e.preventDefault(); cycleLoopMode(); }}
-                  className="p-0.5" style={{ color: loopMode !== 'none' ? 'var(--skin-primary)' : 'var(--skin-text-secondary)' }}>
+                  className="p-0.5 transition-colors"
+                  style={{ color: loopMode !== 'none' ? 'var(--skin-primary)' : 'var(--skin-text-secondary)', opacity: loopMode === 'none' ? 0.4 : 1 }}>
             <LoopIcon className="size-3.5" />
           </button>
           <button onClick={(e) => { e.preventDefault(); setShowList(!showList); }}
-                  className={`p-0.5 ${showList ? '' : ''}`} style={{ color: showList ? 'var(--skin-primary)' : 'var(--skin-text-secondary)' }}>
+                  className="p-0.5 transition-colors"
+                  style={{ color: showList ? 'var(--skin-primary)' : 'var(--skin-text-secondary)' }}>
             <ListMusic className="size-3.5" />
           </button>
         </div>
@@ -105,7 +107,7 @@ export default function HomeMusicPlayer() {
 
       {/* Progress Bar */}
       <div className="flex items-center gap-2 px-1">
-        <span className="text-[10px] font-mono text-[var(--skin-text-secondary)] w-8 shrink-0">
+        <span className="text-[10px] font-mono" style={{ color: 'var(--skin-text-secondary)', width: 32, flexShrink: 0 }}>
           {seeking ? fmtTime(seekValue) : fmtTime(currentTime)}
         </span>
         <input
@@ -124,7 +126,7 @@ export default function HomeMusicPlayer() {
           className="flex-1 h-1 accent-[var(--skin-primary)] cursor-pointer"
           style={{ background: 'var(--skin-muted)' }}
         />
-        <span className="text-[10px] font-mono text-[var(--skin-text-secondary)] w-8 shrink-0">
+        <span className="text-[10px] font-mono" style={{ color: 'var(--skin-text-secondary)', width: 32, flexShrink: 0 }}>
           {fmtTime(duration)}
         </span>
       </div>
@@ -138,7 +140,7 @@ export default function HomeMusicPlayer() {
               onClick={(e) => { e.preventDefault(); play(i); }}
               className="w-full flex items-center gap-2 px-2 py-2 text-xs text-left transition-colors hover:bg-[var(--skin-surface)] font-medium"
               style={i === currentIndex ? { color: 'var(--skin-primary)', fontWeight: 700, background: 'rgba(var(--skin-primary-rgb), 0.08)' } : {}}>
-              <span className="shrink-0 w-5 text-right text-[var(--skin-text-secondary)] font-mono">
+              <span className="shrink-0 w-5 text-right font-mono" style={{ color: 'var(--skin-text-secondary)' }}>
                 {i === currentIndex && playing ? (
                   <span className="flex gap-px justify-center">
                     {[2, 4, 2].map((h, j) => <span key={j} className="w-0.5 rounded-full eq-bar" style={{ height: `${h * 2}px`, background: 'var(--skin-primary)', animationDelay: `${j * 150}ms` }} />)}
@@ -154,7 +156,7 @@ export default function HomeMusicPlayer() {
       {/* Controls */}
       <div className="flex items-center justify-center gap-5">
         <button onClick={(e) => { e.preventDefault(); prev(); }}
-                className="p-2 transition-colors hover:text-[var(--skin-primary)]" style={{ color: 'var(--skin-text-secondary)' }}>
+                className="p-2 transition-colors" style={{ color: 'var(--skin-text-secondary)' }}>
           <SkipBack className="size-4" />
         </button>
         <button onClick={(e) => { e.preventDefault(); togglePlay(); }}
@@ -163,7 +165,7 @@ export default function HomeMusicPlayer() {
           {playing ? <Pause className="size-5" /> : <Play className="size-5 ml-0.5" />}
         </button>
         <button onClick={(e) => { e.preventDefault(); next(); }}
-                className="p-2 transition-colors hover:text-[var(--skin-primary)]" style={{ color: 'var(--skin-text-secondary)' }}>
+                className="p-2 transition-colors" style={{ color: 'var(--skin-text-secondary)' }}>
           <SkipForward className="size-4" />
         </button>
       </div>

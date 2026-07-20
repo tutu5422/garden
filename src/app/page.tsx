@@ -52,6 +52,7 @@ interface NoteItem {
   id: string; title: string; content: string; type: string; tags: string[];
   collectionId?: string; collectionName?: string;
   createdAt: string; image?: string; imageThumb?: string;
+  images?: string[]; imageThumbs?: string[];
 }
 interface TimelineMemo { id: string; content: string; createdAt: string; source: string; }
 

@@ -15,7 +15,9 @@ import {
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[]
   collectionId?: string; collectionName?: string
-  createdAt: string; updatedAt?: string; image?: string; imageThumb?: string
+  createdAt: string; updatedAt?: string
+  image?: string; imageThumb?: string
+  images?: string[]; imageThumbs?: string[]
 }
 
 interface Collection { id: string; title: string }
@@ -45,23 +47,52 @@ function compressImage(file: File, maxW: number, quality: number): Promise<{ ful
   })
 }
 
+/** 批量压缩多张图片 */
+async function compressImages(files: File[]): Promise<{ images: string[]; imageThumbs: string[] }> {
+  const results = await Promise.all(
+    files.map(f => compressImage(f, 1200, 0.7).catch(() => null))
+  )
+  const valid = results.filter((r): r is { full: string; thumb: string } => r !== null)
+  return {
+    images: valid.map(r => r.full),
+    imageThumbs: valid.map(r => r.thumb),
+  }
+}
+
+/** Helper: 从 note 中获取所有可用图片（兼容旧单图格式） */
+function getNoteImages(note: Note): { full: string; thumb: string }[] {
+  const result: { full: string; thumb: string }[] = []
+  // 新版多图优先
+  if (note.images?.length) {
+    const thumbs = note.imageThumbs?.length === note.images.length ? note.imageThumbs : []
+    for (let i = 0; i < note.images.length; i++) {
+      result.push({ full: note.images[i], thumb: thumbs[i] || note.images[i] })
+    }
+  } else if (note.image || note.imageThumb) {
+    result.push({ full: note.image!, thumb: note.imageThumb || note.image! })
+  }
+  return result
+}
+
 function EditForm() {
   const router = useRouter()
   const sp = useSearchParams()
   const noteId = sp.get('id')
   const isNew = !noteId
+  const patternIdParam = sp.get('patternId')
+  console.log('[notes/edit] noteId:', noteId, 'isNew:', isNew, 'patternId:', patternIdParam)
 
   const [collections, setCollections] = useState<Collection[]>([])
   const [form, setForm] = useState({ title: '', content: '', tags: '', collectionId: '' })
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [existingImages, setExistingImages] = useState<{ full: string; thumb: string }[]>([])
   const [uploading, setUploading] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   // 关联图解
   const [selectedPatternIds, setSelectedPatternIds] = useState<string[]>([])
   const [initialPatternIds, setInitialPatternIds] = useState<string[]>([])
-  const patternIdParam = sp.get('patternId')
 
   useEffect(() => {
     try { setCollections(JSON.parse(localStorage.getItem('garden_collections') || '[]')) } catch {}
@@ -76,7 +107,7 @@ function EditForm() {
             tags: note.tags.join(', '),
             collectionId: note.collectionId || '',
           })
-          if (note.image || note.imageThumb) setImagePreview(note.imageThumb || note.image || null)
+          setExistingImages(getNoteImages(note))
         }
         // 加载已关联的图解（异步走 API）
         void (async () => {
@@ -98,11 +129,28 @@ function EditForm() {
     setLoaded(true)
   }, [noteId, patternIdParam])
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]; if (!f || !f.type.startsWith('image/')) return
-    setImageFile(f); setImagePreview(URL.createObjectURL(f))
+  const handleImagesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    const images = files.filter(f => f.type.startsWith('image/'))
+    if (images.length === 0) return
+    const total = imageFiles.length + existingImages.length + images.length
+    if (total > 9) {
+      toast.error(`最多 9 张图片（已有 ${total - images.length} 张）`)
+      return
+    }
+    setImageFiles(prev => [...prev, ...images])
+    setImagePreviews(prev => [...prev, ...images.map(f => URL.createObjectURL(f))])
   }
-  const removeImage = () => { setImageFile(null); setImagePreview(null); if (fileRef.current) fileRef.current.value = '' }
+
+  const removeNewImage = (idx: number) => {
+    URL.revokeObjectURL(imagePreviews[idx])
+    setImageFiles(prev => prev.filter((_, i) => i !== idx))
+    setImagePreviews(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const removeExistingImage = (idx: number) => {
+    setExistingImages(prev => prev.filter((_, i) => i !== idx))
+  }
 
   const save = async () => {
     if (!form.title.trim()) return
@@ -117,14 +165,21 @@ function EditForm() {
       }
       const col = collections.find(c => c.id === form.collectionId)
 
-      let image: string | undefined, imageThumb: string | undefined
-      if (imageFile) {
-        try { const c = await compressImage(imageFile, 1200, 0.7); image = c.full; imageThumb = c.thumb }
-        catch (e) {
+      // 压缩新加的图片
+      let images: string[] = [], imageThumbs: string[] = []
+      if (imageFiles.length > 0) {
+        try {
+          const compressed = await compressImages(imageFiles)
+          images = compressed.images
+          imageThumbs = compressed.imageThumbs
+        } catch (e) {
           console.warn('[save] 图片压缩失败:', e)
-          toast.error('图片处理失败，已跳过图片')
+          toast.error('部分图片处理失败')
         }
       }
+      // 合并已有图片（旧图 + 新图）
+      const allImages = [...existingImages.map(e => e.full), ...images]
+      const allThumbs = [...existingImages.map(e => e.thumb), ...imageThumbs]
 
       let savedNoteId = noteId
 
@@ -136,20 +191,22 @@ function EditForm() {
           tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
           collectionId: form.collectionId || undefined,
           collectionName: col?.title,
-          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), image, imageThumb,
+          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+          images: allImages.length > 0 ? allImages : undefined,
+          imageThumbs: allThumbs.length > 0 ? allThumbs : undefined,
+          // 兼容旧字段：用第一张图
+          image: allImages[0],
+          imageThumb: allThumbs[0],
         }
         savedNoteId = note.id
         localStorage.setItem('minitu_notes', JSON.stringify([note, ...notes]))
-        // Sync to cloud — await 确保云端已有该笔记行后再关联图解
         try {
           const syncRes = await fetch('/api/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
           })
-          if (!syncRes.ok) {
-            cloudSyncFailed = true
-          }
+          if (!syncRes.ok) cloudSyncFailed = true
         } catch (e) {
           cloudSyncFailed = true
         }
@@ -163,18 +220,21 @@ function EditForm() {
         const updated = notes.map(n => {
           if (n.id !== noteId) return n
           const note = {
-            ...n, title: form.title, content: form.content,
+            ...n,
+            title: form.title, content: form.content,
             tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
             collectionId: form.collectionId || undefined,
             collectionName: col?.title,
             updatedAt: new Date().toISOString(),
-            ...(image ? { image, imageThumb } : {}),
+            images: allImages.length > 0 ? allImages : undefined,
+            imageThumbs: allThumbs.length > 0 ? allThumbs : undefined,
+            image: allImages[0],
+            imageThumb: allThumbs[0],
           }
           syncedNote = note
           return note
         })
         localStorage.setItem('minitu_notes', JSON.stringify(updated))
-        // Sync to cloud — await 确保云端已有该笔记行后再关联图解
         if (syncedNote) {
           try {
             const syncRes = await fetch('/api/sync', {
@@ -182,21 +242,18 @@ function EditForm() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ table: 'notes', action: 'upsert', data: syncedNote }),
             })
-            if (!syncRes.ok) {
-              cloudSyncFailed = true
-            }
+            if (!syncRes.ok) cloudSyncFailed = true
           } catch (e) {
             cloudSyncFailed = true
           }
         }
       }
 
-      // 同步图解关联（对比初始和当前选中，异步走 API）
+      // 同步图解关联
       if (savedNoteId) {
         const initial = new Set(initialPatternIds)
         const current = new Set(selectedPatternIds)
-        // 新增的关联
-        const linkResults = await Promise.all(
+        await Promise.all(
           selectedPatternIds
             .filter((pid) => !initial.has(pid))
             .map((pid) =>
@@ -206,11 +263,6 @@ function EditForm() {
               }),
             ),
         )
-        const failedLinks = linkResults.filter((r) => !r.ok)
-        if (failedLinks.length > 0) {
-          console.warn('[save] 图解关联部分失败，失败的 patternId:', failedLinks.map((r) => r.pid))
-        }
-        // 移除的关联
         await Promise.all(
           initialPatternIds
             .filter((pid) => !current.has(pid))
@@ -237,6 +289,8 @@ function EditForm() {
         : [...prev, patternId]
     )
   }
+
+  const totalImages = existingImages.length + imageFiles.length
 
   if (!loaded) return null
 
@@ -291,22 +345,43 @@ function EditForm() {
           />
         </div>
 
-        {/* Image */}
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold cursor-pointer transition-colors hover:text-[var(--skin-primary)]"
-                 style={{ color: 'var(--skin-text-secondary)' }}>
-            <Upload className="size-3.5" />图片
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-          </label>
-          {imagePreview && (
-            <div className="relative inline-flex">
-              <img src={imagePreview} alt="" className="h-16 rounded object-cover border-2 border-[var(--skin-border)]" />
-              <button onClick={removeImage} className="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-red-500 text-white flex items-center justify-center"><X className="size-2.5" /></button>
+        {/* Images — 多图上传 */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold cursor-pointer transition-colors hover:text-[var(--skin-primary)]"
+                   style={{ color: 'var(--skin-text-secondary)' }}>
+              <Upload className="size-3.5" />图片 ({totalImages}/9)
+              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImagesSelect} />
+            </label>
+          </div>
+
+          {totalImages > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {/* 已有图片（编辑模式） */}
+              {existingImages.map((img, i) => (
+                <div key={`e-${i}`} className="relative group rounded-lg overflow-hidden border-2 border-[var(--skin-border)] aspect-square">
+                  <img src={img.thumb} alt="" className="w-full h-full object-cover" />
+                  <button onClick={() => removeExistingImage(i)}
+                    className="absolute top-1 right-1 size-5 rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))}
+              {/* 新增图片预览 */}
+              {imagePreviews.map((preview, i) => (
+                <div key={`n-${i}`} className="relative group rounded-lg overflow-hidden border-2 border-[var(--skin-primary)] aspect-square">
+                  <img src={preview} alt="" className="w-full h-full object-cover" />
+                  <button onClick={() => removeNewImage(i)}
+                    className="absolute top-1 right-1 size-5 rounded-full bg-red-500 text-white flex items-center justify-center">
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* 关联图解：仅在分类名称包含"编织"时显示 */}
+        {/* 关联图解 */}
         {(() => {
           const col = collections.find(c => c.id === form.collectionId)
           const isKnitting = !!(col && col.title && col.title.includes('编织'))

@@ -1,21 +1,39 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, Trash2, Calendar, Layers, Tag } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Calendar, Layers, Tag, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { getPatternsForNote } from "@/lib/api/patterns-api";
 import type { Resource } from "@/lib/types";
 
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[];
   collectionId?: string; collectionName?: string;
-  createdAt: string; updatedAt?: string; image?: string; imageThumb?: string;
+  createdAt: string; updatedAt?: string;
+  image?: string; imageThumb?: string;
+  images?: string[]; imageThumbs?: string[];
 }
+
+/** Helper: 获取所有可用图片（兼容旧单图格式） */
+function getNoteImages(note: Note): { full: string; thumb: string }[] {
+  const result: { full: string; thumb: string }[] = []
+  if (note.images?.length) {
+    const thumbs = note.imageThumbs?.length === note.images.length ? note.imageThumbs : []
+    for (let i = 0; i < note.images.length; i++) {
+      result.push({ full: note.images[i], thumb: thumbs[i] || note.images[i] })
+    }
+  } else if (note.image || note.imageThumb) {
+    result.push({ full: note.image!, thumb: note.imageThumb || note.image! })
+  }
+  return result
+}
+
 export default function NoteDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [note, setNote] = useState<Note | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [linkedPatterns, setLinkedPatterns] = useState<Resource[]>([]);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -24,7 +42,6 @@ export default function NoteDetail() {
         const found = notes.find((n) => n.id === id);
         if (found) {
           setNote(found);
-          // Fix A3: 本地有则同步到云端，确保云端有备份
           fetch('/api/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -32,7 +49,6 @@ export default function NoteDetail() {
           }).catch((e) => console.warn('[sync] note detail sync failed:', e));
           return;
         }
-        // Fix A2: localStorage 找不到，尝试从云端加载兜底
         try {
           const cloudRes = await fetch('/api/sync');
           if (cloudRes.ok) {
@@ -50,6 +66,8 @@ export default function NoteDetail() {
                 createdAt: cloudNote.createdAt || cloudNote.created_at,
                 image: cloudNote.image,
                 imageThumb: cloudNote.imageThumb,
+                images: cloudNote.images,
+                imageThumbs: cloudNote.imageThumbs,
               });
               return;
             }
@@ -63,7 +81,6 @@ export default function NoteDetail() {
       }
     };
     load();
-    // 加载关联图解（异步走 VPS PostgREST）
     if (id) {
       void (async () => {
         try {
@@ -82,13 +99,11 @@ export default function NoteDetail() {
       const notes: Note[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
       const updated = notes.filter((n) => n.id !== note.id);
       localStorage.setItem("minitu_notes", JSON.stringify(updated));
-      // 记录墓碑，防止下次从云端合并时复活
       try {
         const deleted = JSON.parse(localStorage.getItem("minitu_notes_deleted") || "[]");
         if (!deleted.includes(note.id)) deleted.push(note.id);
         localStorage.setItem("minitu_notes_deleted", JSON.stringify(deleted));
       } catch {}
-      // 同步删除到云端
       await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,6 +113,22 @@ export default function NoteDetail() {
     } catch {
       console.warn('[notes] 删除笔记异常');
     }
+  };
+
+  // Simple markdown-like rendering
+  const renderContent = (md: string) => {
+    return md
+      .split("\n")
+      .map((line, i) => {
+        if (line.startsWith("### ")) return `<h3 class="text-lg font-extrabold mt-6 mb-2" style="font-family:var(--font-display);color:var(--skin-text)">${line.slice(4)}</h3>`;
+        if (line.startsWith("## ")) return `<h2 class="text-xl font-extrabold mt-8 mb-3" style="font-family:var(--font-display);color:var(--skin-text)">${line.slice(3)}</h2>`;
+        if (line.startsWith("# ")) return `<h1 class="text-2xl font-extrabold mt-8 mb-3" style="font-family:var(--font-display);color:var(--skin-text)">${line.slice(2)}</h1>`;
+        if (line.startsWith("- ")) return `<li class="ml-4 text-sm leading-relaxed" style="color:var(--skin-text-secondary)">${line.slice(2)}</li>`;
+        if (line.startsWith("> ")) return `<blockquote class="border-l-[3px] pl-4 my-3 text-sm italic" style="border-color:var(--skin-primary);color:var(--skin-text-secondary);font-family:var(--font-display)">${line.slice(2)}</blockquote>`;
+        if (line.trim() === "") return '<br/>';
+        return `<p class="text-sm leading-relaxed" style="color:var(--skin-text)">${line}</p>`;
+      })
+      .join("");
   };
 
   if (notFound) {
@@ -119,21 +150,7 @@ export default function NoteDetail() {
     );
   }
 
-  // Simple markdown-like rendering
-  const renderContent = (md: string) => {
-    return md
-      .split("\n")
-      .map((line, i) => {
-        if (line.startsWith("### ")) return `<h3 class="text-lg font-extrabold mt-6 mb-2" style="font-family:var(--font-display);color:var(--skin-text)">${line.slice(4)}</h3>`;
-        if (line.startsWith("## ")) return `<h2 class="text-xl font-extrabold mt-8 mb-3" style="font-family:var(--font-display);color:var(--skin-text)">${line.slice(3)}</h2>`;
-        if (line.startsWith("# ")) return `<h1 class="text-2xl font-extrabold mt-8 mb-3" style="font-family:var(--font-display);color:var(--skin-text)">${line.slice(2)}</h1>`;
-        if (line.startsWith("- ")) return `<li class="ml-4 text-sm leading-relaxed" style="color:var(--skin-text-secondary)">${line.slice(2)}</li>`;
-        if (line.startsWith("> ")) return `<blockquote class="border-l-[3px] pl-4 my-3 text-sm italic" style="border-color:var(--skin-primary);color:var(--skin-text-secondary);font-family:var(--font-display)">${line.slice(2)}</blockquote>`;
-        if (line.trim() === "") return '<br/>';
-        return `<p class="text-sm leading-relaxed" style="color:var(--skin-text)">${line}</p>`;
-      })
-      .join("");
-  };
+  const images = getNoteImages(note);
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8 page-enter">
@@ -146,13 +163,57 @@ export default function NoteDetail() {
         返回笔记
       </button>
 
-      {/* Cover Image */}
-      {note.image && (
-        <div className="rounded-2xl overflow-hidden mb-8 border-2 border-[var(--skin-border)]">
+      {/* Image Gallery */}
+      {images.length > 0 && (
+        <div className={images.length === 1 ? "rounded-2xl overflow-hidden mb-8 border-2 border-[var(--skin-border)]" : "mb-8 space-y-2"}>
+          {images.length === 1 ? (
+            <img
+              src={images[0].full}
+              alt={note.title}
+              className="w-full max-h-96 object-cover cursor-pointer hover:opacity-95 transition-opacity"
+              onClick={() => setLightboxIdx(0)}
+            />
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {images.map((img, i) => (
+                <div key={i} className="rounded-xl overflow-hidden border-2 border-[var(--skin-border)] aspect-square cursor-pointer hover:opacity-90 transition-opacity"
+                     onClick={() => setLightboxIdx(i)}>
+                  <img src={img.thumb} alt="" className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxIdx !== null && images[lightboxIdx] && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4"
+             onClick={() => setLightboxIdx(null)}>
+          <button className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
+                  onClick={() => setLightboxIdx(null)}>
+            <X className="size-8" />
+          </button>
+          {images.length > 1 && (
+            <>
+              <button className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setLightboxIdx(prev => Math.max(0, prev! - 1)); }}>
+                <ChevronLeft className="size-10" />
+              </button>
+              <button className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setLightboxIdx(prev => Math.min(images.length - 1, prev! + 1)); }}>
+                <ChevronRight className="size-10" />
+              </button>
+              <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm font-mono">
+                {lightboxIdx + 1} / {images.length}
+              </span>
+            </>
+          )}
           <img
-            src={note.image}
-            alt={note.title}
-            className="w-full max-h-96 object-cover"
+            src={images[lightboxIdx].full}
+            alt=""
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}
@@ -197,7 +258,6 @@ export default function NoteDetail() {
         />
       )}
 
-      {/* Empty content hint */}
       {!note.content && (
         <div className="text-center py-16">
           <p className="text-sm text-[var(--skin-text-secondary)] font-bold tracking-wider">

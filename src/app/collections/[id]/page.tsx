@@ -10,6 +10,7 @@ interface GardenNote {
   id: string; title: string; content: string; type: string; tags: string[]
   collectionId?: string; collectionName?: string
   createdAt: string; image?: string; imageThumb?: string
+  images?: string[]; imageThumbs?: string[]
 }
 
 const typeIcons: Record<string, any> = { link: ExternalLink, image: ImageIcon, book: BookOpen, movie: Film, tool: Wrench, article: FileText }

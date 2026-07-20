@@ -2,12 +2,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Trash2, Upload, X, Layers, Pencil, BookOpen, Check, Edit3 } from "lucide-react";
+import { toast } from "sonner";
 import { updateLocalCollection } from '@/lib/db/local-store';
 
 interface Note {
   id: string; title: string; content: string; type: string; tags: string[];
   collectionId?: string; collectionName?: string;
-  createdAt: string; updatedAt?: string; image?: string; imageThumb?: string;
+  createdAt: string; updatedAt?: string;
+  image?: string; imageThumb?: string;
+  images?: string[]; imageThumbs?: string[];
 }
 interface Collection { id: string; title: string; }
 
@@ -25,10 +28,8 @@ const bentoPalette = [
 ];
 
 // 模块级缓存：按 cacheKey 缓存云端数据，避免重复全量拉取。
-// cacheKey 在每次组件挂载时更新，确保同会话内导航回 /notes 时重新获取。
 let _syncNotesCache: { key: string; promise: Promise<Note[]> } | null = null;
 
-// Pull notes from cloud via /api/sync (server-side service key, no RLS issues)
 async function syncNotesFromCloud(cacheKey: string): Promise<Note[]> {
   if (_syncNotesCache && _syncNotesCache.key === cacheKey) return _syncNotesCache.promise;
   const promise = (async () => {
@@ -48,10 +49,11 @@ async function syncNotesFromCloud(cacheKey: string): Promise<Note[]> {
         updatedAt: r.updatedAt,
         image: r.image || undefined,
         imageThumb: r.imageThumb || undefined,
+        images: r.images || undefined,
+        imageThumbs: r.imageThumbs || undefined,
       }));
     } catch { return []; }
   })();
-  // 失败时清空缓存，允许下次重试
   promise.catch(() => { _syncNotesCache = null; });
   _syncNotesCache = { key: cacheKey, promise };
   return promise;
@@ -80,20 +82,39 @@ function compressImage(file: File, maxW: number, quality: number): Promise<{ ful
   });
 }
 
+/** 批量压缩多张图片 */
+async function compressImages(files: File[]): Promise<{ images: string[]; imageThumbs: string[] }> {
+  const results = await Promise.all(
+    files.map(f => compressImage(f, 1200, 0.7).catch(() => null))
+  );
+  const valid = results.filter((r): r is { full: string; thumb: string } => r !== null);
+  return {
+    images: valid.map(r => r.full),
+    imageThumbs: valid.map(r => r.thumb),
+  };
+}
+
+/** Helper: 获取笔记第一张图（兼容新旧格式） */
+function getFirstImage(note: Note): { full: string; thumb: string } | null {
+  if (note.images?.length) {
+    const thumb = note.imageThumbs?.[0] || note.images[0];
+    return { full: note.images[0], thumb };
+  }
+  if (note.image || note.imageThumb) {
+    return { full: note.image!, thumb: note.imageThumb || note.image! };
+  }
+  return null;
+}
+
 /* 便当盒网格尺寸分配 — 自适应项数 */
 function getBentoClass(i: number, hasImage: boolean, total: number) {
-  // 仅 1 篇：撑满整行，居中限宽
   if (total === 1) return 'bento-solo';
-  // 2 篇：全部 1x1
   if (total === 2) return 'bento-1x1';
-  // 3 篇：全 1x1，保持视觉一致
   if (total === 3) return 'bento-1x1';
-  // 4 篇：第一张有图时 2x2，其余全 1x1
   if (total === 4) {
     if (hasImage && i === 0) return 'bento-2x2';
     return 'bento-1x1';
   }
-  // ≥5 篇：节奏化布局
   if (hasImage && i === 0) return 'bento-2x2';
   const m = i % 5;
   if (m === 1 && hasImage) return 'bento-2x1';
@@ -109,8 +130,8 @@ export default function Notes() {
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ title: "", content: "", tags: "", collectionId: "" });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
@@ -122,26 +143,22 @@ export default function Notes() {
   // UUID pattern: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
   const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 
-  // Load notes: migrate old IDs → then pull from cloud
+  // Load notes
   useEffect(() => {
     const cacheKey = 'notes-' + Date.now()
     const loadNotes = async () => {
       try {
         let local: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]');
         let migrated = false;
-
-        // Migrate old non-UUID note IDs to proper UUIDs
         const idMap = new Map<string, string>();
         for (const n of local) {
           if (!isUUID(n.id)) {
             const newId = crypto.randomUUID?.() || 'n-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-            console.log('[migrate] note ID:', n.id.substring(0, 12), '→', newId.substring(0, 12), 'title:', n.title);
             idMap.set(n.id, newId);
             n.id = newId;
             migrated = true;
           }
         }
-        // Update collectionId references if any were migrated
         if (migrated) {
           for (const n of local) {
             if (n.collectionId && idMap.has(n.collectionId)) {
@@ -150,67 +167,54 @@ export default function Notes() {
           }
           localStorage.setItem('minitu_notes', JSON.stringify(local));
           setNotes(local);
-          // Re-sync all migrated notes to cloud
           local.forEach(n => {
             fetch('/api/sync', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ table: 'notes', action: 'upsert', data: n }),
-            }).catch((e) => console.warn('[sync] re-sync failed:', e));
+            }).catch(() => {});
           });
         } else {
           setNotes(local);
         }
         setCollections(JSON.parse(localStorage.getItem('garden_collections') || '[]'));
 
-        // Pull cloud notes and merge
         const cloud = await syncNotesFromCloud(cacheKey);
-        console.log('[loadNotes] cloud count:', cloud.length)
         if (cloud.length > 0) {
-          // 读取墓碑列表，过滤掉已删除的笔记，防止从云端复活
           const deletedIds: string[] = (() => {
             try { return JSON.parse(localStorage.getItem(DELETED_NOTES_KEY) || '[]'); } catch { return []; }
           })();
           const deletedSet = new Set(deletedIds);
-          let changed = false;
-          // 策略：云端永远优先。以云端数据为基础，本地数据补充云端没有的笔记
           const mergedMap = new Map<string, Note>();
-          // 1. 先放所有云端笔记
           for (const n of cloud) {
             if (deletedSet.has(n.id)) continue;
             mergedMap.set(n.id, n);
           }
-          // 2. 补充本地有但云端没有的笔记
           for (const n of local) {
-            if (!mergedMap.has(n.id)) {
-              mergedMap.set(n.id, n);
-            }
+            if (!mergedMap.has(n.id)) mergedMap.set(n.id, n);
           }
-          // 3. 检查是否有变化
           const mergedList = Array.from(mergedMap.values());
-          // 只要云端有数据，就用合并结果覆盖本地
           setNotes(mergedList);
           localStorage.setItem('minitu_notes', JSON.stringify(mergedList));
         }
-      } catch { /* local data is fine */ }
+      } catch {}
     };
     loadNotes();
   }, []);
 
-  // Sync helper: push note to VPS (fire-and-forget)
   const syncNote = (note: Note) => {
     fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
-    }).catch((e) => console.warn('[sync] syncNote failed:', e));
+    }).catch(() => {});
   };
   const syncNoteDelete = (id: string) => {
     fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: 'notes', action: 'delete', data: { id } }),
-    }).catch((e) => console.warn('[sync] delete sync failed:', e));
+    }).catch(() => {});
   };
 
   const save = (n: Note[]) => { setNotes(n); localStorage.setItem("minitu_notes", JSON.stringify(n)); };
@@ -220,27 +224,18 @@ export default function Notes() {
     setEditCollectionName(col.title);
     setTimeout(() => renameInputRef.current?.focus(), 50);
   };
-
   const saveRename = () => {
-    if (!editingCollectionId || !editCollectionName.trim()) {
-      setEditingCollectionId(null);
-      return;
-    }
-    // Use local-store which also syncs to cloud
+    if (!editingCollectionId || !editCollectionName.trim()) { setEditingCollectionId(null); return; }
     updateLocalCollection(editingCollectionId, { title: editCollectionName.trim() });
-    // Refresh collections from localStorage (updateLocalCollection writes there)
     const updatedCols = JSON.parse(localStorage.getItem('garden_collections') || '[]');
     setCollections(updatedCols);
-    // 同步更新所有相关笔记的 collectionName
     const updatedNotes = notes.map(n =>
       n.collectionId === editingCollectionId ? { ...n, collectionName: editCollectionName.trim() } : n
     );
     save(updatedNotes);
-    // Sync affected notes to cloud
     updatedNotes.filter(n => n.collectionId === editingCollectionId).forEach(syncNote);
     setEditingCollectionId(null);
   };
-
   const cancelRename = () => { setEditingCollectionId(null); };
 
   const filtered = notes.filter(n => {
@@ -252,23 +247,40 @@ export default function Notes() {
 
   const uncategorizedCount = notes.filter(n => !n.collectionId).length;
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]; if (!f || !f.type.startsWith("image/")) return;
-    setImageFile(f); setImagePreview(URL.createObjectURL(f));
+  const handleImagesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const images = files.filter(f => f.type.startsWith('image/'));
+    if (images.length === 0) return;
+    const total = imageFiles.length + images.length;
+    if (total > 9) { toast.error(`最多 9 张图片（已有 ${imageFiles.length} 张）`); return; }
+    setImageFiles(prev => [...prev, ...images]);
+    setImagePreviews(prev => [...prev, ...images.map(f => URL.createObjectURL(f))]);
   };
-  const removeImage = () => { setImageFile(null); setImagePreview(null); if (fileRef.current) fileRef.current.value = ""; };
+
+  const removeNewImage = (idx: number) => {
+    URL.revokeObjectURL(imagePreviews[idx]);
+    setImageFiles(prev => prev.filter((_, i) => i !== idx));
+    setImagePreviews(prev => prev.filter((_, i) => i !== idx));
+  };
 
   const resetForm = () => {
     setForm({ title: "", content: "", tags: "", collectionId: "" });
-    removeImage(); setShowAdd(false);
+    imagePreviews.forEach(p => URL.revokeObjectURL(p));
+    setImageFiles([]);
+    setImagePreviews([]);
+    setShowAdd(false);
   };
 
   const quickAdd = async () => {
     if (!form.title.trim()) return;
     setUploading(true);
-    let image: string | undefined, imageThumb: string | undefined;
-    if (imageFile) {
-      try { const c = await compressImage(imageFile, 1200, 0.7); image = c.full; imageThumb = c.thumb; } catch {}
+    let images: string[] = [], imageThumbs: string[] = [];
+    if (imageFiles.length > 0) {
+      try {
+        const compressed = await compressImages(imageFiles);
+        images = compressed.images;
+        imageThumbs = compressed.imageThumbs;
+      } catch (e) { console.warn('[quickAdd] 图片压缩失败:', e); }
     }
     const col = collections.find(c => c.id === form.collectionId);
     const note: Note = {
@@ -277,7 +289,11 @@ export default function Notes() {
       tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
       collectionId: form.collectionId || undefined,
       collectionName: col?.title,
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), image, imageThumb,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      images: images.length > 0 ? images : undefined,
+      imageThumbs: imageThumbs.length > 0 ? imageThumbs : undefined,
+      image: images[0],
+      imageThumb: imageThumbs[0],
     };
     save([note, ...notes]);
     syncNote(note);
@@ -287,7 +303,6 @@ export default function Notes() {
   const del = (id: string) => {
     save(notes.filter(n => n.id !== id));
     syncNoteDelete(id);
-    // 记录墓碑，防止云端合并时复活
     try {
       const deleted = JSON.parse(localStorage.getItem(DELETED_NOTES_KEY) || '[]');
       if (!deleted.includes(id)) deleted.push(id);
@@ -391,19 +406,28 @@ export default function Notes() {
                    onChange={e => setForm({ ...form, tags: e.target.value })} />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          {/* 多图上传 */}
+          <div className="space-y-2">
             <label className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold cursor-pointer transition-colors hover:text-[var(--skin-primary)]"
                    style={{ color: 'var(--skin-text-secondary)' }}>
-              <Upload className="size-3.5" />图片
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+              <Upload className="size-3.5" />图片 ({imageFiles.length}/9)
+              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImagesSelect} />
             </label>
-            {imagePreview && (
-              <div className="relative inline-flex">
-                <img src={imagePreview} alt="" className="h-10 rounded object-cover border-2 border-[var(--skin-border)]" />
-                <button onClick={removeImage} className="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-red-500 text-white flex items-center justify-center"><X className="size-2.5" /></button>
+            {imagePreviews.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {imagePreviews.map((preview, i) => (
+                  <div key={i} className="relative inline-flex">
+                    <img src={preview} alt="" className="h-14 w-14 rounded object-cover border-2 border-[var(--skin-primary)]" />
+                    <button onClick={() => removeNewImage(i)}
+                      className="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-red-500 text-white flex items-center justify-center">
+                      <X className="size-2.5" />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
+
           <div className="flex gap-3 justify-end">
             <button onClick={resetForm} className="btn btn-ghost btn-sm">取消</button>
             <button onClick={quickAdd} disabled={uploading} className="btn btn-sm">
@@ -425,11 +449,11 @@ export default function Notes() {
           )}
         </div>
       ) : (
-        /* ===== 便当盒网格 ===== */
         <div className="bento-grid">
           {filtered.map((n, i) => {
             const pal = bentoPalette[i % bentoPalette.length];
-            const hasImage = !!(n.imageThumb || n.image);
+            const firstImg = getFirstImage(n);
+            const hasImage = firstImg !== null;
             const bentoClass = getBentoClass(i, hasImage, filtered.length);
             const isLarge = bentoClass === 'bento-2x2';
 
@@ -439,7 +463,7 @@ export default function Notes() {
                 className={`${bentoClass} group cursor-pointer relative`}
                 onClick={() => router.push(`/notes/${n.id}`)}
               >
-                {/* Mobile: ⋮ 菜单 — 放在 card-bento 外面避免 overflow:hidden 裁剪 */}
+                {/* Mobile: ⋮ menu */}
                 <div className="sm:hidden absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
                   <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(menuOpenId === n.id ? null : n.id); setConfirmDelete(null); }}
                     className="p-1.5 text-[var(--skin-text-secondary)] opacity-40 hover:opacity-100 transition-opacity">
@@ -454,26 +478,16 @@ export default function Notes() {
                         {confirmDelete?.id === n.id ? (
                           <>
                             <button onClick={(e) => { e.stopPropagation(); del(n.id); setConfirmDelete(null); }}
-                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
-                              确认
-                            </button>
+                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">确认</button>
                             <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
-                              className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">
-                              取消
-                            </button>
+                              className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">取消</button>
                           </>
                         ) : (
                           <>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); router.push(`/notes/edit?id=${n.id}`); }}
-                              className="px-2.5 py-1 rounded-lg bg-gray-800 text-white text-xs font-bold whitespace-nowrap shadow-sm">
-                              编辑
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); setConfirmDelete({ id: n.id, title: n.title }); }}
-                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
-                              删除
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); router.push(`/notes/edit?id=${n.id}`); }}
+                              className="px-2.5 py-1 rounded-lg bg-gray-800 text-white text-xs font-bold whitespace-nowrap shadow-sm">编辑</button>
+                            <button onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); setConfirmDelete({ id: n.id, title: n.title }); }}
+                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">删除</button>
                           </>
                         )}
                       </div>
@@ -482,10 +496,10 @@ export default function Notes() {
                 </div>
 
                 <div className="card-bento flex-1 min-h-0 flex flex-col">
-                  {/* 图片区 — 大卡片全宽顶图，普通卡片可选 */}
+                  {/* 图片区 */}
                   {hasImage && (
                     <div className={`overflow-hidden shrink-0 ${isLarge ? 'h-52 sm:h-64' : 'h-32 sm:h-40'}`}>
-                      <img src={n.imageThumb || n.image} alt={n.title}
+                      <img src={firstImg!.thumb} alt={n.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy" />
                     </div>
@@ -493,7 +507,6 @@ export default function Notes() {
 
                   {/* 正文 */}
                   <div className="p-4 sm:p-5 flex flex-col flex-1">
-                    {/* Collection badge */}
                     <div className="flex items-center gap-1.5 mb-2">
                       <div className="size-1.5 rounded-full shrink-0" style={{ backgroundColor: pal.accent }} />
                       <span className="text-[10px] font-bold tracking-wider uppercase"
@@ -502,20 +515,17 @@ export default function Notes() {
                       </span>
                     </div>
 
-                    {/* Title */}
                     <h3 className={`font-extrabold leading-snug line-clamp-2 group-hover:opacity-70 transition-opacity mb-auto ${isLarge ? 'text-base sm:text-xl' : 'text-sm sm:text-base'}`}
                         style={{ color: 'var(--skin-text)', fontFamily: 'var(--font-display)' }}>
                       {n.title}
                     </h3>
 
-                    {/* Preview — large cards show more */}
                     {n.content && (
                       <p className={`text-xs leading-relaxed text-[var(--skin-text-secondary)] mt-2 ${isLarge ? 'line-clamp-3' : 'line-clamp-2'}`}>
                         {n.content.slice(0, isLarge ? 160 : 80)}
                       </p>
                     )}
 
-                    {/* Tags */}
                     {n.tags.length > 0 && (
                       <div className="flex gap-1 flex-wrap mt-3">
                         {n.tags.slice(0, isLarge ? 4 : 2).map(t => (
@@ -527,23 +537,17 @@ export default function Notes() {
                       </div>
                     )}
 
-                    {/* Footer */}
                     <div className="flex items-center justify-between pt-3 mt-3 border-t-2 border-[var(--skin-border)]">
                       <span className="text-[10px] font-mono text-[var(--skin-text-secondary)]">
                         {new Date(n.createdAt).toLocaleDateString('zh-CN')}
                       </span>
-                      {/* Desktop: hover 编辑/删除或确认/取消 */}
                       <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {confirmDelete?.id === n.id ? (
                           <>
                             <button onClick={(e) => { e.stopPropagation(); del(n.id); setConfirmDelete(null); }}
-                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">
-                              确认
-                            </button>
+                              className="px-2.5 py-1 rounded-lg bg-red-500 text-white text-xs font-bold whitespace-nowrap shadow-sm">确认</button>
                             <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
-                              className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">
-                              取消
-                            </button>
+                              className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold whitespace-nowrap shadow-sm">取消</button>
                           </>
                         ) : (
                           <>

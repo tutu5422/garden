@@ -51,6 +51,9 @@ const noteUpsertDataSchema = z.object({
   content: z.string().optional().default(''),
   image: z.string().nullable().optional(),
   imageThumb: z.string().nullable().optional(),
+  /** 多图支持：完整尺寸与缩略图数组 */
+  images: z.array(z.string()).optional().default([]),
+  imageThumbs: z.array(z.string()).optional().default([]),
   tags: z.array(z.string()).optional().default([]),
   collectionId: z.string().nullable().optional(),
   collectionName: z.string().nullable().optional(),

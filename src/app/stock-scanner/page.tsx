@@ -11,6 +11,11 @@ import { Search, X } from 'lucide-react'
 interface StockScore {
   code: string; name: string; industry: string
   close: number; pe_ttm: number | null; pb: number | null
+  // Adj state: 'qfq' = real front-adjusted price; 'hfq_degraded' = backend fell back to raw hfq
+  close_adj?: 'qfq' | 'hfq_degraded'
+  close_ratio?: number
+  close_hfq?: number  // raw hfq close, for debugging
+  high_5y?: number | null  // 5y high (qfq) — single source of truth, same as stock_daily
   div_yield: number; consecutive_div_years?: number
   roe: number | null; liability_ratio?: number
   price_pct: number; pe_pct: number; pb_pct: number
@@ -20,6 +25,7 @@ interface StockScore {
   ind_score: number; dd_score: number; div_consist_score?: number
   penalty?: number; penalty_reasons?: string[]
   composite: number; signal: 'strong' | 'focus' | 'watch' | 'none'
+  is_cyclical?: boolean; ipo_years?: number | null
 }
 
 interface ScoresMeta {
@@ -66,7 +72,10 @@ function StockCard({ s, onClick }: { s: StockScore; onClick: () => void }) {
       <div className="flex items-start justify-between mb-2">
         <div>
           <div className="font-semibold text-white text-sm">{s.name}</div>
-          <div className="text-xs text-gray-500">{s.code}</div>
+          <div className="text-xs text-gray-500 flex items-center gap-1.5">
+            <span>{s.code}</span>
+            {s.close > 0 && <span className="text-gray-300 font-medium">¥{s.close.toFixed(2)}</span>}
+          </div>
         </div>
         <span className="text-xs px-2 py-0.5 rounded-full border" style={{ color: sig.color, borderColor: sig.color, background: sig.bg }}>
           {s.composite.toFixed(0)}分
@@ -80,8 +89,9 @@ function StockCard({ s, onClick }: { s: StockScore; onClick: () => void }) {
         <div className="flex justify-between"><span className="text-gray-500">跌幅</span><span className="text-red-400">{dd}%↓</span></div>
       </div>
 
-      <div className="mt-2 pt-2 border-t border-white/5 text-xs text-gray-500 truncate">
+      <div className="mt-2 pt-2 border-t border-white/5 text-xs text-gray-500 truncate flex items-center gap-1">
         {s.industry?.substring(0, 20) || '—'}
+        {s.is_cyclical && <span className="text-[10px] px-1 rounded bg-amber-500/10 text-amber-400">周期</span>}
       </div>
     </div>
   )
@@ -92,27 +102,78 @@ function StockCard({ s, onClick }: { s: StockScore; onClick: () => void }) {
    ================================================================ */
 
 function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
-  const [kline, setKline] = useState<{d:string;c:number;pe:number|null;pb:number|null}[] | null>(null)
+  const [klineRaw, setKlineRaw] = useState<{data?: {d:string;c_qfq:number;c_hfq:number;pe:number|null;pb:number|null;div?:number}[], high_5y?:number} | null>(null)
+  const [timeRange, setTimeRange] = useState<'1y' | '3y' | '5y' | '10y' | 'all'>('all')
+  
+  const kline = klineRaw?.data || (Array.isArray(klineRaw) ? klineRaw as any[] : null)
   
   useEffect(() => {
     fetch(`https://storage.minitu.online/storage/stock-klines/${s.code}.json`)
       .then(r => r.json())
-      .then(data => setKline(Array.isArray(data) ? data : null))
-      .catch(() => setKline(null))
+      .then(data => setKlineRaw(data))
+      .catch(() => setKlineRaw(null))
   }, [s.code])
 
-  // K-line chart option
+  // Time range → dataZoom
+  const zoomRange = useMemo(() => {
+    if (!kline || kline.length === 0) return { start: 0, end: 100 }
+    const total = kline.length
+    const ranges: Record<string, [number, number]> = {
+      '1y': [Math.max(0, ((total - 252) / total) * 100), 100],
+      '3y': [Math.max(0, ((total - 756) / total) * 100), 100],
+      '5y': [Math.max(0, ((total - 1260) / total) * 100), 100],
+      '10y': [Math.max(0, ((total - 2520) / total) * 100), 100],
+      'all': [0, 100],
+    }
+    const [s, e] = ranges[timeRange] || [0, 100]
+    return { start: s, end: e }
+  }, [kline, timeRange])
+
+  // K-line chart option — with PE valuation zones + dividend markers + high-water mark
   const klineOption = useMemo(() => {
     if (!kline || kline.length === 0) return null
     const dates = kline.map(k => k.d)
-    const closes = kline.map(k => k.c)
+    const closes = kline.map(k => k.c_qfq)
     const pes = kline.map(k => k.pe)
-    const pbs = kline.map(k => k.pb)
+    const high5y = klineRaw?.high_5y
+    
+    // PE valuation zones
+    const peZones = pes.length > 0 ? [
+      [{ yAxis: 0, itemStyle: { color: 'rgba(34,197,94,0.06)' } }, { yAxis: 15 }],
+      [{ yAxis: 15, itemStyle: { color: 'rgba(234,179,8,0.04)' } }, { yAxis: 30 }],
+      [{ yAxis: 30, itemStyle: { color: 'rgba(239,68,68,0.06)' } }, { yAxis: 'max' }],
+    ] : []
+    
+    // Dividend markers
+    const divMarkers: any[] = []
+    kline.forEach((k, i) => {
+      if ((k as any).div && (k as any).div > 0) {
+        divMarkers.push({
+          name: '分红',
+          coord: [dates[i], closes[i]],
+          value: `¥${(k as any).div.toFixed(2)}`,
+          symbol: 'pin',
+          symbolSize: 18,
+          itemStyle: { color: '#f59e0b' },
+        })
+      }
+    })
+    
+    // Historical high water mark
+    const highMark = high5y ? {
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        lineStyle: { color: 'rgba(239,68,68,0.4)', type: 'dashed' as const, width: 1 },
+        label: { show: true, position: 'end' as const, formatter: `历史高 ¥${high5y.toFixed(2)}`, fontSize: 9, color: '#ef4444' },
+        data: [{ yAxis: high5y }],
+      }
+    } : {}
     
     return {
       backgroundColor: 'transparent',
       tooltip: { trigger: 'axis' as const },
-      legend: { data: ['收盘价', 'PE', 'PB'], bottom: 0, textStyle: { color: '#6b7280', fontSize: 10 } },
+      legend: { data: ['收盘价', 'PE'], bottom: 0, textStyle: { color: '#6b7280', fontSize: 10 } },
       grid: { left: 55, right: 55, top: 10, bottom: 35 },
       xAxis: { type: 'category' as const, data: dates, 
         axisLabel: { show: true, fontSize: 9, color: '#6b7280', formatter: (v:string) => v.slice(5) },
@@ -130,16 +191,23 @@ function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
           lineStyle: { color: '#22c55e', width: 1.5 },
           areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1,
             colorStops: [{offset:0,color:'rgba(34,197,94,0.15)'},{offset:1,color:'rgba(34,197,94,0)'}] } },
-          showSymbol: false },
+          showSymbol: false,
+          ...highMark,
+          ...(divMarkers.length > 0 ? { markPoint: { data: divMarkers, symbol: 'pin', symbolSize: 20, label: { show: false } } } : {}),
+        },
         { name: 'PE', type: 'line', data: pes, yAxisIndex: 1,
-          lineStyle: { color: '#eab308', width: 1 }, showSymbol: false },
+          lineStyle: { color: '#eab308', width: 1 }, showSymbol: false,
+          ...(peZones.length > 0 ? { markArea: { silent: true, data: peZones } } : {}),
+        },
       ],
-      dataZoom: [{ type: 'inside', start: 0, end: 100 }],
+      dataZoom: [{ type: 'inside', ...zoomRange }],
     }
-  }, [kline])
+  }, [kline, klineRaw, zoomRange])
   
   // Position bar (simpler version when no kline data)
-  const estimatedHigh = s.close / (1 + s.drawdown / 100)
+  // Use stock_daily.high_5y as the single source — no ad-hoc recompute.
+  const high5y = s.high_5y
+  const estimatedHigh = high5y && s.close ? high5y : null
   const positionPct = Math.max(0, Math.min(100, s.price_pct))
   
   const rangeOption = useMemo(() => ({
@@ -186,19 +254,22 @@ function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
 
         {/* Key metrics — one compact row */}
         <div className="grid grid-cols-8 gap-1.5 mb-3">
-          {[
-            { label: '价格', value: s.close?.toFixed(2) },
-            { label: 'PE', value: s.pe_ttm?.toFixed(1) || '—' },
-            { label: 'PB', value: s.pb?.toFixed(2) || '—' },
-            { label: '股息', value: s.div_yield > 0 ? `${s.div_yield.toFixed(1)}%` : '—' },
-            { label: 'ROE', value: s.roe ? `${s.roe.toFixed(0)}%` : '—' },
-            { label: '负债', value: s.liability_ratio ? `${s.liability_ratio}%` : '—' },
-            { label: '分红', value: s.consecutive_div_years ? `${s.consecutive_div_years}年` : '—' },
-            { label: '跌幅', value: `${s.drawdown.toFixed(0)}%↓` },
-          ].map((m, i) => (
-            <div key={i} className="text-center p-1.5 rounded-lg border border-white/5 bg-white/5">
-              <div className="text-[10px] text-gray-500 leading-tight">{m.label}</div>
-              <div className="text-xs font-bold text-white leading-tight mt-0.5">{m.value}</div>
+          {(() => {
+            const isQfq = s.close_adj === 'qfq'
+            return [
+              { label: isQfq ? '价格(前复权)' : '价格(后复权·参考)', value: s.close?.toFixed(2), warn: !isQfq },
+              { label: 'PE', value: s.pe_ttm?.toFixed(1) || '—' },
+              { label: 'PB', value: s.pb?.toFixed(2) || '—' },
+              { label: '股息', value: s.div_yield > 0 ? `${s.div_yield.toFixed(1)}%` : '—' },
+              { label: 'ROE', value: s.roe ? `${s.roe.toFixed(0)}%` : '—' },
+              { label: '负债', value: s.liability_ratio ? `${s.liability_ratio}%` : '—' },
+              { label: '分红', value: s.consecutive_div_years ? `${s.consecutive_div_years}年` : '—' },
+              { label: '跌幅', value: `${s.drawdown.toFixed(0)}%↓` },
+            ]
+          })().map((m, i) => (
+            <div key={i} className={`text-center p-1.5 rounded-lg border ${m.warn ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5 bg-white/5'}`}>
+              <div className={`text-[10px] leading-tight ${m.warn ? 'text-amber-400' : 'text-gray-500'}`}>{m.label}</div>
+              <div className={`text-xs font-bold leading-tight mt-0.5 ${m.warn ? 'text-amber-300' : 'text-white'}`}>{m.value}</div>
             </div>
           ))}
         </div>
@@ -208,23 +279,61 @@ function StockDetail({ s, onClose }: { s: StockScore; onClose: () => void }) {
           {klineOption ? (
             <>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-gray-500">📈 {s.name} 走势 + PE</span>
-                <span className="text-[10px] text-gray-600">前复权 · {kline?.length || 0}日</span>
+                <span className="text-[11px] text-gray-500">
+                  📈 {s.name} 走势 + PE{' '}
+                  {s.close_adj === 'qfq' ? (
+                    <span className="text-amber-400/70">(前复权)</span>
+                  ) : (
+                    <span className="text-red-400/80">(后复权·无 qfq 数据)</span>
+                  )}
+                </span>
+                <div className="flex items-center gap-0.5">
+                  {(['1y','3y','5y','10y','all'] as const).map(r => (
+                    <button key={r} onClick={() => setTimeRange(r)}
+                      className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+                        timeRange === r ? 'bg-amber-500/20 text-amber-400' : 'text-gray-600 hover:text-gray-400'
+                      }`}>
+                      {r === 'all' ? '全部' : r}
+                    </button>
+                  ))}
+                  {klineRaw?.high_5y && (
+                    <span className={`text-[10px] ml-1 ${s.close_adj === 'qfq' ? 'text-red-400/60' : 'text-red-400/80'}`}>
+                      高¥{klineRaw.high_5y.toFixed(2)}
+                    </span>
+                  )}
+                </div>
               </div>
               <ReactECharts option={klineOption} style={{ height: 200 }} />
             </>
           ) : (
             <>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-gray-500">📊 10年价格区间</span>
-                <span className="text-[10px] text-gray-600">高 ¥{estimatedHigh.toFixed(2)} · 现 ¥{s.close.toFixed(2)} · {s.price_pct.toFixed(0)}%分位</span>
+                <span className="text-[11px] text-gray-500">
+                  📊 5年价格区间{' '}
+                  {s.close_adj === 'qfq' ? (
+                    <span className="text-amber-400/70">(前复权)</span>
+                  ) : (
+                    <span className="text-red-400/80">(后复权·无 qfq 数据)</span>
+                  )}
+                </span>
+                {estimatedHigh && (
+                  <span className="text-[10px] text-gray-600">
+                    高 ¥{estimatedHigh.toFixed(2)} · 现 ¥{s.close.toFixed(2)} · {s.price_pct.toFixed(0)}%分位
+                  </span>
+                )}
               </div>
-              <ReactECharts option={rangeOption} style={{ height: 50 }} />
-              <div className="flex justify-between text-[10px] text-gray-600 mt-0.5">
-                <span>0% (最低)</span>
-                <span className={s.price_pct < 20 ? 'text-green-400' : 'text-gray-500'}>{s.price_pct < 20 ? '🟢 低位区' : ''}</span>
-                <span>100% (最高)</span>
-              </div>
+              {estimatedHigh ? (
+                <>
+                  <ReactECharts option={rangeOption} style={{ height: 50 }} />
+                  <div className="flex justify-between text-[10px] text-gray-600 mt-0.5">
+                    <span>0% (最低)</span>
+                    <span className={s.price_pct < 20 ? 'text-green-400' : 'text-gray-500'}>{s.price_pct < 20 ? '🟢 低位区' : ''}</span>
+                    <span>100% (最高)</span>
+                  </div>
+                </>
+              ) : (
+                <div className="text-[10px] text-gray-600 py-3 text-center">无 5y 高点数据</div>
+              )}
             </>
           )}
         </div>
@@ -328,8 +437,19 @@ export default function StockScannerPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold mb-1">📊 A股低位扫描</h1>
           <p className="text-sm text-gray-500">
-            数据更新: {meta?.date || '—'} · 覆盖 {meta?.count || scores.length} 只 · 
-            过滤 {meta?.filtered_count || '—'} 只 · 中证800
+            数据更新: {meta?.date || '—'} · 覆盖 {meta?.count || scores.length} 只 ·
+            过滤 {meta?.filtered_count || '—'} 只 · 中证800 ·{' '}
+            {(() => {
+              const degraded = scores.filter(x => x.close_adj === 'hfq_degraded').length
+              if (degraded === 0) {
+                return <span className="text-amber-400/80">价格均为前复权</span>
+              }
+              return (
+                <span className="text-amber-400/80">
+                  前复权 · <span className="text-red-400/80">{degraded} 只为后复权(参考)</span>
+                </span>
+              )
+            })()}
           </p>
         </div>
 

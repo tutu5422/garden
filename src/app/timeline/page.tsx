@@ -10,6 +10,7 @@ interface NoteItem {
   id: string; title: string; content: string; type: string; tags: string[];
   collectionName?: string;
   createdAt: string; image?: string; source: "notes";
+  images?: string[]; imageThumbs?: string[];
 }
 
 interface TimelineMemo {
