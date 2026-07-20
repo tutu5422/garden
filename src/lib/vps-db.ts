@@ -114,7 +114,46 @@ export async function dbUpsertOwned(
   if (!OWNED_TABLES.has(table)) {
     return { ok: false, error: `dbUpsertOwned: table '${table}' is not user-owned` };
   }
-  return dbUpsert(table, { ...data, user_id: LOCAL_USER_ID });
+
+  const id = data.id;
+  if (id) {
+    // 验证记录属于当前用户（服务端 key 会绕过 RLS，须在应用层限域）
+    const check = await vpsDbFetch(
+      `${table}?id=eq.${id}&user_id=eq.${LOCAL_USER_ID}&select=id`,
+      { method: 'GET' },
+    );
+    if (check.ok && Array.isArray(check.body) && check.body.length > 0) {
+      // 记录存在且属于用户 → PATCH
+      const { id: _id, user_id: _uid, ...patchData } = data;
+      const patchResult = await vpsDbFetch(
+        `${table}?id=eq.${id}&user_id=eq.${LOCAL_USER_ID}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ ...patchData, user_id: LOCAL_USER_ID }),
+        },
+      );
+      if (patchResult.ok) return { ok: true };
+      return { ok: false, error: patchResult.error || `PATCH 失败: ${patchResult.status}` };
+    }
+
+    // 检查记录是否存在（属于其他用户）
+    const anyCheck = await vpsDbFetch(
+      `${table}?id=eq.${id}&select=user_id`,
+      { method: 'GET' },
+    );
+    if (anyCheck.ok && Array.isArray(anyCheck.body) && anyCheck.body.length > 0) {
+      return { ok: false, error: '无权修改该记录' };
+    }
+    // 记录不存在 → 走下方 POST 新建
+  }
+
+  // 新建记录 → POST
+  const postResult = await vpsDbFetch(table, {
+    method: 'POST',
+    body: JSON.stringify({ ...data, user_id: LOCAL_USER_ID }),
+  });
+  if (postResult.ok) return { ok: true };
+  return { ok: false, error: postResult.error || `POST 失败: ${postResult.status}` };
 }
 
 // ---------------------------------------------------------------------------

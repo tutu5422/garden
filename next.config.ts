@@ -23,7 +23,11 @@ const nextConfig: NextConfig = {
     formats: ["image/webp", "image/avif"],
     remotePatterns: remoteImagePatterns(),
   },
-  compiler: { removeConsole: false }, // temporarily disabled for debugging
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production'
+      ? { exclude: ['error', 'warn'] }
+      : false,
+  },
   async headers() {
     return [
       // Security headers applied to every response.

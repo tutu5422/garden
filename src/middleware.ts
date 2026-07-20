@@ -90,6 +90,14 @@ export default async function proxy(req: NextRequest) {
     if (recent.length >= 300) return NextResponse.json({ error: "Too many" }, { status: 429 });
     recent.push(now);
     RL.set(ip, recent);
+    // 统一鉴权兜底：/api/login、/api/logout 已在上方处理并 return，不会到这里
+    const apiPass = getPass();
+    if (!apiPass) {
+      return NextResponse.json({ error: "服务端未配置站点密码" }, { status: 500 });
+    }
+    if (!(await verifyToken(req.cookies.get(AUTH_COOKIE)?.value, apiPass))) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
     return NextResponse.next();
   }
 
