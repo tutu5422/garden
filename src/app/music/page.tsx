@@ -7,7 +7,6 @@ import {
   addTracksToPlaylist, removeTrackFromPlaylist,
   getFavoritedIds, toggleFavorite,
   groupByAlbum, groupByArtist,
-  loadPlaylistsFromCloud,
   refreshPlaylistsFromCloud,
   type MusicPlaylist, type ExtendedTrack,
 } from '@/lib/music/music-store'
