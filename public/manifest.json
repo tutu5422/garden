@@ -1,11 +1,12 @@
 {
+  "id": "/resources",
   "name": "秘密花园",
   "short_name": "秘密花园",
   "description": "记录兴趣，整理灵感，打造个人知识花园",
   "start_url": "/resources",
   "display": "standalone",
   "background_color": "#FEFFFF",
-  "theme_color": "#47709B",
+  "theme_color": "#E8315B",
   "orientation": "any",
   "icons": [
     {

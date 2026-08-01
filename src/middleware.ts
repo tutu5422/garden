@@ -25,7 +25,9 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  if (pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname.startsWith("/pdf-viewer")) {
+  // PWA 安装必需的公开静态资源：不拦截，否则 manifest/sw 被重定向到 /login 导致无法安装
+  const PUBLIC_PATHS = ["/_next", "/favicon", "/pdf-viewer", "/manifest.json", "/sw.js", "/icon-192.png", "/icon-512.png", "/apple-touch-icon"];
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
