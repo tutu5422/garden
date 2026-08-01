@@ -51,6 +51,51 @@ const INDUSTRIES = [
   '家电', '保险', '证券', '军工', '通信', '农业', '化工', '有色',
 ]
 
+// 证监会行业分类（baostock）→ 前端筛选词。后端存的是 "J66货币金融服务"、
+// "C26化学原料和化学制品制造业" 这类官方名，前端筛选词是申万风格简称，
+// 用关键词包含匹配做双向映射。
+const INDUSTRY_MAP: Record<string, string[]> = {
+  '银行': ['货币金融', 'J66', '银行'],
+  '房地产': ['房地产', '房地产业', 'K70'],
+  '白酒': ['酒、饮料', '酒', '白酒'],
+  '食品饮料': ['食品', '饮料', '农副食品', '酒'],
+  '医药': ['医药', '制药', '卫生', '生物'],
+  '半导体': ['半导体', '电子设备', '电子元件', '计算机、通信和其他电子'],
+  '软件': ['软件', '信息技术服务', '互联网和相关服务', '计算机'],
+  '新能源': ['电气机械', '电池', '光伏', '风能', '太阳能', '电力设备'],
+  '煤炭': ['煤炭', 'B06'],
+  '钢铁': ['黑色金属', '钢铁', 'C31'],
+  '建材': ['非金属矿物', '建材', '水泥', '玻璃', '陶瓷'],
+  '建筑': ['土木工程', '建筑装饰', '建筑安装', '建筑业', 'E'],
+  '电力': ['电力、热力', '电力', '燃气', '水的生产', 'D44', 'D45'],
+  '石油': ['石油', '石化', '油气', '燃料加工', '开采辅助'],
+  '汽车': ['汽车', 'C36'],
+  '家电': ['电气机械', '日用电器', '家电'],
+  '保险': ['保险', 'J68'],
+  '证券': ['资本市场', '证券', 'J67'],
+  '军工': ['国防', '军工', '航空航天', '铁路、船舶'],
+  '通信': ['通信', '电信', '互联网'],
+  '农业': ['农、林、牧、渔', '农业', '农副食品', '畜牧业', '渔业'],
+  '化工': ['化学原料', '化学制品', '化学纤维', '化工', '橡胶', '塑料', 'C26', 'C28'],
+  '有色': ['有色金属', 'C32'],
+}
+
+/** 证监会分类名是否属于前端筛选词 */
+function matchIndustry(ind: string, filter: string): boolean {
+  if (!ind) return false
+  if (ind.includes(filter)) return true
+  return (INDUSTRY_MAP[filter] || []).some(k => ind.includes(k))
+}
+
+/** 证监会分类名 → 可读的行业短名（行业大盘 Tab 用） */
+function displayIndustry(ind: string): string {
+  if (!ind) return '其他'
+  for (const [name, keys] of Object.entries(INDUSTRY_MAP)) {
+    if (keys.some(k => ind.includes(k))) return name
+  }
+  return ind.replace(/^[A-Z]\d+/, '').substring(0, 8) || '其他'
+}
+
 /* ================================================================
    Stock Card
    ================================================================ */
@@ -402,7 +447,7 @@ export default function StockScannerPage() {
       list = list.filter(s => s.name.includes(q) || s.code.includes(q))
     }
     if (industryFilter) {
-      list = list.filter(s => s.industry?.includes(industryFilter))
+      list = list.filter(s => matchIndustry(s.industry || '', industryFilter))
     }
     list = list.filter(s => s.composite >= minScore)
     return list.sort((a, b) => b.composite - a.composite)
@@ -552,7 +597,7 @@ function IndustryOverview({ scores }: { scores: StockScore[] }) {
   const industries = useMemo(() => {
     const map: Record<string, { pe_values: number[]; pb_values: number[]; count: number }> = {}
     for (const s of scores) {
-      const ind = s.industry?.substring(0, 2) || '其他'
+      const ind = displayIndustry(s.industry || '') || '其他'
       if (!map[ind]) map[ind] = { pe_values: [], pb_values: [], count: 0 }
       if (s.pe_ttm && s.pe_ttm > 0) map[ind].pe_values.push(s.pe_ttm)
       if (s.pb && s.pb > 0) map[ind].pb_values.push(s.pb)
