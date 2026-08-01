@@ -106,6 +106,27 @@ export async function loadPlaylistsFromCloud(): Promise<MusicPlaylist[]> {
   } catch { return [] }
 }
 
+/**
+ * 从云端拉取歌单并合并到本地（云端 updatedAt 更新者优先）。
+ * 解决"歌单只推不拉"：换浏览器/设备后歌单消失。
+ */
+export async function refreshPlaylistsFromCloud(): Promise<MusicPlaylist[]> {
+  const cloud = await loadPlaylistsFromCloud()
+  if (!cloud.length) return getPlaylists()
+  const local = getPlaylists()
+  const merged = new Map<string, MusicPlaylist>()
+  for (const p of local) merged.set(p.id, p)
+  for (const c of cloud) {
+    const ex = merged.get(c.id)
+    if (!ex || !(ex as any).updatedAt || new Date(c.updatedAt) > new Date((ex as any).updatedAt || 0)) {
+      merged.set(c.id, c)
+    }
+  }
+  const list = Array.from(merged.values())
+  writeStore(PLAYLISTS_KEY, list)
+  return list
+}
+
 export function createPlaylist(name: string, description?: string): MusicPlaylist {
   const playlists = getPlaylists()
   const now = new Date().toISOString()

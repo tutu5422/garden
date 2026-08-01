@@ -57,6 +57,8 @@ interface MusicContextType {
   clearPlaylist: () => void
   playTracks: (tracks: Track[], startIndex?: number) => void
   updateTrackLyrics: (trackId: string, lyricsData: { lyrics?: string; syncedLyrics?: string; lyricsSource?: 'searched' | 'manual'; lyricsHidden?: boolean }) => void
+  /** 重新从云端拉取曲目合并（页面挂载/手动刷新时调用，解决长会话看不到新数据） */
+  reload: () => Promise<void>
 }
 
 const MusicContext = createContext<MusicContextType | null>(null)
@@ -212,50 +214,56 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null) // 3s 兜底定时器
   const canplayThroughHandlerRef = useRef<(() => void) | null>(null) // canplaythrough 监听器引用，便于 cleanup 移除
 
-  // 初始化：合并本地 + 云端数据（云端优先）
-  useEffect(() => {
-    const loadTracks = async () => {
-      const localMeta = readMeta()
-      const cloudTracks = await loadPlaylistFromCloud()
+  // 合并本地 + 云端数据（云端优先），返回合并结果
+  const mergeCloudTracks = useCallback(async (): Promise<Track[]> => {
+    const localMeta = readMeta()
+    const cloudTracks = await loadPlaylistFromCloud()
 
-      // Cloud as source of truth
-      const merged = new Map<string, Track>()
-      for (const t of cloudTracks) merged.set(t.id, t)
-      for (const t of localMeta) {
-        if (!merged.has(t.id)) merged.set(t.id, t)
-      }
-      const allTracks = Array.from(merged.values())
-
-      // Rewrite if cloud had data
-      if (cloudTracks.length > 0) {
-        try {
-          const clean = allTracks.map(t => ({
-            id: t.id, title: t.title, artist: t.artist, album: t.album,
-            url: t.url, storagePath: t.storagePath,
-          }))
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(clean))
-        } catch {}
-      }
-
-      setPlaylist(allTracks)
-
-      // 恢复播放状态（页面刷新后继续播放）
-      if (!hasRestoredRef.current && allTracks.length > 0) {
-        hasRestoredRef.current = true
-        const saved = readPlayback()
-        if (saved) {
-          const idx = Math.min(saved.currentIndex, allTracks.length - 1)
-          setCurrentIndex(idx)
-          setVolumeState(saved.volume ?? 0.6)
-          setMutedState(saved.muted ?? false)
-          setLoopMode(saved.loopMode ?? 'all')
-          seekTargetRef.current = saved.currentTime || 0
-          shouldAutoPlayRef.current = saved.playing
-        }
-      }
+    // Cloud as source of truth
+    const merged = new Map<string, Track>()
+    for (const t of cloudTracks) merged.set(t.id, t)
+    for (const t of localMeta) {
+      if (!merged.has(t.id)) merged.set(t.id, t)
     }
-    loadTracks()
+    const allTracks = Array.from(merged.values())
+
+    // Rewrite if cloud had data
+    if (cloudTracks.length > 0) {
+      try {
+        const clean = allTracks.map(t => ({
+          id: t.id, title: t.title, artist: t.artist, album: t.album,
+          url: t.url, storagePath: t.storagePath,
+        }))
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(clean))
+      } catch {}
+    }
+
+    setPlaylist(allTracks)
+    return allTracks
   }, [])
+
+  // 初始化：拉取云端 + 恢复播放状态（仅首次）
+  useEffect(() => {
+    mergeCloudTracks().then(allTracks => {
+      if (hasRestoredRef.current || allTracks.length === 0) return
+      hasRestoredRef.current = true
+      const saved = readPlayback()
+      if (saved) {
+        const idx = Math.min(saved.currentIndex, allTracks.length - 1)
+        setCurrentIndex(idx)
+        setVolumeState(saved.volume ?? 0.6)
+        setMutedState(saved.muted ?? false)
+        setLoopMode(saved.loopMode ?? 'all')
+        seekTargetRef.current = saved.currentTime || 0
+        shouldAutoPlayRef.current = saved.playing
+      }
+    })
+  }, [mergeCloudTracks])
+
+  // 手动/挂载刷新：重新拉云端，不恢复播放状态
+  const reload = useCallback(async () => {
+    await mergeCloudTracks()
+  }, [mergeCloudTracks])
 
   // 初始化 Audio（绑定事件，模块级 Audio 已创建）
   useEffect(() => {
@@ -619,11 +627,13 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     currentTime, duration, lyricsVersion, notifyLyricsUpdated,
     play, pause, togglePlay, seek, next, prev, setVolume, setMuted, cycleLoopMode,
     addTrack, addTracks, removeTrack, clearPlaylist, playTracks, updateTrackLyrics,
+    reload,
   }), [
     playlist, currentIndex, playing, volume, muted, loopMode, currentTrack,
     currentTime, duration, lyricsVersion, notifyLyricsUpdated,
     play, pause, togglePlay, seek, next, prev, setVolume, setMuted, cycleLoopMode,
     addTrack, addTracks, removeTrack, clearPlaylist, playTracks, updateTrackLyrics,
+    reload,
   ])
 
   return (

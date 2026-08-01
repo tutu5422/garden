@@ -7,7 +7,7 @@ import {
   dbUpsertOwned,
   resolveStorageUrl,
 } from '@/lib/vps-db';
-import { syncPostSchema } from '@/lib/sync-schema';
+import { syncPostSchema, type MusicPlaylistUpsertData } from '@/lib/sync-schema';
 import { SYNC_PAGE_LIMIT, NOTE_DESCRIPTION_MAX_LENGTH } from '@/lib/constants/config';
 import type {
   ResourceRow,
@@ -463,6 +463,28 @@ export async function POST(req: NextRequest) {
         };
         const { ok: plOk, error: plErr } = await dbUpsertOwned('resources', dbDataPlaylists);
         if (!plOk) return NextResponse.json({ error: '同步歌单失败', detail: plErr }, { status: 500 });
+      } else if (table === 'music_playlist') {
+        // Store music tracks as a resource row — deterministic UUID.
+        // 前端上传/编辑歌曲后整表同步（单用户站点，全量覆盖可接受）。
+        // data 解构后类型窄化失效，这里显式断言。
+        const playlistData = data as MusicPlaylistUpsertData;
+        const dbDataPlaylist = {
+          id: MUSIC_PLAYLIST_ID,
+          title: '__music_playlist__',
+          description: null,
+          resource_type: 'article',
+          user_id: LOCAL_USER_ID,
+          status: 'active',
+          metadata: {
+            music_playlist: true,
+            tracks: playlistData.tracks || [],
+            updated_at: new Date().toISOString(),
+          },
+          created_at: playlistData.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const { ok: mpOk, error: mpErr } = await dbUpsertOwned('resources', dbDataPlaylist);
+        if (!mpOk) return NextResponse.json({ error: '同步歌曲列表失败', detail: mpErr }, { status: 500 });
       }
     } else if (action === 'delete') {
       if (table === 'resources' || table === 'notes') {

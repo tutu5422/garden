@@ -8,6 +8,7 @@ import {
   getFavoritedIds, toggleFavorite,
   groupByAlbum, groupByArtist,
   loadPlaylistsFromCloud,
+  refreshPlaylistsFromCloud,
   type MusicPlaylist, type ExtendedTrack,
 } from '@/lib/music/music-store'
 import {
@@ -198,8 +199,13 @@ export default function MusicPage() {
     setPlaylists(getPlaylists()); setFavIds(getFavoritedIds())
   }, [])
 
-  // Load data
-  useEffect(() => { refresh(); loadCoverMap().then(setCoverMap) }, [refresh])
+  // Load data — 同时从云端拉取歌单合并（歌单只推不拉的修复），
+  // 并主动重拉云端曲目（解决长会话/切页导航后看不到新数据）
+  useEffect(() => {
+    refresh(); loadCoverMap().then(setCoverMap)
+    refreshPlaylistsFromCloud().then(list => { setPlaylists(list); refresh() })
+    ctx?.reload()
+  }, [refresh])
 
   // Snapshot the full library on mount so it's not affected by queue changes
   const [fullLibrary, setFullLibrary] = useState<ExtendedTrack[]>([])
