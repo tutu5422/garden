@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Library, Calendar, Grid3x3, Layers, FileText, Home, Music } from "lucide-react"
+import { Library, Calendar, Grid3x3, Layers, FileText, Home, Music, BookOpen } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import LyricsMarquee from "@/components/music/LyricsMarquee"
@@ -16,6 +16,7 @@ const iconMap: Record<string, React.ReactNode> = {
   FileText: <FileText className="size-4" />,
   Grid3x3: <Grid3x3 className="size-4" />,
   Music4: <Music className="size-4" />,
+  BookOpen: <BookOpen className="size-4" />,
 }
 
 const navItems = mainNavItems.map(item => ({

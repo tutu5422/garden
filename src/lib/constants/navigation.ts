@@ -7,6 +7,7 @@ export const mainNavItems: NavItem[] = [
   { label: '合集', href: '/collections', icon: 'Layers' },
   { label: '时间线', href: '/timeline', icon: 'Calendar' },
   { label: '文件', href: '/files', icon: 'FileText' },
+  { label: '阅读', href: '/read', icon: 'BookOpen' },
   { label: '扫描', href: '/stock-scanner', icon: 'TrendingUp' },
 ]
 
