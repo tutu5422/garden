@@ -273,7 +273,7 @@ export default function ReaderClient() {
     setBusy("");
     setFound(r.results || []);
     if (r.error) setErr(`搜索失败：${r.error}`);
-    else if (!r.results?.length) setErr("没搜到结果（云端访问御宅屋可能被 Cloudflare 拦，用书号加入更稳）");
+    else if (!r.results?.length) setErr("没搜到结果（换个关键词，或改用书号/网址加入）");
   };
 
   const fontFamily = FONTS[cfg.font] || FONTS["默认"];
@@ -375,7 +375,10 @@ export default function ReaderClient() {
           {!books.length && <p className="text-sm" style={{ color: theme.dim }}>书库是空的</p>}
 
           <div className="mt-4 space-y-2 text-sm">
-            <p className="font-semibold">加入在线书（顶点小说网）</p>
+            <p className="font-semibold">加入在线书（顶点小说网）{" "}
+              <a href="https://m.xslcb.cc" target="_blank" rel="noreferrer"
+                className="text-xs font-normal underline" style={{ color: theme.dim }}>m.xslcb.cc</a>
+            </p>
             <div className="flex gap-2">
               <input className="min-w-0 flex-1 rounded border bg-transparent px-2 py-1 text-sm"
                 style={{ borderColor: "rgba(125,125,125,.35)" }}
@@ -393,7 +396,10 @@ export default function ReaderClient() {
             <input type="file" accept=".txt" className="text-xs"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }} />
 
-            <p className="pt-2 font-semibold">搜索（御宅屋）</p>
+            <p className="pt-2 font-semibold">搜索（御宅屋）{" "}
+              <a href="https://yushuwuxs.cc" target="_blank" rel="noreferrer"
+                className="text-xs font-normal underline" style={{ color: theme.dim }}>yushuwuxs.cc</a>
+            </p>
             <div className="flex gap-2">
               <input className="min-w-0 flex-1 rounded border bg-transparent px-2 py-1 text-sm"
                 style={{ borderColor: "rgba(125,125,125,.35)" }}
