@@ -52,6 +52,18 @@ const SETTINGS_KEY = "novel.settings";
 const LAST_KEY = "novel.last";
 const readKey = (id: string) => `novel.read.${id}`;
 
+/* 在线阅读源（key 与云端服务的 site 参数一致） */
+const SITES = [
+  { key: "xslcb", name: "顶点小说网", home: "https://m.xslcb.cc", hint: "书号（如 666688）或书页网址", canSearch: false },
+  { key: "yzw", name: "御宅屋", home: "https://yushuwuxs.cc", hint: "书页网址（如 /read/104280.html）", canSearch: true },
+  { key: "lhz", name: "烈火中文网", home: "https://m.liehuozw.com", hint: "书页网址或「分类/书号」（如 25/25370）", canSearch: true },
+];
+const SITE_NAMES: Record<string, string> = {
+  xslcb: "顶点", yzw: "御宅屋", yushuwuxs: "御宅屋", lhz: "烈火", liehuozw: "烈火",
+};
+const siteName = (k: string) => SITE_NAMES[k] || k;
+const siteOf = (k: string) => SITES.find((s) => s.key === k) || SITES[0];
+
 /* ------------------------------------------------------------------ 工具 */
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(`/api/novel${path}`, { cache: "no-store", ...init });
@@ -86,6 +98,7 @@ export default function ReaderClient() {
   const [tocOpen, setTocOpen] = useState(false);
   const [cfgOpen, setCfgOpen] = useState(false);
   const [newUrl, setNewUrl] = useState("");
+  const [newSite, setNewSite] = useState("xslcb");
   const [kw, setKw] = useState("");
   const [found, setFound] = useState<{ title: string; url: string; site: string }[]>([]);
   const [cfg, setCfg] = useState<Settings>(DEFAULT_SETTINGS);
@@ -231,11 +244,11 @@ export default function ReaderClient() {
   }, [go]);
 
   /* ---------------- 操作 ---------------- */
-  const addBook = async (url: string) => {
+  const addBook = async (url: string, site = "") => {
     if (!url.trim()) return;
-    setBusy("已提交，云端正在解析目录…");
+    setBusy(`已提交（${siteName(site) || "自动识别"}），云端正在解析目录…`);
     const r = await api<{ error?: string; title?: string }>(
-      `/addbook?url=${encodeURIComponent(url.trim())}`
+      `/addbook?url=${encodeURIComponent(url.trim())}${site ? `&site=${site}` : ""}`
     );
     setBusy("");
     setNewUrl("");
@@ -264,16 +277,16 @@ export default function ReaderClient() {
     void refreshBooks();
   };
 
-  const search = async () => {
+  const search = async (site: string) => {
     if (!kw.trim()) return;
-    setBusy("搜索（御宅屋）…");
+    setBusy(`搜索（${siteName(site)}）…`);
     const r = await api<{ results?: typeof found; error?: string }>(
-      `/search?q=${encodeURIComponent(kw.trim())}`
+      `/search?q=${encodeURIComponent(kw.trim())}&site=${site}`
     );
     setBusy("");
     setFound(r.results || []);
     if (r.error) setErr(`搜索失败：${r.error}`);
-    else if (!r.results?.length) setErr("没搜到结果（换个关键词，或改用书号/网址加入）");
+    else if (!r.results?.length) setErr(`没搜到结果（换个关键词，或改用书号/网址加入）`);
   };
 
   const fontFamily = FONTS[cfg.font] || FONTS["默认"];
@@ -375,44 +388,58 @@ export default function ReaderClient() {
           {!books.length && <p className="text-sm" style={{ color: theme.dim }}>书库是空的</p>}
 
           <div className="mt-4 space-y-2 text-sm">
-            <p className="font-semibold">加入在线书（顶点小说网）{" "}
-              <a href="https://m.xslcb.cc" target="_blank" rel="noreferrer"
-                className="text-xs font-normal underline" style={{ color: theme.dim }}>m.xslcb.cc</a>
+            <p className="font-semibold">加入在线书{" "}
+              {SITES.map((s) => (
+                <a key={s.key} href={s.home} target="_blank" rel="noreferrer"
+                  className="ml-2 text-xs font-normal underline"
+                  style={{ color: theme.dim }}>{s.home.replace("https://", "")}</a>
+              ))}
             </p>
             <div className="flex gap-2">
+              <select className="rounded border bg-transparent px-1 py-1 text-xs"
+                style={{ borderColor: "rgba(125,125,125,.35)" }}
+                value={newSite} onChange={(e) => setNewSite(e.target.value)}>
+                {SITES.map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}
+              </select>
               <input className="min-w-0 flex-1 rounded border bg-transparent px-2 py-1 text-sm"
                 style={{ borderColor: "rgba(125,125,125,.35)" }}
-                placeholder="书号（如 666688）或书页网址"
+                placeholder={siteOf(newSite).hint}
                 value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && void addBook(newUrl)} />
+                onKeyDown={(e) => e.key === "Enter" && void addBook(newUrl, newSite)} />
               <button className="rounded border px-2 py-1" style={{ borderColor: "rgba(125,125,125,.35)" }}
-                onClick={() => void addBook(newUrl)}>加入</button>
+                onClick={() => void addBook(newUrl, newSite)}>加入</button>
             </div>
             <p className="text-xs" style={{ color: theme.dim }}>
-              顶点站禁止搜索，只能按书号加；加完云端后台解析目录（几十章约几秒，上千章约 1-2 分钟），列表会自动刷新。
+              顶点站禁止搜索，只能按书号/网址加。加完云端后台解析目录（几十章约几秒，上千章约 1-2 分钟），列表会自动刷新。
             </p>
 
             <p className="pt-2 font-semibold">上传本地 txt</p>
             <input type="file" accept=".txt" className="text-xs"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }} />
 
-            <p className="pt-2 font-semibold">搜索（御宅屋）{" "}
-              <a href="https://yushuwuxs.cc" target="_blank" rel="noreferrer"
-                className="text-xs font-normal underline" style={{ color: theme.dim }}>yushuwuxs.cc</a>
+            <p className="pt-2 font-semibold">搜索{" "}
+              {SITES.filter((s) => s.canSearch).map((s) => (
+                <a key={s.key} href={s.home} target="_blank" rel="noreferrer"
+                  className="ml-2 text-xs font-normal underline"
+                  style={{ color: theme.dim }}>{s.home.replace("https://", "")}</a>
+              ))}
             </p>
             <div className="flex gap-2">
               <input className="min-w-0 flex-1 rounded border bg-transparent px-2 py-1 text-sm"
                 style={{ borderColor: "rgba(125,125,125,.35)" }}
                 placeholder="书名关键词" value={kw} onChange={(e) => setKw(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && void search()} />
+                onKeyDown={(e) => e.key === "Enter" && void search("yzw")} />
               <button className="rounded border px-2 py-1" style={{ borderColor: "rgba(125,125,125,.35)" }}
-                onClick={() => void search()}>搜索</button>
+                onClick={() => void search("yzw")}>御宅屋</button>
+              <button className="rounded border px-2 py-1" style={{ borderColor: "rgba(125,125,125,.35)" }}
+                onClick={() => void search("lhz")}>烈火</button>
             </div>
             {found.map((s) => (
               <div key={s.url} className="flex items-center gap-2 border-b py-1 text-xs"
                 style={{ borderColor: "rgba(125,125,125,.2)" }}>
                 <span className="flex-1 truncate">{s.title}</span>
-                <button className="underline" onClick={() => void addBook(s.url)}>加入</button>
+                <span className="shrink-0" style={{ color: theme.dim }}>{siteName(s.site)}</span>
+                <button className="underline" onClick={() => void addBook(s.url, s.site)}>加入</button>
               </div>
             ))}
           </div>
