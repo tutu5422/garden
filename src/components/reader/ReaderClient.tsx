@@ -55,8 +55,8 @@ const readKey = (id: string) => `novel.read.${id}`;
 /* 在线阅读源（key 与云端服务的 site 参数一致） */
 const SITES = [
   { key: "xslcb", name: "顶点小说网", home: "https://m.xslcb.cc", hint: "书号（如 666688）或书页网址", canSearch: false },
-  { key: "yzw", name: "御宅屋", home: "https://yushuwuxs.cc", hint: "书页网址（如 /read/104280.html）", canSearch: true },
-  { key: "lhz", name: "烈火中文网", home: "https://m.liehuozw.com", hint: "书页网址或「分类/书号」（如 25/25370）", canSearch: true },
+  { key: "yzw", name: "御宅屋", home: "https://yushuwuxs.cc", hint: "书名 / 书号 / 书页网址", canSearch: true },
+  { key: "lhz", name: "烈火中文网", home: "https://m.liehuozw.com", hint: "书名 / 书页网址 /「分类/书号」", canSearch: true },
 ];
 const SITE_NAMES: Record<string, string> = {
   xslcb: "顶点", yzw: "御宅屋", yushuwuxs: "御宅屋", lhz: "烈火", liehuozw: "烈火",
@@ -410,7 +410,7 @@ export default function ReaderClient() {
                 onClick={() => void addBook(newUrl, newSite)}>加入</button>
             </div>
             <p className="text-xs" style={{ color: theme.dim }}>
-              顶点站禁止搜索，只能按书号/网址加。加完云端后台解析目录（几十章约几秒，上千章约 1-2 分钟），列表会自动刷新。
+              填书名会先在该源搜一遍取最匹配的一本；顶点站禁止搜索，只能按书号/网址加。加完云端后台解析目录（几十章约几秒，上千章约 1-2 分钟），列表会自动刷新。
             </p>
 
             <p className="pt-2 font-semibold">上传本地 txt</p>
