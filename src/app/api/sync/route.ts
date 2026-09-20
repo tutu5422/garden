@@ -34,6 +34,30 @@ function mapResourceType(type: string): string | null {
 // Data-source dispatch: all DB calls route through the VPS PostgREST instance.
 // ---------------------------------------------------------------------------
 
+/**
+ * PostgREST 的 `in.(...)` 过滤会把整条查询回显进响应头 Content-Location，
+ * 一次塞几百个 UUID（URL >3.7KB）会撑爆 nginx 的 proxy_buffer_size → 502。
+ * 这里按 IN_CHUNK_SIZE 分片查询再合并，顺带避免超长 URL。
+ */
+const IN_CHUNK_SIZE = 40;
+
+async function fetchInChunks<T>(
+  ids: string[],
+  buildPath: (chunk: string[]) => string,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + IN_CHUNK_SIZE);
+    const res = await dbFetch(buildPath(chunk));
+    if (res.ok) {
+      out.push(...((res.body as T[]) || []));
+    } else {
+      console.error(`sync 分片查询失败（${chunk.length} 个 id）:`, res.status, res.error);
+    }
+  }
+  return out;
+}
+
 // GET: Pull all cloud data for the user (uses service key, bypasses RLS)
 export async function GET(req: NextRequest) {
   if (!getPass()) return configMissingResponse();
@@ -96,21 +120,32 @@ export async function GET(req: NextRequest) {
     // (an empty `in.()` filter would be a syntax error in PostgREST).
     let patternNotes: PatternNoteRow[] = [];
     if (patterns.length > 0) {
-      const patternIds = patterns.map((p: ResourceRow) => p.id);
-      const pnRes = await dbFetch(
-        `pattern_notes?select=*&pattern_id=in.(${patternIds.join(',')})`,
+      // 关联表的过滤范围必须覆盖"全部图解"，而不是本接口 200 条的分页窗口，
+      // 否则排在 200 名之外的图解，其笔记关联会在客户端缓存里凭空消失
+      // （曾表现为 patternNotes 恒为 0）。图解满页时才补一次全量 id 查询。
+      let scopeIds = patterns.map((p: ResourceRow) => p.id);
+      if (patterns.length >= SYNC_PAGE_LIMIT) {
+        const allIdsRes = await dbFetch(
+          `resources?select=id&user_id=eq.${LOCAL_USER_ID}&metadata->>is_pattern=eq.true`,
+        );
+        if (allIdsRes.ok) {
+          const allIds = ((allIdsRes.body as Pick<ResourceRow, 'id'>[]) || []).map((r) => r.id);
+          if (allIds.length > 0) scopeIds = allIds;
+        }
+      }
+      patternNotes = await fetchInChunks(
+        scopeIds,
+        (chunk) => `pattern_notes?select=*&pattern_id=in.(${chunk.join(',')})`,
       );
-      if (pnRes.ok) patternNotes = (pnRes.body as PatternNoteRow[]) || [];
     }
 
     // Pull collection_resources junctions
     let junctions: CollectionResourceRow[] = [];
     if (collections.length > 0) {
-      const colIds = collections.map((c: CollectionRow) => c.id);
-      const juncRes = await dbFetch(
-        `collection_resources?select=collection_id,resource_id&collection_id=in.(${colIds.join(',')})`,
+      junctions = await fetchInChunks(
+        collections.map((c: CollectionRow) => c.id),
+        (chunk) => `collection_resources?select=collection_id,resource_id&collection_id=in.(${chunk.join(',')})`,
       );
-      if (juncRes.ok) junctions = (juncRes.body as CollectionResourceRow[]) || [];
     }
 
     // Map resource IDs to collections

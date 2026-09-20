@@ -61,6 +61,11 @@ export async function getRecentPatterns(limit: number = 4, status?: string): Pro
   return (data as Resource[]) || []
 }
 
+/** 判断是否合法 UUID —— PostgREST 的 uuid 列收到非法值会返回 22P02 400 */
+function isUuid(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+}
+
 /** 获取图解列表 */
 export async function getPatterns(filters?: PatternFilters): Promise<Resource[]> {
   const params = new URLSearchParams()
@@ -82,6 +87,11 @@ export async function getPatterns(filters?: PatternFilters): Promise<Resource[]>
 
 /** 获取单个图解 */
 export async function getPattern(id: string): Promise<Resource | null> {
+  // 非 UUID（例如手输的错链 /patterns/xxx）直接返回空，避免把 PostgREST 的
+  // 22P02 invalid input syntax for type uuid 抛到页面上
+  if (!isUuid(id)) {
+    return null
+  }
   const data = await dbRequest(
     `resources?select=*,category:categories(*),resource_tags(tag:tags(*))&id=eq.${id}`,
     'fetch',
@@ -240,6 +250,7 @@ export interface ResourceTagResult {
 }
 
 export async function getResourceTags(resourceId: string): Promise<Tag[]> {
+  if (!isUuid(resourceId)) return []
   const data = await dbRequest(
     `resource_tags?select=tag:tags(*)&resource_id=eq.${resourceId}`,
     'fetch',
@@ -299,6 +310,7 @@ export async function unlinkPatternNote(patternId: string, noteId: string): Prom
 }
 
 export async function getNotesForPattern(patternId: string): Promise<PatternNoteLink[]> {
+  if (!isUuid(patternId)) return []
   // 两段式查询：不依赖 FK 约束名（PostgREST embedded resource 别名依赖 FK 名，
   // 若实际约束名与硬编码不符，note 字段会返回 null，导致时间线不显示）
   // 1. 先查 pattern_notes 获取所有关联的 note_id
@@ -339,6 +351,7 @@ export async function getNotesForPattern(patternId: string): Promise<PatternNote
 }
 
 export async function getPatternsForNote(noteId: string): Promise<Resource[]> {
+  if (!isUuid(noteId)) return []
   const data = await dbRequest(
     `pattern_notes?select=pattern_id&note_id=eq.${noteId}`,
     'fetch',
@@ -348,7 +361,8 @@ export async function getPatternsForNote(noteId: string): Promise<Resource[]> {
   if (links.length === 0) return []
   const patternIds = links.map((l) => l.pattern_id)
   const patternsData = await dbRequest(
-    `resources?select=*,category:categories(*)&id=in.(${patternIds.join(',')})&metadata->>is_pattern=eq.true`,
+    // `->>` 必须编码成 %3E%3E：/api/db 会拒绝含裸 < > 的 table 参数（防注入）
+    `resources?select=*,category:categories(*)&id=in.(${patternIds.join(',')})&metadata-%3E%3Eis_pattern=eq.true`,
     'fetch',
     { method: 'GET' },
   )

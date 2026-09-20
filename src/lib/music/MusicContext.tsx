@@ -146,10 +146,11 @@ function syncPlaylistToCloud(tracks: Track[]) {
 }
 
 // 从云端拉取播放列表，同时把歌词还原到 localStorage
-async function loadPlaylistFromCloud(): Promise<Track[]> {
+// 返回 null 表示"请求失败，云端状态未知"（区别于空列表），避免误判后覆盖云端
+async function loadPlaylistFromCloud(): Promise<Track[] | null> {
   try {
     const res = await fetch('/api/sync', { method: 'GET' })
-    if (!res.ok) return []
+    if (!res.ok) return null
     const data = await res.json()
     const tracks = (data.musicPlaylist || []) as Track[]
 
@@ -173,7 +174,7 @@ async function loadPlaylistFromCloud(): Promise<Track[]> {
     } catch {}
 
     return tracks
-  } catch { return [] }
+  } catch { return null }
 }
 
 export { loadPlaylistFromCloud }
@@ -217,7 +218,8 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // 合并本地 + 云端数据（云端优先），返回合并结果
   const mergeCloudTracks = useCallback(async (): Promise<Track[]> => {
     const localMeta = readMeta()
-    const cloudTracks = await loadPlaylistFromCloud()
+    const cloudTracksRaw = await loadPlaylistFromCloud()
+    const cloudTracks = cloudTracksRaw || []
 
     // Cloud as source of truth
     const merged = new Map<string, Track>()
@@ -236,6 +238,20 @@ export function MusicProvider({ children }: { children: ReactNode }) {
         }))
         localStorage.setItem(STORAGE_KEY, JSON.stringify(clean))
       } catch {}
+    }
+
+    // 自动补推：云端状态已知、且本地是本地的严格超集（本地多 ≥10 首、云端没有本地缺的条目）
+    // 才把并集推回云端 —— 修复"云端只有 24 首，换设备/清缓存就看不到其余曲目"。
+    // 条件收紧是为了避免一台陈旧设备把已删除的曲目又推回云端。
+    if (cloudTracksRaw) {
+      const cloudIds = new Set(cloudTracks.map(t => t.id))
+      const localIds = new Set(localMeta.map(t => t.id))
+      const localOnly = localMeta.filter(t => !cloudIds.has(t.id)).length
+      const cloudOnly = cloudTracks.filter(t => !localIds.has(t.id)).length
+      if (localOnly >= 10 && cloudOnly === 0) {
+        console.info(`[music] 云端曲库缺 ${localOnly} 首，自动补推 ${allTracks.length} 首`)
+        syncPlaylistToCloud(allTracks)
+      }
     }
 
     setPlaylist(allTracks)

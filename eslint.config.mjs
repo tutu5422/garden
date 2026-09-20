@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 本项目根目录混入过 Python venv（akshare 等），里面的 JS 不是我们的代码
+    ".venv/**",
+    "venv/**",
   ]),
 ]);
 

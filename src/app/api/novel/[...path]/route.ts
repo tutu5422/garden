@@ -12,12 +12,16 @@ import { NextRequest, NextResponse } from "next/server";
  */
 
 const BASE = (process.env.NOVEL_API_URL || "https://storage.minitu.online/novel").replace(/\/+$/, "");
-const KEY = process.env.VPS_STORAGE_KEY || "garden_storage_2026";
+// 不再回退硬编码密钥：未配置时直接 500，避免把仓库里的默认密钥当成生产密钥用
+const KEY = process.env.VPS_STORAGE_KEY || "";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
+  if (!KEY) {
+    return NextResponse.json({ error: "服务端未配置 VPS_STORAGE_KEY" }, { status: 500 });
+  }
   const { path } = await ctx.params;
   const url = `${BASE}/api/${(path || []).join("/")}${req.nextUrl.search}`;
   try {

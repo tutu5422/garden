@@ -67,7 +67,13 @@ canvas { box-shadow:0 2px 12px rgba(0,0,0,.15); border-radius:4px; }
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const pdfUrl = '${pdfUrl.replace(/'/g, "\\'")}';
-if (!pdfUrl) document.getElementById('errorMsg').textContent = '缺少 PDF 地址';
+const hasPdf = Boolean(pdfUrl);
+if (!hasPdf) {
+  // 没有 file 参数：直接显示错误态，不要调用 getDocument('') 抛异常
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('errorMsg').textContent = '缺少 PDF 地址';
+  document.getElementById('error').style.display = 'flex';
+}
 const canvas = document.getElementById('pdfCanvas');
 const ctx = canvas.getContext('2d');
 let pdfDoc = null, pageNum = 1, scale = 1.2;
@@ -109,7 +115,7 @@ document.getElementById('nextPage').onclick = () => { if (pageNum<pdfDoc.numPage
 document.getElementById('zoomIn').onclick = () => { scale = Math.min(scale+.3,3); renderPage(pageNum); };
 document.getElementById('zoomOut').onclick = () => { scale = Math.max(scale-.3,.5); renderPage(pageNum); };
 document.getElementById('openNew').onclick = () => { window.open(pdfUrl, '_blank'); };
-loadPdf();
+if (hasPdf) loadPdf();
 </script>
 </body>
 </html>`
