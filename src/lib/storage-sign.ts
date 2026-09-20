@@ -42,11 +42,17 @@ export function signStorageReadUrl(ref: string | null | undefined, ttlSec: numbe
   if (path.startsWith('storage/')) path = path.slice('storage/'.length); // 容错：误传了前缀
   if (!path) return '';
 
+  // 容错：老客户端缓存里可能是二次编码的路径（%2520 / %252523…）→ 反复解码到稳定再重编
   let decoded = path;
-  try {
-    decoded = decodeURIComponent(path);
-  } catch {
-    /* 非法编码就用原串 */
+  for (let i = 0; i < 3; i++) {
+    let next = '';
+    try {
+      next = decodeURIComponent(decoded);
+    } catch {
+      break; // 非法编码就用上一轮结果
+    }
+    if (next === decoded) break;
+    decoded = next;
   }
 
   const uri = `/storage/${decoded}`;
