@@ -1,4 +1,5 @@
 'use client';
 import RouteError from '@/components/shared/RouteError';
-export default (props: { error: Error & { digest?: string }; reset: () => void }) =>
-  <RouteError {...props} label="个人资料" />;
+export default function ProfileError(props: { error: Error & { digest?: string }; reset: () => void }) {
+  return <RouteError {...props} label="个人资料" />;
+}

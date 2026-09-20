@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPass, isAuth } from '@/lib/auth';
 import { MAX_FILE_SIZE } from '@/lib/constants/config';
 import { dbConfigOk, dbFetch, dbUpsertOwned, resolveStorageUrl, vpsUpload } from '@/lib/vps-db';
+import { errMsg } from '@/lib/api-error';
 
 /**
  * 生成安全的文件名片段（只保留字母数字和连字符）
@@ -24,8 +25,8 @@ async function getPdfPageCount(pdfBuffer: ArrayBuffer): Promise<number | undefin
     const count = doc.numPages;
     doc.cleanup();
     return count;
-  } catch (e: any) {
-    console.warn('[upload] 获取 PDF 页数失败:', e?.message || e);
+  } catch (e) {
+    console.warn('[upload] 获取 PDF 页数失败:', errMsg(e));
     return undefined;
   }
 }
@@ -185,8 +186,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true, id: resourceId });
-  } catch (e: any) {
-    console.error('图解上传错误:', e?.message || e);
-    return NextResponse.json({ error: e.message || '上传失败' }, { status: 500 });
+  } catch (e) {
+    console.error('图解上传错误:', errMsg(e));
+    return NextResponse.json({ error: errMsg(e) || '上传失败' }, { status: 500 });
   }
 }

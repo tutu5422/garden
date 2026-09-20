@@ -59,6 +59,17 @@ export function apiServerError(detail: string, digest?: string) {
 }
 
 /**
+ * 把 catch 到的 unknown 错误安全转成可读字符串。
+ * strict 模式下 catch 变量是 unknown，不能直接 .message，统一用这个。
+ */
+export function errMsg(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'string') return e;
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  return String(e ?? '未知错误');
+}
+
+/**
  * Wrap an async route handler so any thrown Error becomes a uniform 500
  * response instead of an unstructured 500. The error is logged with a
  * generated digest that is also sent to the client for correlation.
@@ -68,9 +79,9 @@ export async function withApiHandler(
 ): Promise<NextResponse> {
   try {
     return await fn();
-  } catch (e: any) {
+  } catch (e) {
     const digest = crypto.randomUUID().slice(0, 8);
-    console.error(`[api:${digest}]`, e?.message || e);
-    return apiServerError(e?.message || '未知错误', digest);
+    console.error(`[api:${digest}]`, errMsg(e));
+    return apiServerError(errMsg(e), digest);
   }
 }

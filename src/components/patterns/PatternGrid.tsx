@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { message } from 'antd'
 import dynamic from 'next/dynamic'
 import { InboxOutlined, DeleteOutlined, SwapOutlined, ImportOutlined } from '@ant-design/icons'
@@ -50,6 +50,30 @@ export default function PatternGrid({
   const [moveTargetId, setMoveTargetId] = useState('')
 
   const selectedCount = selectedIds.size
+  // 增量渲染：871 张卡一次全渲染在手机/低配机上很吃力（页面 5 万+ px、DOM 6000+）
+  const PAGE_SIZE = 120
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const shownPatterns = patterns.slice(0, visibleCount)
+  const hasMore = patterns.length > shownPatterns.length
+
+  // 过滤/搜索/分类变化 → 回到首屏
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [patterns])
+
+  // 滚到「加载更多」附近就自动续上（rootMargin 提前 600px 触发，滚动无感）
+  useEffect(() => {
+    if (!hasMore) return
+    const el = sentinelRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        setVisibleCount((c) => Math.min(c + PAGE_SIZE, patterns.length))
+      }
+    }, { rootMargin: '600px 0px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasMore, patterns.length])
+
   const allSelected = patterns.length > 0 && patterns.every((p) => selectedIds.has(p.id))
   const someSelected = patterns.some((p) => selectedIds.has(p.id))
 
@@ -144,7 +168,7 @@ export default function PatternGrid({
 
       {/* CSS grid 卡片网格（由 globals.css 的 .pattern-grid 控制响应式列数） */}
       <div className="pattern-grid" style={{ flex: 1 }}>
-        {patterns.map((pattern) => (
+        {shownPatterns.map((pattern) => (
           <PatternCardV2
             key={pattern.id}
             pattern={pattern}
@@ -155,6 +179,20 @@ export default function PatternGrid({
             onDelete={onDelete}
           />
         ))}
+        {hasMore && (
+          <div ref={sentinelRef} style={{ gridColumn: '1 / -1' }} className="flex flex-col items-center gap-2 py-8">
+            <span className="text-xs" style={{ color: 'var(--skin-text-secondary)' }}>
+              已显示 {shownPatterns.length} / {patterns.length} 张
+            </span>
+            <button
+              onClick={() => setVisibleCount((c) => Math.min(c + PAGE_SIZE, patterns.length))}
+              className="px-4 py-2 rounded-full text-xs font-bold transition-colors"
+              style={{ background: 'var(--skin-muted)', color: 'var(--skin-text)' }}
+            >
+              加载更多（还有 {patterns.length - shownPatterns.length} 张）
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 移动分类弹窗 */}

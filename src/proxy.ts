@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { AUTH_COOKIE, createToken, getPass, safeEqualStr, verifyToken } from "@/lib/auth";
+import { clearLoginFails, loginFailCount, recordLoginFail } from "@/lib/login-rate-limit";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -37,10 +38,14 @@ export default async function proxy(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "服务端未配置站点密码" }, { status: 500 });
     }
 
-    // Dedicated login rate limit: max LOGIN_MAX attempts per IP per minute
+    // 登录限流（两道）：
+    //  1) 内存态：单实例内的快速闸门（挡同一实例上的连续轰炸，零延迟）
+    //  2) 持久化：VPS 上的 login_attempts 表，跨实例/跨冷启生效（原先只靠内存，多实例下会被放大）
+    //     持久层不可用时 fail-open —— 只靠内存闸门，绝不把主人锁在门外
     const now = Date.now();
     const attempts = (LOGIN_RL.get(ip) || []).filter((t) => now - t < 60000);
-    if (attempts.length >= LOGIN_MAX) {
+    const persistedFails = await loginFailCount(ip);
+    if (attempts.length >= LOGIN_MAX || (persistedFails !== null && persistedFails >= LOGIN_MAX)) {
       return NextResponse.json({ ok: false, error: "尝试过于频繁，请稍后再试" }, { status: 429 });
     }
     attempts.push(now);
@@ -57,8 +62,13 @@ export default async function proxy(req: NextRequest) {
     }
 
     if (!bodyOk) {
+      await recordLoginFail(ip);
       return NextResponse.json({ ok: false, error: "密码错误" }, { status: 401 });
     }
+
+    // 登录成功：清掉该 IP 的失败记录 + 内存计数，正常用户不会被自己的历史失败拖累
+    await clearLoginFails(ip);
+    LOGIN_RL.delete(ip);
 
     // Issue a signed random-ish token (NOT the plaintext password)
     const token = await createToken(pass);

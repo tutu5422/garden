@@ -16,7 +16,7 @@ export default function CategoryDetailPage({ params }: { params: Promise<{ slug:
   useEffect(() => {
     const all = getLocalCategories()
     // 多重匹配：slug、名称、slug作为名称
-    let cat = all.find(c => c.slug === slug) || all.find(c => c.name === slug) || all.find(c => c.slug === decodeURIComponent(slug)) || null
+    const cat = all.find(c => c.slug === slug) || all.find(c => c.name === slug) || all.find(c => c.slug === decodeURIComponent(slug)) || null
     setCategory(cat)
     if (cat) {
       const result = getLocalResourcesFiltered({ category: cat.slug, status: 'active', pageSize: 50 })
@@ -43,7 +43,7 @@ export default function CategoryDetailPage({ params }: { params: Promise<{ slug:
       {resources.length === 0 ? (
         <EmptyState title="暂无笔记" description={`"${category.name}" 分类下还没有笔记`} />
       ) : (
-        <div className="columns-2 lg:columns-3 gap-3" style={{ columnFill: 'balance' as any }}>
+        <div className="columns-2 lg:columns-3 gap-3" style={{ columnFill: 'balance' }}>
           {resources.map(r => (
             <div key={r.id} className="mb-3" style={{ breakInside: 'avoid' }}>
               <ResourceCard resource={r} />

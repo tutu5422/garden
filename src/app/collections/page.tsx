@@ -40,16 +40,6 @@ export default function CollectionsPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
 
-  useEffect(() => {
-    // Show localStorage data immediately, then sync from cloud in background
-    refresh()
-    pullCollectionsFromCloud().then(() => refresh())
-    // Also re-read if CloudSyncProvider finishes later
-    const handler = () => refresh()
-    window.addEventListener('cloud-sync-done', handler)
-    return () => window.removeEventListener('cloud-sync-done', handler)
-  }, [])
-
   const refresh = () => {
     const cols = getLocalCollections()
     setCollections(cols)
@@ -62,6 +52,17 @@ export default function CollectionsPage() {
       setNoteCounts(counts)
     } catch {}
   }
+
+
+  useEffect(() => {
+    // Show localStorage data immediately, then sync from cloud in background
+    refresh()
+    pullCollectionsFromCloud().then(() => refresh())
+    // Also re-read if CloudSyncProvider finishes later
+    const handler = () => refresh()
+    window.addEventListener('cloud-sync-done', handler)
+    return () => window.removeEventListener('cloud-sync-done', handler)
+  }, [])
 
   const handleCreate = () => {
     if (!title.trim()) { toast.error('请输入合集名称'); return }

@@ -16,7 +16,9 @@ let _homeCoverCache: CoverMap | null = null
 async function loadHomeCoverMap(): Promise<CoverMap> {
   if (_homeCoverCache) return _homeCoverCache
   try {
-    const res = await fetch('/music-covers-manifest.json')
+    // 封面 URL 需读签名 → 优先 /api/music-covers，失败退回静态文件（开发环境）
+    let res = await fetch('/api/music-covers')
+    if (!res.ok) res = await fetch('/music-covers-manifest.json')
     const data = await res.json()
     const map: CoverMap = {}
     for (const e of data) {
@@ -55,6 +57,28 @@ interface NoteItem {
   images?: string[]; imageThumbs?: string[];
 }
 interface TimelineMemo { id: string; content: string; createdAt: string; source: string; }
+
+// 首页小部件：提到模块作用域（在组件内定义会在每次渲染时重建，导致状态重置）
+function SectionHead({ num, label }: { num: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-6 sm:mb-8">
+      <span className="section-number">{num}</span>
+      <div className="rule-thin flex-1" style={{ background: "var(--skin-border)" }} />
+      <span className="text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--skin-text-secondary)]">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function ArrowHint() {
+  return (
+    <span className="inline-flex items-center gap-0.5 text-xs font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-0 translate-x-1"
+          style={{ color: "var(--skin-primary)" }}>
+      浏览 <ArrowUpRight className="size-3.5" />
+    </span>
+  );
+}
 
 export default function Home() {
   const [greeting, setGreeting] = useState("");
@@ -153,27 +177,6 @@ export default function Home() {
       }).catch(() => {}).finally(() => setPatternsLoaded(true))
     } catch {}
   }, []);
-
-  function SectionHead({ num, label }: { num: string; label: string }) {
-    return (
-      <div className="flex items-center gap-3 mb-6 sm:mb-8">
-        <span className="section-number">{num}</span>
-        <div className="rule-thin flex-1" style={{ background: "var(--skin-border)" }} />
-        <span className="text-[10px] tracking-[0.25em] uppercase font-bold text-[var(--skin-text-secondary)]">
-          {label}
-        </span>
-      </div>
-    );
-  }
-
-  function ArrowHint() {
-    return (
-      <span className="inline-flex items-center gap-0.5 text-xs font-bold tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-0 translate-x-1"
-            style={{ color: "var(--skin-primary)" }}>
-        浏览 <ArrowUpRight className="size-3.5" />
-      </span>
-    );
-  }
 
   // 首页织集展示：在织排前，心愿单排后，最多 6 个
   const displayPatterns = [...inProgressPatterns, ...wishlistPatterns].slice(0, 6)

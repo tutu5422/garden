@@ -37,7 +37,7 @@ export default function TagDetailPage({ params }: { params: Promise<{ slug: stri
       {resources.length === 0 ? (
         <EmptyState title="暂无笔记" description={`标签 "${tag.name}" 下还没有笔记`} />
       ) : (
-        <div className="columns-2 lg:columns-3 gap-3" style={{ columnFill: 'balance' as any }}>
+        <div className="columns-2 lg:columns-3 gap-3" style={{ columnFill: 'balance' }}>
           {resources.map(r => (
             <div key={r.id} className="mb-3" style={{ breakInside: 'avoid' }}>
               <ResourceCard resource={r} />

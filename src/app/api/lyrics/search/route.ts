@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+
+import { errMsg } from '@/lib/api-error';import { NextRequest, NextResponse } from 'next/server'
 import { apiBadRequest, apiNotFound, apiServerError } from '@/lib/api-error'
 import { LYRICS_FETCH_TIMEOUT_MS } from '@/lib/constants/config'
 import { configMissingResponse, getPass, isAuth } from '@/lib/auth'
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let lyrics: string | null = null
+    const lyrics: string | null = null
     let foundArtist: string | undefined
     let foundAlbum: string | undefined
 
@@ -63,9 +64,9 @@ export async function GET(req: NextRequest) {
     }
 
     return apiNotFound('歌词')
-  } catch (err: any) {
-    console.error('Lyrics search error:', err?.message || err)
-    return apiServerError(err?.message || 'Search failed')
+  } catch (err) {
+    console.error('Lyrics search error:', errMsg(err))
+    return apiServerError(errMsg(err) || 'Search failed')
   }
 }
 
@@ -152,7 +153,7 @@ async function trySearch(trackName: string, artistName?: string) {
 // 从结果提取纯文本歌词 + 同步歌词
 function extractLyricsWithSync(data: LrcLibResult): { lyrics: string; syncedLyrics?: string } | null {
   let plain = data.plainLyrics || null
-  let synced = data.syncedLyrics || null
+  const synced = data.syncedLyrics || null
 
   // 如果有 synced 但没有 plain，从 synced 提取 plain
   if (!plain && synced) {

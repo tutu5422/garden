@@ -1,5 +1,6 @@
 'use client'
 
+import { errMsg } from '@/lib/api-error';
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -31,7 +32,8 @@ export default function ResourcesContent() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const deletedIdsRef = useRef(deletedIds)
-  deletedIdsRef.current = deletedIds
+  // ref 同步放到 effect 里：渲染期写 ref 会被 React Compiler 判为副作用
+  useEffect(() => { deletedIdsRef.current = deletedIds }, [deletedIds])
 
   useEffect(() => {
     getResourcesHybrid({
@@ -157,7 +159,7 @@ export default function ResourcesContent() {
                 <button onClick={async () => {
                   if (!confirm(`确定删除 ${selected.size} 篇笔记？此操作不可恢复。`)) return
                   const ids = Array.from(selected)
-                  try { await deleteResourcesHybrid(ids) } catch (e: any) { alert(e.message) }
+                  try { await deleteResourcesHybrid(ids) } catch (e) { alert(errMsg(e)) }
                   setDeletedIds(new Set([...deletedIds, ...ids]))
                   setResources(resources.filter(r => !selected.has(r.id)))
                   setCount(count - ids.length)

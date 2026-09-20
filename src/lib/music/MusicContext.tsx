@@ -185,7 +185,9 @@ async function lookupCoverUrl(artist: string, album: string): Promise<string | u
   if (!artist) return undefined
   if (!coverMapCache) {
     try {
-      const res = await fetch('/music-covers-manifest.json', { cache: 'force-cache' })
+      // 封面 URL 需读签名 → 优先签名接口，失败退回静态文件
+      let res = await fetch('/api/music-covers')
+      if (!res.ok) res = await fetch('/music-covers-manifest.json', { cache: 'force-cache' })
       const data = (await res.json()) as { artist?: string; album?: string; coverUrl?: string }[]
       const map: Record<string, string> = {}
       for (const e of data || []) {
@@ -207,7 +209,7 @@ let globalAudio: HTMLAudioElement | null = null
 function getAudio(): HTMLAudioElement {
   if (!globalAudio) {
     globalAudio = new Audio()
-    ;(globalAudio as any).playsInline = true
+    ;(globalAudio as HTMLAudioElement & { playsInline?: boolean }).playsInline = true
     globalAudio.preload = 'auto'
   }
   return globalAudio
@@ -572,8 +574,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }, [playlist, currentIndex])
 
   // 同步最新回调到 ref（供 onEnded effect 使用，避免闭包过期）
-  handleNextRef.current = handleNext
-  handleShuffleNextRef.current = handleShuffleNext
+  // 放在 effect 里而不是渲染期赋值：渲染期写 ref 会被 React Compiler 判为副作用
+  useEffect(() => {
+    handleNextRef.current = handleNext
+    handleShuffleNextRef.current = handleShuffleNext
+  }, [handleNext, handleShuffleNext])
 
   const next = useCallback(() => { loopMode === 'shuffle' ? handleShuffleNext() : handleNext() }, [loopMode, handleNext, handleShuffleNext])
 

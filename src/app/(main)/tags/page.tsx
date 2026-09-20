@@ -12,11 +12,12 @@ export default function TagsPage() {
   const [tags, setTags] = useState<Tag[]>([])
   const [showManager, setShowManager] = useState(false)
 
-  useEffect(() => { loadTags() }, [])
-
   const loadTags = async () => {
     setTags(getLocalTags())
   }
+
+
+  useEffect(() => { loadTags() }, [])
 
   const refresh = () => loadTags()
 
@@ -28,7 +29,7 @@ export default function TagsPage() {
         </h1>
         <button
           onClick={() => setShowManager(!showManager)}
-          className="text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors flex items-center gap-1"
+          className="text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors flex items-center gap-1 tap-h44"
         >
           <Settings2 className="size-3" />
           管理

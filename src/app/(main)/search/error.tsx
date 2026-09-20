@@ -1,4 +1,5 @@
 'use client';
 import RouteError from '@/components/shared/RouteError';
-export default (props: { error: Error & { digest?: string }; reset: () => void }) =>
-  <RouteError {...props} label="搜索" />;
+export default function SearchError(props: { error: Error & { digest?: string }; reset: () => void }) {
+  return <RouteError {...props} label="搜索" />;
+}

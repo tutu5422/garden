@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Plus, X, Layers, FileText, ExternalLink, BookOpen, ImageIcon, Film, Wrench, Pencil, Check } from 'lucide-react'
+import { ChevronLeft, Plus, X, Layers, FileText, ExternalLink, BookOpen, ImageIcon, Film, Wrench, Pencil, Check, type LucideIcon } from 'lucide-react'
 import { getLocalCollections, updateLocalCollection, type LocalCollection } from '@/lib/db/local-store'
 import { toast } from 'sonner'
 
@@ -13,7 +13,7 @@ interface GardenNote {
   images?: string[]; imageThumbs?: string[]
 }
 
-const typeIcons: Record<string, any> = { link: ExternalLink, image: ImageIcon, book: BookOpen, movie: Film, tool: Wrench, article: FileText }
+const typeIcons: Record<string, LucideIcon> = { link: ExternalLink, image: ImageIcon, book: BookOpen, movie: Film, tool: Wrench, article: FileText }
 const typeLabels: Record<string, string> = { link: "链接", image: "图片", book: "书籍", movie: "影视", tool: "工具", article: "文章" }
 
 export default function CollectionDetailPage({ params }: { params: Promise<{ id: string }> }) {

@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+
+import { signStorageReadUrl } from '@/lib/storage-sign';
+import { errMsg } from '@/lib/api-error';import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth'
 import { vpsStorageEnabled, vpsStorageUrl } from '@/lib/vps-db'
@@ -73,12 +75,12 @@ export async function POST(req: NextRequest) {
       ok: true,
       signedUrl,
       storagePath,
-      publicUrl: vpsStorageUrl(storagePath),
+      publicUrl: signStorageReadUrl(vpsStorageUrl(storagePath)),
       expiresAt: exp,
       vps: true,
     })
-  } catch (e: any) {
-    console.error('Presign error:', e?.message || e)
-    return NextResponse.json({ error: e.message || '生成上传链接异常' }, { status: 500 })
+  } catch (e) {
+    console.error('Presign error:', errMsg(e))
+    return NextResponse.json({ error: errMsg(e) || '生成上传链接异常' }, { status: 500 })
   }
 }

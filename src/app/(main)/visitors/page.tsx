@@ -44,7 +44,7 @@ export default function VisitorsPage() {
       <div className="flex gap-1 mb-4 glass rounded-lg p-1">
         {(['overview', 'list', 'suspicious'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === t ? 'bg-primary text-primary-foreground' : 'hover:bg-white/20'}`}>
+            className={`flex-1 py-1.5 tap-h44 rounded-md text-xs font-medium transition-colors ${tab === t ? 'bg-primary text-primary-foreground' : 'hover:bg-white/20'}`}>
             {t === 'overview' ? '概览' : t === 'list' ? '记录' : suspicious.length > 0 ? `⚠️ 可疑 (${suspicious.length})` : '安全'}
           </button>
         ))}

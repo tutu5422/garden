@@ -146,22 +146,6 @@ export default function ReaderClient() {
   }, [books, refreshBooks]);
 
   /* ---------------- 打开书 ---------------- */
-  const openToc = useCallback(async (b: Book) => {
-    setCur(b);
-    setCh(null);
-    setToc([]);
-    setReadSet(loadReadSet(b.id));
-    setBusy("读取目录…");
-    localStorage.setItem(LAST_KEY, b.id);
-    const r = await api<{ toc?: TocItem[]; error?: string }>(`/toc?b=${encodeURIComponent(b.id)}`);
-    setBusy("");
-    if (r.toc) {
-      setToc(r.toc);
-      const saved = Number(localStorage.getItem(`novel.pos.${b.id}`) ?? "");
-      await loadChapter(b.id, Number.isFinite(saved) && saved > 0 ? saved : 0, b);
-    } else setErr(r.error || "目录读取失败");
-  }, []);
-
   const loadChapter = useCallback(
     async (bookId: string, i: number, book?: Book) => {
       setBusy("加载章节…");
@@ -188,6 +172,22 @@ export default function ReaderClient() {
     },
     [cur]
   );
+
+  const openToc = useCallback(async (b: Book) => {
+    setCur(b);
+    setCh(null);
+    setToc([]);
+    setReadSet(loadReadSet(b.id));
+    setBusy("读取目录…");
+    localStorage.setItem(LAST_KEY, b.id);
+    const r = await api<{ toc?: TocItem[]; error?: string }>(`/toc?b=${encodeURIComponent(b.id)}`);
+    setBusy("");
+    if (r.toc) {
+      setToc(r.toc);
+      const saved = Number(localStorage.getItem(`novel.pos.${b.id}`) ?? "");
+      await loadChapter(b.id, Number.isFinite(saved) && saved > 0 ? saved : 0, b);
+    } else setErr(r.error || "目录读取失败");
+  }, []);
 
   const go = useCallback(
     (d: number) => {
@@ -315,8 +315,8 @@ export default function ReaderClient() {
           </span>
           <span className="flex-1" />
           {busy && <span className="truncate text-xs" style={{ color: theme.dim }}>{busy}</span>}
-          <button className="h-11 px-2 text-sm" onClick={() => go(-1)} disabled={!ch || ch.idx === 0} title="上一章 ←">‹</button>
-          <button className="h-11 px-2 text-sm" onClick={() => go(1)} disabled={!ch || ch.idx >= toc.length - 1} title="下一章 →">›</button>
+          <button className="h-11 px-2 text-sm tap-44" onClick={() => go(-1)} disabled={!ch || ch.idx === 0} title="上一章 ←">‹</button>
+          <button className="h-11 px-2 text-sm tap-44" onClick={() => go(1)} disabled={!ch || ch.idx >= toc.length - 1} title="下一章 →">›</button>
           <button className="h-11 px-2 text-sm" onClick={() => { setTocOpen(true); setShelfOpen(false); }}>目录</button>
           <button className="h-11 px-2 text-sm" onClick={() => { setCfgOpen((v) => !v); setTocOpen(false); }}>设置</button>
           <button className="h-11 px-2 text-sm" onClick={() => { setShelfOpen(true); setTocOpen(false); }}>书库</button>
@@ -485,11 +485,11 @@ export default function ReaderClient() {
               </p>
             ))}
             <div className="mt-10 flex items-center justify-between gap-3 text-sm">
-              <button className="rounded border px-3 py-1.5" style={{ borderColor: "rgba(125,125,125,.35)" }}
+              <button className="rounded border px-3 py-1.5 tap-h44" style={{ borderColor: "rgba(125,125,125,.35)" }}
                 disabled={ch.idx === 0} onClick={() => go(-1)}>上一章</button>
-              <button className="rounded border px-3 py-1.5" style={{ borderColor: "rgba(125,125,125,.35)" }}
+              <button className="rounded border px-3 py-1.5 tap-h44" style={{ borderColor: "rgba(125,125,125,.35)" }}
                 onClick={() => { setTocOpen(true); }}>目录</button>
-              <button className="rounded border px-3 py-1.5" style={{ borderColor: "rgba(125,125,125,.35)" }}
+              <button className="rounded border px-3 py-1.5 tap-h44" style={{ borderColor: "rgba(125,125,125,.35)" }}
                 disabled={ch.idx >= toc.length - 1} onClick={() => go(1)}>下一章</button>
             </div>
           </article>

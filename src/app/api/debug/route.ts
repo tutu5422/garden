@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth } from '@/lib/auth';
+import { errMsg } from '@/lib/api-error';
 import {
   LOCAL_USER_ID,
   dbFetch,
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
       if (noteRes.ok || noteRes.status === 409) {
         await dbFetch(`resources?id=eq.${testNoteId}&user_id=eq.${LOCAL_USER_ID}`, { method: 'DELETE' });
       }
-    } catch (e: any) { info.noteDirectInsert = { error: e.message }; }
+    } catch (e) { info.noteDirectInsert = { error: errMsg(e) }; }
 
     // Test read (scoped to LOCAL_USER_ID for defense-in-depth)
     try {
@@ -66,7 +67,7 @@ export async function GET(req: NextRequest) {
       if (r.ok) { serviceRead.rows = r.body; }
       else { serviceRead.body = r.error || ''; }
       info.serviceRead = serviceRead;
-    } catch (e: any) { info.serviceRead = { error: e.message }; }
+    } catch (e) { info.serviceRead = { error: errMsg(e) }; }
 
     // Count total rows (user-scoped)
     try {

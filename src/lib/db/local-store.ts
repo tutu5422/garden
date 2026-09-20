@@ -1,4 +1,5 @@
-// 本地浏览器存储 — 数据库未配置时的临时方案
+
+import { errMsg } from '@/lib/api-error';// 本地浏览器存储 — 数据库未配置时的临时方案
 // 数据存在 localStorage，刷新页面后仍在
 
 import type { Resource, Category, Tag, PatternNoteRow } from '@/lib/types'
@@ -191,13 +192,13 @@ async function doSyncToCloud(table: string, action: string, data: unknown): Prom
       const { flush } = await import('@/lib/offline-queue');
       void flush();
     }
-  } catch (e: any) {
-    console.error('[syncToCloud] network error:', table, action, e.message);
+  } catch (e) {
+    console.error('[syncToCloud] network error:', table, action, errMsg(e));
     // P1-6: 暴露网络错误给 UI
     const { setLastSyncError } = await import('@/lib/offline-queue');
-    setLastSyncError(`同步失败 [${table}/${action}]: ${e?.message || '网络错误'}`);
+    setLastSyncError(`同步失败 [${table}/${action}]: ${errMsg(e) || '网络错误'}`);
     // P1-4: 广播同步错误给其他标签页
-    broadcastSync({ type: 'sync-error', table, error: e?.message || 'network' });
+    broadcastSync({ type: 'sync-error', table, error: errMsg(e) || 'network' });
     // Network error (offline / DNS / CORS) → enqueue for later replay.
     const { enqueue } = await import('@/lib/offline-queue');
     void enqueue(table, action, data);

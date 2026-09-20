@@ -1,10 +1,14 @@
-"use client";
+'use client'
+
+import { errMsg } from '@/lib/api-error';
+;
 import { useState, useRef, useEffect } from "react";
 import { Upload, File, Trash2, Download, FileText, Music, Image, Archive, Film, Search, X, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { resolveStorageUrl } from "@/lib/storage-url";
+import { resolveStorageUrl, signStorageUrlClient } from "@/lib/storage-url";
 import { MAX_FILE_SIZE } from "@/lib/constants/config";
 import { isTombstoned, markDeleted, clearTombstone } from "@/lib/db/local-store";
+
 
 declare global {
   interface WindowEventMap {
@@ -103,7 +107,7 @@ async function uploadFile(file: File, id: string): Promise<{ storagePath: string
     }
 
     return { storagePath, publicUrl };
-  } catch (err: any) {
+  } catch (err) {
     console.error('Upload error:', err);
     throw err;
   }
@@ -183,9 +187,9 @@ export default function Files() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ table: 'files', action: 'upsert', data: myFile }),
         }).catch(() => {});
-      } catch (err: any) {
+      } catch (err) {
         errored++;
-        toast.error(`${f.name}: ${err.message}`);
+        toast.error(`${f.name}: ${errMsg(err)}`);
       }
       setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
     }
@@ -206,7 +210,8 @@ export default function Files() {
   };
 
   const handleDownload = async (f: MyFile) => {
-    const url = f.url || resolveStorageUrl(f.storagePath);
+    // 旧的（无签名）URL 会 403 —— 先找服务端换一个带签名的
+    const url = await signStorageUrlClient(f.url || resolveStorageUrl(f.storagePath));
     if (url) {
       const a = document.createElement("a");
       a.href = url; a.download = f.name; a.target = "_blank";
@@ -383,8 +388,8 @@ export default function Files() {
             const ext = f.name.split(".").pop()?.toLowerCase() || "";
             const extGroupKey = extGroup[ext] || "other";
             return (
-            <div className="relative">
-            <div key={f.id} className="card rounded-lg flex items-center gap-4 px-5 py-4 group">
+            <div key={f.id} className="relative">
+            <div className="card rounded-lg flex items-center gap-4 px-5 py-4 group">
               <div className="size-10 rounded flex items-center justify-center shrink-0" style={{ background: 'var(--skin-muted)' }}>
                 {extGroupKey === "audio" ? <Music className="size-5" style={{ color: 'var(--skin-primary)' }} />
                  : extGroupKey === "video" ? <Film className="size-5" style={{ color: 'var(--skin-accent)' }} />

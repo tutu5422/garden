@@ -9,6 +9,8 @@ import {
 } from '@/lib/vps-db';
 import { syncPostSchema, type MusicPlaylistUpsertData } from '@/lib/sync-schema';
 import { SYNC_PAGE_LIMIT, NOTE_DESCRIPTION_MAX_LENGTH } from '@/lib/constants/config';
+import { errMsg } from '@/lib/api-error';
+import { signStorageDeep, stripStorageSigsDeep } from '@/lib/storage-sign';
 import type {
   ResourceRow,
   CollectionRow,
@@ -155,7 +157,9 @@ export async function GET(req: NextRequest) {
       resourceMap[j.collection_id].push(j.resource_id);
     }
 
-    const response = NextResponse.json({
+    // 读签名：响应体里所有存储 URL（音乐音频、织集封面/PDF、文件下载）在这里统一换成带签名的版本，
+    // 数据库里依旧只存不带签名的规范 URL（签名只在读路径生成，避免过期 URL 被写进库）
+    const payload = signStorageDeep({
       musicPlaylist: musicPlaylist || [],
       notes: (notes || []).map((r: ResourceRow) => ({
         id: r.id,
@@ -237,11 +241,12 @@ export async function GET(req: NextRequest) {
         ? ((playlistsRes.body as Pick<ResourceRow, 'metadata'>[])?.[0]?.metadata?.playlists || [])
         : [],
     });
+    const response = NextResponse.json(payload);
     response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
     return response;
-  } catch (e: any) {
-    console.error('Sync GET error:', e?.message || e);
-    return NextResponse.json({ error: e.message || '获取数据失败' }, { status: 500 });
+  } catch (e) {
+    console.error('Sync GET error:', errMsg(e));
+    return NextResponse.json({ error: errMsg(e) || '获取数据失败' }, { status: 500 });
   }
 }
 
@@ -257,7 +262,8 @@ export async function POST(req: NextRequest) {
 
   let payload;
   try {
-    const raw = await req.json();
+    // 客户端回传的数据里 URL 可能是带读签名的版本 → 写库前去掉签名（避免 7 天后变成死链）
+    const raw = stripStorageSigsDeep(await req.json());
     const parsed = syncPostSchema.safeParse(raw);
     if (!parsed.success) {
       return NextResponse.json(
@@ -266,8 +272,8 @@ export async function POST(req: NextRequest) {
       );
     }
     payload = parsed.data;
-  } catch (e: any) {
-    return NextResponse.json({ error: '请求体解析失败', detail: e.message }, { status: 400 });
+  } catch (e) {
+    return NextResponse.json({ error: '请求体解析失败', detail: errMsg(e) }, { status: 400 });
   }
 
   try {
@@ -549,8 +555,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    console.error('Sync error:', e?.message || e);
-    return NextResponse.json({ error: e.message || '同步异常' }, { status: 500 });
+  } catch (e) {
+    console.error('Sync error:', errMsg(e));
+    return NextResponse.json({ error: errMsg(e) || '同步异常' }, { status: 500 });
   }
 }

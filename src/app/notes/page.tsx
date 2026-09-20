@@ -148,7 +148,7 @@ export default function Notes() {
     const cacheKey = 'notes-' + Date.now()
     const loadNotes = async () => {
       try {
-        let local: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]');
+        const local: Note[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]');
         let migrated = false;
         const idMap = new Map<string, string>();
         for (const n of local) {

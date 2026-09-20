@@ -1,5 +1,6 @@
 'use client'
 
+import { errMsg } from '@/lib/api-error';
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getLocalCategories, getLocalTags, getOrCreateTag } from '@/lib/db/local-store'
@@ -75,16 +76,16 @@ export default function SimpleForm({ resource }: { resource?: Resource }) {
         writeCache({ ...created, category: newCat } as Resource)
         router.push(`/resources/${created.id}`)
       }
-    } catch (e: any) {
-      setError(e.message || '保存失败')
+    } catch (e) {
+      setError(errMsg(e) || '保存失败')
     } finally { setSaving(false) }
   }
 
   const handleImagePick = () => {
     const input = document.createElement('input')
     input.type = 'file'; input.accept = 'image/*'
-    input.onchange = async (e: any) => {
-      const file = e.target.files?.[0]
+    input.onchange = async (e: Event) => {
+      const file = (e.target as HTMLInputElement | null)?.files?.[0]
       if (!file) return
       try {
         const compressed = await compressImage(file, 1200, 0.7)

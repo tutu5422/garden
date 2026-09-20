@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbFetch, dbUpsert, dbUpsertOwned, LOCAL_USER_ID } from '@/lib/vps-db';
 import { configMissingResponse, getPass, isAuth } from '@/lib/auth';
+import { errMsg } from '@/lib/api-error';
+import { signStorageDeep, stripStorageSigsDeep } from '@/lib/storage-sign';
 
 /**
  * 通用数据库代理 API
@@ -92,9 +94,10 @@ export async function POST(req: NextRequest) {
       }
 
       case 'upsert':
+        // 客户端可能把带读签名的 URL 回写 → 入库前去掉签名（否则签名过期后变死链）
         result = isOwned
-          ? await dbUpsertOwned(baseTable, data || {})
-          : await dbUpsert(baseTable, data || {});
+          ? await dbUpsertOwned(baseTable, stripStorageSigsDeep(data || {}))
+          : await dbUpsert(baseTable, stripStorageSigsDeep(data || {}));
         break;
 
       case 'delete': {
@@ -102,8 +105,8 @@ export async function POST(req: NextRequest) {
         let params: URLSearchParams;
         try {
           params = parseParams(queryString);
-        } catch (e: any) {
-          return NextResponse.json({ error: e.message }, { status: 400 });
+        } catch (e) {
+          return NextResponse.json({ error: errMsg(e) }, { status: 400 });
         }
 
         const allowed = DELETE_FILTERS[baseTable];
@@ -139,16 +142,17 @@ export async function POST(req: NextRequest) {
     }
 
     if (!result.ok) {
-      const status = 'status' in result ? (result as any).status : 500;
+      const status = 'status' in result ? (result as { status?: number }).status : 500;
       return NextResponse.json(
         { error: result.error || `数据库操作失败: ${status}` },
         { status },
       );
     }
 
-    return NextResponse.json({ data: 'body' in result ? result.body : null, ok: true });
-  } catch (e: any) {
-    console.error('API /api/db 错误:', e?.message || e);
-    return NextResponse.json({ error: e?.message || '代理请求失败' }, { status: 500 });
+    // 读签名：经代理出去的存储 URL（封面/PDF/文件）统一换成带签名的版本
+    return NextResponse.json({ data: signStorageDeep('body' in result ? result.body : null), ok: true });
+  } catch (e) {
+    console.error('API /api/db 错误:', errMsg(e));
+    return NextResponse.json({ error: errMsg(e) || '代理请求失败' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { configMissingResponse, getPass, isAuth, isSafePath } from '@/lib/auth';
 import { vpsDelete, vpsStorageEnabled } from '@/lib/vps-db';
+import { errMsg } from '@/lib/api-error';
 
 export async function POST(req: NextRequest) {
   if (!getPass()) return configMissingResponse();
@@ -28,8 +29,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '删除失败' }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    console.error('Delete error:', e?.message || e);
-    return NextResponse.json({ error: e.message || '删除异常' }, { status: 500 });
+  } catch (e) {
+    console.error('Delete error:', errMsg(e));
+    return NextResponse.json({ error: errMsg(e) || '删除异常' }, { status: 500 });
   }
 }

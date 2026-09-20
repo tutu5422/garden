@@ -105,7 +105,7 @@ export function parseLRC(lrc: string): LRCLine[] {
     if (tags.length === 0) continue
 
     // 提取时间标签之后的文本（去掉所有时间标签 + 元数据标签）
-    let text = line.replace(timeTagRe, '').trim()
+    const text = line.replace(timeTagRe, '').trim()
     // 跳过元数据行
     if (!text || text.startsWith('ti:') || text.startsWith('ar:') ||
         text.startsWith('al:') || text.startsWith('by:') ||

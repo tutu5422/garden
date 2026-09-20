@@ -14,8 +14,6 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<CatWithCount[]>([])
   const [showManager, setShowManager] = useState(false)
 
-  useEffect(() => { loadCategories() }, [])
-
   const loadCategories = async () => {
     const local = getLocalCategories()
     const resources = getLocalResources()
@@ -25,6 +23,9 @@ export default function CategoriesPage() {
     const deletedNames = getDeletedCategoryNames()
     setCategories(addCounts(local.filter(c => !deletedNames.has(c.name))))
   }
+
+
+  useEffect(() => { loadCategories() }, [])
 
   const refresh = () => loadCategories()
 
@@ -36,7 +37,7 @@ export default function CategoriesPage() {
         </h1>
         <button
           onClick={() => setShowManager(!showManager)}
-          className="text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors flex items-center gap-1"
+          className="text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors flex items-center gap-1 tap-h44"
         >
           <Settings2 className="size-3" />
           管理

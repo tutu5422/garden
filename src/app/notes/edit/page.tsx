@@ -1,5 +1,6 @@
 'use client'
 
+import { errMsg } from '@/lib/api-error';
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -276,9 +277,9 @@ function EditForm() {
         toast.success(isNew ? '笔记已发布' : '笔记已保存')
       }
       router.push('/notes')
-    } catch (e: any) {
+    } catch (e) {
       console.error('[save] 保存失败:', e)
-      toast.error('保存失败：' + (e?.message || '未知错误，请重试'))
+      toast.error('保存失败：' + (errMsg(e) || '未知错误，请重试'))
     } finally { setUploading(false) }
   }
 
@@ -395,8 +396,8 @@ function EditForm() {
 
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-2">
-          <Link href="/notes" className="btn btn-ghost btn-sm">取消</Link>
-          <button onClick={save} disabled={uploading || !form.title.trim()} className="btn btn-sm">
+          <Link href="/notes" className="btn btn-ghost btn-sm tap-h44">取消</Link>
+          <button onClick={save} disabled={uploading || !form.title.trim()} className="btn btn-sm tap-h44">
             {uploading ? <><Loader2 className="size-3.5 animate-spin" />保存中...</> : <><Check className="size-3.5" />{isNew ? '发布' : '保存'}</>}
           </button>
         </div>

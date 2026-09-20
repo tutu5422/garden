@@ -1,4 +1,5 @@
-/**
+
+import { errMsg } from '@/lib/api-error';/**
  * 织集数据 API 层（客户端版）
  *
  * 所有数据操作通过 HTTP 调用 /api/db 代理路由，
@@ -20,7 +21,7 @@ export interface PatternFilters {
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 
 /** 通用数据库请求——调用 /api/db 代理路由 */
-async function dbRequest(table: string, action: 'fetch' | 'upsert' | 'delete', data?: any, options?: { owned?: boolean }): Promise<any> {
+async function dbRequest(table: string, action: 'fetch' | 'upsert' | 'delete', data?: unknown, options?: { owned?: boolean }): Promise<any> {
   const res = await fetch('/api/db', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -143,8 +144,8 @@ export async function updatePattern(
   try {
     await dbRequest('resources', 'upsert', { id, ...data }, { owned: true })
     return null // 不二次查询，提升可靠性
-  } catch (e: any) {
-    console.error('updatePattern 失败:', id, e?.message || e)
+  } catch (e) {
+    console.error('updatePattern 失败:', id, errMsg(e))
     throw e
   }
 }

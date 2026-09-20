@@ -1,5 +1,6 @@
 'use client'
 
+import { errMsg } from '@/lib/api-error';
 import { useState, useEffect } from 'react'
 import { message } from 'antd'
 import dynamic from 'next/dynamic'
@@ -139,9 +140,9 @@ export default function PatternSidebar({
         await createCategory(catName.trim(), catColor)
         message.success('分类已创建')
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error('保存分类失败:', e)
-      message.error(e?.message || '保存失败')
+      message.error(errMsg(e) || '保存失败')
     }
     setModalVisible(false)
     setCatName('')

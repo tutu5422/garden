@@ -1,5 +1,6 @@
 'use client'
 
+import { errMsg } from '@/lib/api-error';
 import { useState, useRef, useCallback, useEffect, type ChangeEvent } from 'react'
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
@@ -10,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useMusic, type Track, type LoopMode } from '@/lib/music/MusicContext'
 import { searchAndCacheLyrics, setLyrics, hideLyrics, parseFilename } from '@/lib/music/lyrics-store'
-import { resolveStorageUrl } from '@/lib/storage-url'
+import { isSignedStorageUrl, resolveStorageUrl } from '@/lib/storage-url'
 import { MAX_FILE_SIZE } from '@/lib/constants/config'
 import { toggleFavorite, getFavoritedIds, getPlaylists, addTracksToPlaylist } from '@/lib/music/music-store'
 import Link from 'next/link'
@@ -78,7 +79,16 @@ async function uploadViaPresignedUrl(file: File, id: string): Promise<{ storageP
 }
 
 export default function MiniPlayer() {
-  // Hooks must be before any early return (React rules)
+  // 只有这一个 hook，且在任何 return 之前 —— 满足 hooks 规则
+  const ctx = useMusic();
+  if (!ctx) return null;
+  return <MiniPlayerInner ctx={ctx} />;
+}
+
+type MiniPlayerCtx = NonNullable<ReturnType<typeof useMusic>>;
+
+// 内层组件：ctx 由 props 传入，所有 hooks 都无条件执行（修掉「hooks 在早返回之后」的真 bug）
+function MiniPlayerInner({ ctx }: { ctx: MiniPlayerCtx }) {
   const [expanded, setExpanded] = useState(false)
   const [showPlaylist, setShowPlaylist] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -94,9 +104,6 @@ export default function MiniPlayer() {
   const [seekValue, setSeekValue] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lrcInputRef = useRef<HTMLInputElement>(null)
-
-  const ctx = useMusic();
-  if (!ctx) return null;
 
   const { playlist, currentIndex, currentTrack, playing, volume, muted, loopMode,
     currentTime, duration, togglePlay, play, seek, next, prev, setVolume, setMuted, cycleLoopMode, addTrack, removeTrack, notifyLyricsUpdated, updateTrackLyrics } = ctx;
@@ -141,9 +148,28 @@ export default function MiniPlayer() {
     if (selectedIds.size === 0) return
     setImporting(true)
     const toImport = importFiles.filter(f => selectedIds.has(f.id))
+    // 本地缓存里的 url 可能是不带签名的旧值（会 403）→ 先批量向服务端换一批签名 URL
+    const stale = toImport
+      .map(f => f.url || resolveStorageUrl(f.storagePath))
+      .filter(u => u && !isSignedStorageUrl(u))
+    const signed = new Map<string, string>()
+    if (stale.length) {
+      try {
+        const res = await fetch('/api/storage/sign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paths: stale }),
+        })
+        if (res.ok) {
+          const j = (await res.json()) as { urls?: Record<string, string> }
+          for (const [k, v] of Object.entries(j.urls || {})) signed.set(k, v)
+        }
+      } catch { /* 拿不到就按原值走，后面会提示失败 */ }
+    }
     let imported = 0
     for (const f of toImport) {
-      const url = f.url || resolveStorageUrl(f.storagePath)
+      const rawUrl = f.url || resolveStorageUrl(f.storagePath)
+      const url = signed.get(rawUrl) || rawUrl
       const ext = f.name.split('.').pop()?.toLowerCase() || ''
       if (!url) continue
       const parsed = parseFilename(f.name.replace(/\.[^.]+$/, ''))
@@ -208,8 +234,8 @@ export default function MiniPlayer() {
       searchAndCacheLyrics(track.id, track.title, track.artist).then(result => {
         if (result) toast.success(`📝 已找到「${track.title}」的歌词`)
       })
-    } catch (err: any) {
-      toast.error(err.message || '上传失败')
+    } catch (err) {
+      toast.error(errMsg(err) || '上传失败')
     }
     finally { setUploading(false); if (fileInputRef.current) fileInputRef.current.value = '' }
   }, [addTrack])

@@ -1,5 +1,6 @@
 'use client'
 
+import { errMsg } from '@/lib/api-error';
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react'
 import { useMusic, type Track } from '@/lib/music/MusicContext'
 import {
@@ -46,7 +47,9 @@ let _coverCache: CoverMap | null = null
 async function loadCoverMap(): Promise<CoverMap> {
   if (_coverCache) return _coverCache
   try {
-    const res = await fetch('/music-covers-manifest.json')
+    // 封面 URL 需要读签名 → 优先走 /api/music-covers（服务端签名），失败退回静态文件
+    let res = await fetch('/api/music-covers')
+    if (!res.ok) res = await fetch('/music-covers-manifest.json')
     const data = await res.json()
     const map: CoverMap = {}
     for (const e of data) {
@@ -85,8 +88,9 @@ function AlbumArt({ album, size = 'md', coverUrl }: { album: string; size?: 'sm'
 // ---- EQ animation ----
 function EQBar({ playing }: { playing: boolean }) {
   const bars = [3, 5, 2, 4, 3]
-  const dur = useRef(bars.map(() => 0.4 + Math.random() * 0.3))
-  return <span className="inline-flex items-end gap-px h-3">{bars.map((h, i) => <span key={i} className="w-[2px] rounded-full" style={{ height: h, background: 'var(--skin-primary)', animationDuration: `${dur.current[i]}s`, opacity: playing ? 1 : 0.3, animation: playing ? `eq-bar 0.6s ease-in-out infinite` : 'none', animationDelay: `${i * 0.08}s`, transformOrigin: 'bottom' }} />)}</span>
+  // 固定时长：原先在渲染期用 Math.random() + useRef().current，属渲染期副作用（React Compiler 会报 purity/refs）
+  const dur = [0.42, 0.55, 0.5, 0.62, 0.47]
+  return <span className="inline-flex items-end gap-px h-3">{bars.map((h, i) => <span key={i} className="w-[2px] rounded-full" style={{ height: h, background: 'var(--skin-primary)', animationDuration: `${dur[i]}s`, opacity: playing ? 1 : 0.3, animation: playing ? `eq-bar 0.6s ease-in-out infinite` : 'none', animationDelay: `${i * 0.08}s`, transformOrigin: 'bottom' }} />)}</span>
 }
 
 /* ========================================================================
@@ -254,7 +258,7 @@ export default function MusicPage() {
       } catch { }
       ctx?.addTrack({ id, title: parsed.title, artist: parsed.artist, url: publicUrl, storagePath })
       toast.success(`已添加: ${parsed.title}${parsed.artist ? ` — ${parsed.artist}` : ''}`)
-    } catch (e: any) { toast.error(e.message || '上传失败') }
+    } catch (e) { toast.error(errMsg(e) || '上传失败') }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
   }
 
@@ -586,7 +590,7 @@ export default function MusicPage() {
       <aside className="hidden md:flex flex-col w-64 shrink-0 border-r-2 border-[var(--skin-border)] h-[calc(100vh-3.5rem)] sticky top-14"
         style={{ background: 'var(--skin-surface)' }}>
         {ctx?.currentTrack ? (
-          <div className="flex flex-col flex-1 p-4 overflow-y-auto">
+          <div className="flex flex-col flex-1 p-4 pb-24 md:pb-4 overflow-y-auto">
             {/* Cover */}
             <div className={cn('mx-auto mb-4 rounded-2xl overflow-hidden shadow-xl w-44 h-44',
               isPlaying && 'animate-[spin_8s_linear_infinite]')}>
@@ -763,12 +767,12 @@ export default function MusicPage() {
         )}
 
         {/* ---- Main Content ---- */}
-        <main className="flex-1 px-4 sm:px-6 pb-8 pt-16 md:pt-28">
+        <main className="flex-1 px-4 sm:px-6 pb-28 md:pb-8 pt-16 md:pt-28">
           <div className="max-w-full mx-auto">
             {allTracks.length === 0 ? (
               <div className="text-center py-24">
                 <Music2 className="size-16 mx-auto mb-4 opacity-15" style={{ color: 'var(--skin-text-secondary)' }} />
-                <p className="text-sm font-bold" style={{ color: 'var(--skin-text-secondary)' }}>还没有音乐，点击上方"上传"添加</p>
+                <p className="text-sm font-bold" style={{ color: 'var(--skin-text-secondary)' }}>还没有音乐，点击上方“上传”添加</p>
               </div>
             ) : (
               renderContent()

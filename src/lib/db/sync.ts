@@ -14,7 +14,7 @@ export async function syncToCloud(): Promise<{ notes: number; categories: number
   const localCollections = getLocalCollections()
 
   let syncedNotes = 0
-  let syncedCategories = 0
+  const syncedCategories = 0
   let syncedTags = 0
   let syncedCollections = 0
 
