@@ -17,7 +17,8 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico", apple: "/icon-192.png" },
   appleWebApp: { capable: true, title: "迷你兔", statusBarStyle: "default" },
 };
-export const viewport: Viewport = { themeColor: "#E8315B", width: "device-width", initialScale: 1, maximumScale: 1 };
+// maximumScale 曾经是 1（禁掉双指缩放）—— 安卓端无障碍不友好，去掉；桌面端不受 viewport 影响
+export const viewport: Viewport = { themeColor: "#E8315B", width: "device-width", initialScale: 1, maximumScale: 5, userScalable: true };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (

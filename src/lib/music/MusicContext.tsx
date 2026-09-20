@@ -179,6 +179,27 @@ async function loadPlaylistFromCloud(): Promise<Track[] | null> {
 
 export { loadPlaylistFromCloud }
 
+// ========== 封面查表（安卓锁屏封面用，按需拉一次 manifest）==========
+let coverMapCache: Record<string, string> | null = null
+async function lookupCoverUrl(artist: string, album: string): Promise<string | undefined> {
+  if (!artist) return undefined
+  if (!coverMapCache) {
+    try {
+      const res = await fetch('/music-covers-manifest.json', { cache: 'force-cache' })
+      const data = (await res.json()) as { artist?: string; album?: string; coverUrl?: string }[]
+      const map: Record<string, string> = {}
+      for (const e of data || []) {
+        if (e?.coverUrl && e.artist) {
+          map[`${e.artist}|${e.album ?? ''}`] = e.coverUrl
+          if (e.album === '_default_') map[`${e.artist}|`] = e.coverUrl
+        }
+      }
+      coverMapCache = map
+    } catch { coverMapCache = {} }
+  }
+  return coverMapCache[`${artist}|${album}`] || coverMapCache[`${artist}|`]
+}
+
 // ========== Provider ==========
 
 // ========== 模块级 Audio（脱离 React 生命周期，页面切换不中断）==========
@@ -221,11 +242,31 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     const cloudTracksRaw = await loadPlaylistFromCloud()
     const cloudTracks = cloudTracksRaw || []
 
-    // Cloud as source of truth
-    const merged = new Map<string, Track>()
-    for (const t of cloudTracks) merged.set(t.id, t)
+    // 去重键：陈旧设备里的旧条目 id 与云端不同，但指向同一个文件和同一首歌。
+    // 只按 id 合并会让老设备显示成两倍（手机上曾出现 300+ 首），所以再加
+    // storagePath 与「归一化歌名+歌手」两个键。
+    const norm = (s?: string) => (s || '').trim().toLowerCase().replace(/[\s\-_·，,。、()（）\[\]!！?？'"’“”]+/g, '')
+    const pathKey = (t: Track) => (t.storagePath ? `p:${t.storagePath}` : '')
+    const nameKey = (t: Track) => (t.title ? `n:${norm(t.title)}|${norm(t.artist)}` : '')
+
+    const merged = new Map<string, Track>()          // 主键：id
+    const seenPaths = new Map<string, string>()      // storagePath -> id
+    const seenNames = new Map<string, string>()      // 归一化歌名+歌手 -> id
+
+    const add = (t: Track) => {
+      const pk = pathKey(t), nk = nameKey(t)
+      if (pk && seenPaths.has(pk)) return
+      if (nk && seenNames.has(nk)) return
+      merged.set(t.id, t)
+      if (pk) seenPaths.set(pk, t.id)
+      if (nk) seenNames.set(nk, t.id)
+    }
+
+    // 云端优先（文件已校验、id 稳定、跨设备一致），本地只补云端没有的
+    for (const t of cloudTracks) add(t)
     for (const t of localMeta) {
-      if (!merged.has(t.id)) merged.set(t.id, t)
+      if (merged.has(t.id)) continue
+      add(t)
     }
     const allTracks = Array.from(merged.values())
 
@@ -240,19 +281,9 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       } catch {}
     }
 
-    // 自动补推：云端状态已知、且本地是本地的严格超集（本地多 ≥10 首、云端没有本地缺的条目）
-    // 才把并集推回云端 —— 修复"云端只有 24 首，换设备/清缓存就看不到其余曲目"。
-    // 条件收紧是为了避免一台陈旧设备把已删除的曲目又推回云端。
-    if (cloudTracksRaw) {
-      const cloudIds = new Set(cloudTracks.map(t => t.id))
-      const localIds = new Set(localMeta.map(t => t.id))
-      const localOnly = localMeta.filter(t => !cloudIds.has(t.id)).length
-      const cloudOnly = cloudTracks.filter(t => !localIds.has(t.id)).length
-      if (localOnly >= 10 && cloudOnly === 0) {
-        console.info(`[music] 云端曲库缺 ${localOnly} 首，自动补推 ${allTracks.length} 首`)
-        syncPlaylistToCloud(allTracks)
-      }
-    }
+    // 注意：这里**不能**自动把并集推回云端。曾经加过"本地比云端多 ≥10 首就自动补推"
+    // 的逻辑，结果某台设备（手机/另一浏览器）残留的旧列表被推上云端，云端从 205 首
+    // 变成 353 首、其中 132 条重复。云端曲库现在由服务端/脚本维护，客户端只读。
 
     setPlaylist(allTracks)
     return allTracks
@@ -557,6 +588,50 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   const setVolume = useCallback((v: number) => { const val = Math.max(0, Math.min(1, v)); setVolumeState(val); writePlayback({ volume: val }) }, [])
   const setMuted = useCallback((m: boolean) => { setMutedState(m); writePlayback({ muted: m }) }, [])
+
+  // ---- 安卓锁屏 / 通知栏播放控制（Media Session）----
+  // 不支持的浏览器（桌面 Firefox 等）直接跳过，桌面端行为完全不变
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+    const ms = navigator.mediaSession as MediaSession
+    const set = (action: MediaSessionAction, fn: (() => void) | null) => {
+      try { ms.setActionHandler(action, fn) } catch { /* 该 action 不支持 */ }
+    }
+    set('play', () => play())
+    set('pause', () => pause())
+    set('previoustrack', () => prev())
+    set('nexttrack', () => next())
+    set('seekbackward', () => { const a = getAudio(); if (a) a.currentTime = Math.max(0, a.currentTime - 10) })
+    set('seekforward', () => { const a = getAudio(); if (a && a.duration) a.currentTime = Math.min(a.duration, a.currentTime + 10) })
+    return () => {
+      ;(['play', 'pause', 'previoustrack', 'nexttrack', 'seekbackward', 'seekforward'] as MediaSessionAction[])
+        .forEach(a => set(a, null))
+    }
+  }, [play, pause, prev, next])
+
+  // 曲目/播放状态变化 → 更新锁屏标题与封面
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+    const t = currentTrack
+    if (!t) return
+    const ms = navigator.mediaSession as MediaSession
+    ms.playbackState = playing ? 'playing' : 'paused'
+    let cancelled = false
+    ;(async () => {
+      const cover = await lookupCoverUrl(t.artist || '', t.album || '')
+      if (cancelled) return
+      try {
+        ms.metadata = new MediaMetadata({
+          title: t.title || '',
+          artist: t.artist || '',
+          album: t.album || '',
+          artwork: cover ? [{ src: cover, sizes: '512x512', type: 'image/jpeg' }] : [],
+        })
+      } catch { /* MediaMetadata 不可用 */ }
+    })()
+    return () => { cancelled = true }
+  }, [currentTrack?.id, playing])
+
   const cycleLoopMode = useCallback(() => {
     const modes: LoopMode[] = ['all', 'one', 'shuffle', 'none']
     const newMode = modes[(modes.indexOf(loopMode) + 1) % modes.length]

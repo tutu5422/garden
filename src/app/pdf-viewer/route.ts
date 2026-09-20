@@ -31,7 +31,7 @@ canvas { box-shadow:0 2px 12px rgba(0,0,0,.15); border-radius:4px; }
 #error h3 { color:#333; font-size:18px; }
 #error p { color:#999; font-size:14px; }
 #openBtn { display:inline-flex; align-items:center; gap:8px; padding:12px 28px; background:#C17F6B; color:#fff; border:none; border-radius:12px; font-size:16px; cursor:pointer; text-decoration:none; margin-top:4px; }
-@media (max-width:480px) { #toolbar { padding:6px 10px; } #toolbar button { width:32px; height:32px; font-size:16px; } #canvasWrap { padding:8px; } }
+@media (max-width:768px) { #toolbar { padding:6px 10px; } #toolbar button { width:44px; height:44px; font-size:16px; } #canvasWrap { padding:8px; } }
 </style>
 </head>
 <body>

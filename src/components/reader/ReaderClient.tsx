@@ -315,11 +315,11 @@ export default function ReaderClient() {
           </span>
           <span className="flex-1" />
           {busy && <span className="truncate text-xs" style={{ color: theme.dim }}>{busy}</span>}
-          <button className="px-2 text-sm" onClick={() => go(-1)} disabled={!ch || ch.idx === 0} title="上一章 ←">‹</button>
-          <button className="px-2 text-sm" onClick={() => go(1)} disabled={!ch || ch.idx >= toc.length - 1} title="下一章 →">›</button>
-          <button className="px-2 text-sm" onClick={() => { setTocOpen(true); setShelfOpen(false); }}>目录</button>
-          <button className="px-2 text-sm" onClick={() => { setCfgOpen((v) => !v); setTocOpen(false); }}>设置</button>
-          <button className="px-2 text-sm" onClick={() => { setShelfOpen(true); setTocOpen(false); }}>书库</button>
+          <button className="h-11 px-2 text-sm" onClick={() => go(-1)} disabled={!ch || ch.idx === 0} title="上一章 ←">‹</button>
+          <button className="h-11 px-2 text-sm" onClick={() => go(1)} disabled={!ch || ch.idx >= toc.length - 1} title="下一章 →">›</button>
+          <button className="h-11 px-2 text-sm" onClick={() => { setTocOpen(true); setShelfOpen(false); }}>目录</button>
+          <button className="h-11 px-2 text-sm" onClick={() => { setCfgOpen((v) => !v); setTocOpen(false); }}>设置</button>
+          <button className="h-11 px-2 text-sm" onClick={() => { setShelfOpen(true); setTocOpen(false); }}>书库</button>
         </div>
         <div
           className="h-[2px] origin-left"

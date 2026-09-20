@@ -108,15 +108,15 @@ export default function Nav() {
 
       {/* Mobile Bottom Nav — matches MobileBottomNav.tsx positioning */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t-2 border-[var(--skin-border)]"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t-2 border-[var(--skin-border)] safe-area-bottom"
         style={{ backgroundColor: "var(--skin-surface)" }}
       >
-        <div className="flex items-center justify-around h-14">
+        <div className="flex items-stretch justify-around h-14">
           {/* Home */}
           <Link
             href="/"
             className={cn(
-              "flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-1 text-xs font-bold tracking-wider transition-all duration-200",
+              "flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 h-14 min-h-[44px] py-1 text-xs font-bold tracking-wider transition-all duration-200",
               path === "/"
                 ? ""
                 : "text-[var(--skin-text-secondary)] hover:text-[var(--skin-text)]"
@@ -141,7 +141,7 @@ export default function Nav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-1 text-xs font-bold tracking-wider transition-all duration-200",
+                  "flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 h-14 min-h-[44px] py-1 text-xs font-bold tracking-wider transition-all duration-200",
                   active
                     ? ""
                     : "text-[var(--skin-text-secondary)] hover:text-[var(--skin-text)]"

@@ -114,7 +114,8 @@ export default function PatternCardV2({
       )}
 
       <div
-        className="warm-card"
+        // 871 张卡一屏渲染在安卓上很吃内存；mobile-cv 只在移动端生效（见 globals.css），桌面渲染不变
+        className="warm-card mobile-cv"
         onClick={handleCardClick}
         style={
           isSelected

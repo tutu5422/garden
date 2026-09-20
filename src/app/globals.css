@@ -656,17 +656,39 @@ h1, h2, h3, h4, h5, h6, .display-font {
   --warm-header-border: var(--skin-border);
 }
 
+/* ---------------------------------------------------------------------------
+   移动端安全区（安卓手势条 / iPhone 刘海 / 全面屏）
+   env() 在不支持的设备上取 0，桌面端完全无影响。
+   .safe-area-bottom 之前只被 MobileBottomNav 引用、从未定义 —— 安卓手势条会压住底部导航。
+--------------------------------------------------------------------------- */
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* 长列表卡片：仅移动端跳过视口外的布局/绘制（桌面端不加，保持原样） */
+@media (max-width: 767px) {
+  .mobile-cv { content-visibility: auto; contain-intrinsic-size: auto 320px; }
+  /* 行内小图标按钮：手机端把可点区域撑到 44px（图标本身不变，桌面端不加） */
+  .tap-44 { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  /* 矮文字按钮（tab 等）：手机端只拉高，不改宽度 */
+  .tap-h44 { min-height: 44px; }
+}
+.safe-area-top { padding-top: env(safe-area-inset-top, 0px); }
+/* 移动端底部导航占位：给 body 预留「导航高 3.5rem + 手势条」 */
+@media (max-width: 767px) {
+  body { padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px)) !important; }
+}
+
 /* 织集页面容器 — 三栏布局 */
 .patterns-layout {
   display: flex;
   height: calc(100vh - 3.5rem);
+  height: calc(100dvh - 3.5rem);   /* 安卓 Chrome 地址栏收起/展开时不遮内容 */
   background: var(--skin-bg);
 }
 
 @media (max-width: 767px) {
   .patterns-layout {
     flex-direction: column;
-    height: calc(100vh - 3.5rem); /* 手机端无顶部导航，只减 body padding-bottom (3.5rem) */
+    height: calc(100vh - 3.5rem);
+    height: calc(100dvh - 3.5rem - env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -1033,6 +1055,7 @@ h1, h2, h3, h4, h5, h6, .display-font {
   gap: 24px;
   padding: 24px;
   min-height: calc(100vh - 3.5rem);
+  min-height: calc(100dvh - 3.5rem);
 }
 
 @media (max-width: 767px) {

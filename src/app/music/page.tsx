@@ -141,15 +141,15 @@ const TrackRow = memo(function TrackRow(p: TrackRowProps) {
       <div className="flex items-center gap-0.5">
         {p.plId && p.onRemoveFromPl && (
           <button onClick={e => { e.stopPropagation(); p.onRemoveFromPl!(p.plId!, p.track.id); p.onRefresh?.() }}
-            className="p-1 rounded-full hover:bg-red-50 transition-colors"><X className="size-3" style={{ color: '#f43f5e' }} /></button>
+            className="p-1 rounded-full tap-44 hover:bg-red-50 transition-colors"><X className="size-3" style={{ color: '#f43f5e' }} /></button>
         )}
         <button onClick={e => { e.stopPropagation(); p.onToggleFav(p.track.id) }}
-          className="p-1 rounded-full transition-all hover:scale-110">
+          className="p-1 rounded-full tap-44 transition-all hover:scale-110">
           <Heart className={cn('size-3.5', p.isFav && 'fill-current')} style={{ color: p.isFav ? '#f43f5e' : 'var(--skin-text-secondary)' }} />
         </button>
         <div className="relative">
           <button onClick={e => { e.stopPropagation(); setMenuOpen(!menuOpen) }}
-            className="p-1 rounded-full hover:bg-[var(--skin-muted)] transition-colors">
+            className="p-1 rounded-full tap-44 hover:bg-[var(--skin-muted)] transition-colors">
             <MoreHorizontal className="size-3.5" style={{ color: 'var(--skin-text-secondary)' }} />
           </button>
           {menuOpen && (
@@ -462,7 +462,7 @@ export default function MusicPage() {
               ) : (
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-black" style={{ fontFamily: 'var(--font-display)', color: 'var(--skin-text)' }}>{pl.name}</h2>
-                  <button onClick={() => { setPlEditId(pl.id); setPlEditName(pl.name) }} className="p-1 rounded-full hover:bg-[var(--skin-muted)] transition-colors"><Pencil className="size-3.5" style={{ color: 'var(--skin-text-secondary)' }} /></button>
+                  <button onClick={() => { setPlEditId(pl.id); setPlEditName(pl.name) }} className="p-1 rounded-full tap-44 hover:bg-[var(--skin-muted)] transition-colors"><Pencil className="size-3.5" style={{ color: 'var(--skin-text-secondary)' }} /></button>
                 </div>
               )}
               <p className="text-xs mt-1" style={{ color: 'var(--skin-text-secondary)' }}>{pl.trackIds.length} 首</p>
@@ -706,7 +706,7 @@ export default function MusicPage() {
               <div className="flex gap-1 overflow-x-auto">
                 {TABS.map(tab => (
                   <button key={tab.id} onClick={() => switchView(tab.id)}
-                    className={cn('flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold whitespace-nowrap transition-all duration-200 shrink-0',
+                    className={cn('flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full tap-h44 text-[10px] sm:text-xs font-bold whitespace-nowrap transition-all duration-200 shrink-0',
                       view === tab.id ? 'text-white shadow-sm' : 'hover:bg-[var(--skin-muted)]')}
                     style={{ background: view === tab.id ? 'var(--skin-primary)' : 'transparent', color: view === tab.id ? '#fff' : 'var(--skin-text-secondary)' }}>
                     {tab.icon}{tab.label}
