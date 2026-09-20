@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { Calendar, Plus, Trash2, Sparkles, Send, Clock, FileText, Pencil } from "lucide-react";
+import { Calendar, Plus, Trash2, Sparkles, Send, Clock, Pencil } from "lucide-react";
 
 // ===== 类型 =====
 
@@ -15,6 +15,16 @@ interface NoteItem {
 
 interface TimelineMemo {
   id: string; content: string; createdAt: string; source: "timeline";
+}
+
+/** /api/sync 返回的原始行（字段可能缺失或为 snake_case） */
+interface RawNoteRow {
+  id: string; title?: string; content?: string; type?: string; tags?: string[];
+  collectionName?: string; createdAt?: string; image?: string;
+}
+interface RawMemoRow {
+  id: string; metadata?: { content?: string } | null; content?: string;
+  title?: string; createdAt?: string; created_at?: string;
 }
 
 // ===== 编辑狂想色板 =====
@@ -96,14 +106,14 @@ async function syncAllForTimeline(): Promise<{ notes: NoteItem[]; memos: Timelin
       if (!res.ok) return { notes: [], memos: [] };
       const data = await res.json();
       return {
-        notes: (data.notes || []).map((r: any) => ({
+        notes: (data.notes || []).map((r: RawNoteRow) => ({
           id: r.id, title: r.title || '', content: r.content || '',
           type: r.type || 'article', tags: r.tags || [],
           collectionName: r.collectionName || undefined,
           createdAt: r.createdAt || new Date().toISOString(),
           image: r.image || undefined, source: 'notes' as const,
         })),
-        memos: (data.timelineMemos || []).map((r: any) => ({
+        memos: (data.timelineMemos || []).map((r: RawMemoRow) => ({
           id: r.id,
           content: r.metadata?.content || r.content || r.title || '',
           createdAt: r.createdAt || r.created_at || new Date().toISOString(),

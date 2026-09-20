@@ -13,7 +13,7 @@ import { useMusic, type Track, type LoopMode } from '@/lib/music/MusicContext'
 import { searchAndCacheLyrics, setLyrics, hideLyrics, parseFilename } from '@/lib/music/lyrics-store'
 import { isSignedStorageUrl, resolveStorageUrl } from '@/lib/storage-url'
 import { MAX_FILE_SIZE } from '@/lib/constants/config'
-import { toggleFavorite, getFavoritedIds, getPlaylists, addTracksToPlaylist } from '@/lib/music/music-store'
+import { toggleFavorite, getFavoritedIds } from '@/lib/music/music-store'
 import Link from 'next/link'
 
 const MAX_SIZE = MAX_FILE_SIZE // 50 MB
@@ -47,8 +47,8 @@ function getAudioFilesFromStore(): UploadedAudioFile[] {
   try {
     const raw = localStorage.getItem('minitu_files')
     if (!raw) return []
-    const files = JSON.parse(raw)
-    return files.filter((f: any) => {
+    const files = JSON.parse(raw) as UploadedAudioFile[]
+    return files.filter((f) => {
       const ext = f.name?.split('.').pop()?.toLowerCase() || ''
       return AUDIO_EXTS.has(ext)
     })
@@ -105,8 +105,8 @@ function MiniPlayerInner({ ctx }: { ctx: MiniPlayerCtx }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lrcInputRef = useRef<HTMLInputElement>(null)
 
-  const { playlist, currentIndex, currentTrack, playing, volume, muted, loopMode,
-    currentTime, duration, togglePlay, play, seek, next, prev, setVolume, setMuted, cycleLoopMode, addTrack, removeTrack, notifyLyricsUpdated, updateTrackLyrics } = ctx;
+  const { playlist, currentIndex, currentTrack, playing, muted, loopMode,
+    currentTime, duration, togglePlay, play, seek, next, prev, setMuted, cycleLoopMode, addTrack, removeTrack, notifyLyricsUpdated, updateTrackLyrics } = ctx;
 
   // Refresh import file list when panel opens
   useEffect(() => {
@@ -115,6 +115,7 @@ function MiniPlayerInner({ ctx }: { ctx: MiniPlayerCtx }) {
       // Filter out files already in the playlist
       const playlistIds = new Set(playlist.map(t => t.id))
       const available = audioFiles.filter(f => !playlistIds.has(f.id))
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 面板打开时从本地音频库取可用文件并清空已选（打开面板属外部时序）
       setImportFiles(available)
       setSelectedIds(new Set())
     }

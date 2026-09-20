@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
-import { THEME, applyTheme, getStoredMode, setStoredMode, resolveDark, type ThemeMode } from '@/lib/theme/skins'
+import { applyTheme, getStoredMode, setStoredMode, resolveDark, type ThemeMode } from '@/lib/theme/skins'
 
 type ThemeContextType = {
   mode: ThemeMode       // 'light' | 'dark' | 'system'
@@ -34,6 +34,7 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
   // 初始化 + 监听系统偏好变化
   useEffect(() => {
     const stored = getStoredMode()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 挂载时读本地主题 + 系统偏好并应用到 DOM（外部系统同步）
     setModeState(stored)
     const resolved = resolveDark(stored)
     setDark(resolved)

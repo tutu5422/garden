@@ -33,10 +33,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const lyrics: string | null = null
-    let foundArtist: string | undefined
-    let foundAlbum: string | undefined
-
     // 策略 1：带歌手的精确查询 (lrclib /api/get)
     if (artist) {
       const result = await tryExactMatch(q, artist)

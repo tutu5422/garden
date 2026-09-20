@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Trash2, Upload, X, Layers, Pencil, BookOpen, Check, Edit3 } from "lucide-react";
+import { Plus, Search, Trash2, Upload, X, Pencil, BookOpen, Check, Edit3 } from "lucide-react";
 import { toast } from "sonner";
 import { updateLocalCollection } from '@/lib/db/local-store';
 
@@ -13,6 +13,13 @@ interface Note {
   images?: string[]; imageThumbs?: string[];
 }
 interface Collection { id: string; title: string; }
+
+/** /api/sync 返回的原始笔记行：字段可能缺失，合并时补默认值 */
+interface CloudNoteRow {
+  id: string; title?: string; content?: string; type?: string; tags?: string[];
+  collectionId?: string; collectionName?: string; createdAt?: string; updatedAt?: string;
+  image?: string; imageThumb?: string; images?: string[]; imageThumbs?: string[];
+}
 
 // 墓碑 key：记录已删除的笔记 ID，防止下次从云端合并时复活
 const DELETED_NOTES_KEY = 'minitu_notes_deleted';
@@ -37,7 +44,7 @@ async function syncNotesFromCloud(cacheKey: string): Promise<Note[]> {
       const res = await fetch('/api/sync?_=' + Date.now(), { method: 'GET' });
       if (!res.ok) return [];
       const data = await res.json();
-      return (data.notes || []).map((r: any) => ({
+      return (data.notes || []).map((r: CloudNoteRow) => ({
         id: r.id,
         title: r.title || '',
         content: r.content || '',
@@ -417,6 +424,7 @@ export default function Notes() {
               <div className="flex flex-wrap gap-2">
                 {imagePreviews.map((preview, i) => (
                   <div key={i} className="relative inline-flex">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突 */}
                     <img src={preview} alt="" className="h-14 w-14 rounded object-cover border-2 border-[var(--skin-primary)]" />
                     <button onClick={() => removeNewImage(i)}
                       className="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-red-500 text-white flex items-center justify-center">
@@ -499,6 +507,7 @@ export default function Notes() {
                   {/* 图片区 */}
                   {hasImage && (
                     <div className={`overflow-hidden shrink-0 ${isLarge ? 'h-52 sm:h-64' : 'h-32 sm:h-40'}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突 */}
                       <img src={firstImg!.thumb} alt={n.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy" />

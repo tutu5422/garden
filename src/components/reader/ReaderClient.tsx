@@ -111,6 +111,7 @@ export default function ReaderClient() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 挂载时读本地阅读设置（localStorage）
       if (raw) setCfg({ ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) });
     } catch {
       /* ignore */
@@ -134,6 +135,7 @@ export default function ReaderClient() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 挂载即拉取书单
     void refreshBooks();
   }, [refreshBooks]);
 
@@ -187,7 +189,7 @@ export default function ReaderClient() {
       const saved = Number(localStorage.getItem(`novel.pos.${b.id}`) ?? "");
       await loadChapter(b.id, Number.isFinite(saved) && saved > 0 ? saved : 0, b);
     } else setErr(r.error || "目录读取失败");
-  }, []);
+  }, [loadChapter]);
 
   const go = useCallback(
     (d: number) => {
@@ -207,6 +209,7 @@ export default function ReaderClient() {
     const b = books.find((x) => x.id === last) || books[0];
     if (b) {
       opened.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 书单到达后自动打开上次阅读的书（依赖外部数据到达时序）
       void openToc(b);
     }
   }, [books, openToc]);

@@ -8,7 +8,7 @@ import { createResource, updateResource } from '@/lib/db/resources-client'
 import { writeCache } from '@/lib/db/cache-queries'
 import { compressImage } from '@/lib/utils/image'
 import type { Tag, Resource, Category } from '@/lib/types'
-import { Plus, X, Upload, ImageIcon } from 'lucide-react'
+import { Plus, X, ImageIcon } from 'lucide-react'
 import SmartImage from '@/components/shared/SmartImage'
 
 const inputClass = 'w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all'
@@ -17,7 +17,7 @@ const glassInput = `${inputClass} bg-white/40 dark:bg-white/5 border-white/30 da
 export default function SimpleForm({ resource }: { resource?: Resource }) {
   const router = useRouter()
   const isEdit = !!resource
-  const [categories, setCategories] = useState<Category[]>(getLocalCategories())
+  const [categories] = useState<Category[]>(getLocalCategories())
   const allTags = getLocalTags()
 
   const [title, setTitle] = useState(resource?.title || '')

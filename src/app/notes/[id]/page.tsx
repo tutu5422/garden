@@ -13,6 +13,14 @@ interface Note {
   images?: string[]; imageThumbs?: string[];
 }
 
+/** /api/sync 返回的原始笔记行（云端可能用 snake_case 的 created_at） */
+interface CloudNoteRow {
+  id: string; title?: string; content?: string; type?: string; tags?: string[];
+  collectionId?: string; collectionName?: string;
+  createdAt?: string; created_at?: string;
+  image?: string; imageThumb?: string; images?: string[]; imageThumbs?: string[];
+}
+
 /** Helper: 获取所有可用图片（兼容旧单图格式） */
 function getNoteImages(note: Note): { full: string; thumb: string }[] {
   const result: { full: string; thumb: string }[] = []
@@ -53,7 +61,7 @@ export default function NoteDetail() {
           const cloudRes = await fetch('/api/sync');
           if (cloudRes.ok) {
             const data = await cloudRes.json();
-            const cloudNote = (data.notes || []).find((n: any) => n.id === id);
+            const cloudNote = (data.notes || []).find((n: CloudNoteRow) => n.id === id);
             if (cloudNote) {
               setNote({
                 id: cloudNote.id,
@@ -119,7 +127,7 @@ export default function NoteDetail() {
   const renderContent = (md: string) => {
     return md
       .split("\n")
-      .map((line, i) => {
+      .map((line) => {
         if (line.startsWith("### ")) return `<h3 class="text-lg font-extrabold mt-6 mb-2" style="font-family:var(--font-display);color:var(--skin-text)">${line.slice(4)}</h3>`;
         if (line.startsWith("## ")) return `<h2 class="text-xl font-extrabold mt-8 mb-3" style="font-family:var(--font-display);color:var(--skin-text)">${line.slice(3)}</h2>`;
         if (line.startsWith("# ")) return `<h1 class="text-2xl font-extrabold mt-8 mb-3" style="font-family:var(--font-display);color:var(--skin-text)">${line.slice(2)}</h1>`;
@@ -167,6 +175,7 @@ export default function NoteDetail() {
       {images.length > 0 && (
         <div className={images.length === 1 ? "rounded-2xl overflow-hidden mb-8 border-2 border-[var(--skin-border)]" : "mb-8 space-y-2"}>
           {images.length === 1 ? (
+            // eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突
             <img
               src={images[0].full}
               alt={note.title}
@@ -178,6 +187,7 @@ export default function NoteDetail() {
               {images.map((img, i) => (
                 <div key={i} className="rounded-xl overflow-hidden border-2 border-[var(--skin-border)] aspect-square cursor-pointer hover:opacity-90 transition-opacity"
                      onClick={() => setLightboxIdx(i)}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突 */}
                   <img src={img.thumb} alt="" className="w-full h-full object-cover" />
                 </div>
               ))}
@@ -209,6 +219,7 @@ export default function NoteDetail() {
               </span>
             </>
           )}
+          {/* eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突 */}
           <img
             src={images[lightboxIdx].full}
             alt=""

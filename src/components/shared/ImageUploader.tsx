@@ -14,7 +14,6 @@ interface ImageUploaderProps {
 export default function ImageUploader({
   value,
   onChange,
-  bucket = 'resources',
 }: ImageUploaderProps) {
   const [preview, setPreview] = useState<string | null>(value || null)
   const [uploading, setUploading] = useState(false)
@@ -42,14 +41,14 @@ export default function ImageUploader({
 
         onChange(base64)
         toast.success('图片已上传')
-      } catch (err) {
+      } catch {
         toast.error('图片上传失败')
         setPreview(value || null)
       } finally {
         setUploading(false)
       }
     },
-    [onChange, value, bucket]
+    [onChange, value]
   )
 
   const handleRemove = () => {
@@ -65,6 +64,7 @@ export default function ImageUploader({
       >
         {preview ? (
           <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突 */}
             <img
               src={preview}
               alt="预览"

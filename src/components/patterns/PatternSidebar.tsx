@@ -109,6 +109,7 @@ export default function PatternSidebar({
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 挂载即加载分类/标签；loader 内同步置状态以出首屏骨架
     void loadCategories()
     void loadTags()
   }, [])

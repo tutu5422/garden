@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { Star, BookOpen, Film, Wrench, FileText, Image, Package, Link as LinkIcon, Calendar, FolderOpen } from 'lucide-react'
+import { BookOpen, Film, Wrench, FileText, Image as ImageIcon, Package, Link as LinkIcon, Calendar, FolderOpen } from 'lucide-react'
 import type { Resource } from '@/lib/types'
 import { RESOURCE_TYPE_LABELS } from '@/lib/constants/navigation'
 import SmartImage from '@/components/shared/SmartImage'
 
 const typeIcon: Record<string, React.ReactNode> = {
   link: <LinkIcon className="size-3.5" />,
-  image: <Image className="size-3.5" />,
+  image: <ImageIcon className="size-3.5" />,
   book: <BookOpen className="size-3.5" />,
   movie: <Film className="size-3.5" />,
   tool: <Wrench className="size-3.5" />,
@@ -27,7 +27,6 @@ function hashCode(s: string): number {
 const gradientAngles = ['135deg', '160deg', '110deg', '180deg', '145deg']
 
 export default function ResourceCard({ resource, coverHeight = 200 }: { resource: Resource; coverHeight?: number }) {
-  const tags = resource.resource_tags?.map((rt) => rt.tag) || []
   const angle = gradientAngles[hashCode(resource.title) % gradientAngles.length]
 
   return (

@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons'
 import Link from 'next/link'
 import SmartImage from '@/components/shared/SmartImage'
-import PatternTimeline from '@/components/patterns/PatternTimeline'
+import PatternTimeline, { type TimelineNote } from '@/components/patterns/PatternTimeline'
 import PdfViewer from '@/components/patterns/PdfViewer'
 import type { Resource, Category, Tag } from '@/lib/types'
 import {
@@ -36,7 +36,7 @@ export default function PatternDetailPage() {
   const patternId = params.id as string
 
   const [pattern, setPattern] = useState<Resource | null>(null)
-  const [notes, setNotes] = useState<any[]>([])
+  const [notes, setNotes] = useState<TimelineNote[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [allTags, setAllTags] = useState<Tag[]>([])
   const [patternTagIds, setPatternTagIds] = useState<string[]>([])
@@ -50,12 +50,12 @@ export default function PatternDetailPage() {
       if (p) {
         setPattern(p)
         // 加载标签
-        const ptIds = p.resource_tags?.map((rt: any) => rt.tag?.id).filter(Boolean) || []
+        const ptIds = p.resource_tags?.map((rt) => rt.tag?.id).filter((id): id is string => Boolean(id)) || []
         setPatternTagIds(ptIds)
       }
       // 加载分类和标签
       const cats = await apiGetCategories()
-      setCategories(cats.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)))
+      setCategories(cats.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)))
       const tags = await apiGetTags()
       setAllTags(tags)
 
@@ -63,7 +63,9 @@ export default function PatternDetailPage() {
       try {
         const links = await apiGetNotesForPattern(patternId)
         if (links.length > 0) {
-          setNotes(links.map((l: any) => l.note).filter(Boolean))
+          // 时间线需要的字段（id/title/created_at/content）由 getNotesForPattern 组装，
+          // 其 note 字段声明为 Record<string, unknown>，这里按渲染契约收窄
+          setNotes(links.map((l) => l.note).filter(Boolean) as unknown as TimelineNote[])
         } else {
           setNotes([])
         }
@@ -79,6 +81,7 @@ export default function PatternDetailPage() {
   }, [patternId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 挂载即加载详情；loader 内同步 setLoading(true) 以出首屏骨架
     loadData()
   }, [loadData])
 
@@ -92,7 +95,7 @@ export default function PatternDetailPage() {
       const meta = { ...(pattern.metadata as Record<string, unknown>) } as Record<string, unknown>
       meta[field] = value
       meta.patternLastUsedAt = new Date().toISOString()
-      const updated = await apiUpdatePattern(patternId, { metadata: meta } as any)
+      const updated = await apiUpdatePattern(patternId, { metadata: meta })
       if (updated) setPattern(updated)
     } catch (e) {
       console.error('更新图解失败:', e)
@@ -107,7 +110,7 @@ export default function PatternDetailPage() {
   const handleCategoryChange = async (categoryId: string | null) => {
     if (!pattern) return
     try {
-      const updated = await apiUpdatePattern(patternId, { category_id: categoryId || undefined } as any)
+      const updated = await apiUpdatePattern(patternId, { category_id: categoryId || undefined })
       if (updated) setPattern(updated)
       await loadData()
     } catch (e) {

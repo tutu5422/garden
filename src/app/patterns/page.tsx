@@ -84,6 +84,7 @@ export default function PatternsPage() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 挂载即加载列表；loader 内同步 setLoading(true) 以出首屏骨架
     void loadPatterns()
     void loadCategories()
     void loadTags()
@@ -245,7 +246,7 @@ export default function PatternsPage() {
       )
       const failed = results.filter((r) => r.status === 'rejected')
       if (failed.length > 0) {
-        console.error('批量移动失败详情:', failed.map((r: any) => r.reason?.message))
+        console.error('批量移动失败详情:', failed.map((r) => (r.reason as Error | undefined)?.message))
         message.error(`移动失败 ${failed.length}/${ids.length} 个`)
       } else {
         message.success(`已移动 ${ids.length} 个图解`)

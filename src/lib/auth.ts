@@ -29,6 +29,7 @@ export function safeEqualStr(a: string, b: string): boolean {
     // burn a little time to reduce length-based timing leakage
     let diff = 0;
     for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ a.charCodeAt(i);
+    void diff;
     return false;
   }
   let diff = 0;

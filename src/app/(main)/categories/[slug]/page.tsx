@@ -14,14 +14,18 @@ export default function CategoryDetailPage({ params }: { params: Promise<{ slug:
   const [resources, setResources] = useState<Resource[]>([])
 
   useEffect(() => {
-    const all = getLocalCategories()
-    // 多重匹配：slug、名称、slug作为名称
-    const cat = all.find(c => c.slug === slug) || all.find(c => c.name === slug) || all.find(c => c.slug === decodeURIComponent(slug)) || null
-    setCategory(cat)
-    if (cat) {
-      const result = getLocalResourcesFiltered({ category: cat.slug, status: 'active', pageSize: 50 })
-      setResources(result.data)
-    }
+    // 分类/资源都来自浏览器本地库，只能在挂载后读取（渲染期读取会与 SSR 输出不一致）；
+    // 放到微任务里更新 state，避免在 effect 提交阶段同步 setState 触发级联渲染
+    void Promise.resolve().then(() => {
+      const all = getLocalCategories()
+      // 多重匹配：slug、名称、slug作为名称
+      const cat = all.find(c => c.slug === slug) || all.find(c => c.name === slug) || all.find(c => c.slug === decodeURIComponent(slug)) || null
+      setCategory(cat)
+      if (cat) {
+        const result = getLocalResourcesFiltered({ category: cat.slug, status: 'active', pageSize: 50 })
+        setResources(result.data)
+      }
+    })
   }, [slug])
 
   if (!category) {

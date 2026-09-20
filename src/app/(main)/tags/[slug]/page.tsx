@@ -14,13 +14,17 @@ export default function TagDetailPage({ params }: { params: Promise<{ slug: stri
   const [resources, setResources] = useState<Resource[]>([])
 
   useEffect(() => {
-    const all = getLocalTags()
-    const t = all.find(t => t.slug === slug) || all.find(t => t.name === slug) || all.find(t => t.slug === decodeURIComponent(slug)) || null
-    setTag(t)
-    if (t) {
-      const result = getLocalResourcesFiltered({ tag: t.slug, status: 'active', pageSize: 50 })
-      setResources(result.data)
-    }
+    // 标签/资源都来自浏览器本地库，只能在挂载后读取（渲染期读取会与 SSR 输出不一致）；
+    // 放到微任务里更新 state，避免在 effect 提交阶段同步 setState 触发级联渲染
+    void Promise.resolve().then(() => {
+      const all = getLocalTags()
+      const t = all.find(t => t.slug === slug) || all.find(t => t.name === slug) || all.find(t => t.slug === decodeURIComponent(slug)) || null
+      setTag(t)
+      if (t) {
+        const result = getLocalResourcesFiltered({ tag: t.slug, status: 'active', pageSize: 50 })
+        setResources(result.data)
+      }
+    })
   }, [slug])
 
   if (!tag) {

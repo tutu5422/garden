@@ -57,7 +57,6 @@ export interface ArtistGroup {
 
 const PLAYLISTS_KEY = 'minitu_music_playlists'
 const FAVORITES_KEY = 'minitu_music_favorites'
-const TRACK_META_KEY = 'minitu_music_track_meta'  // 扩展元数据 (favorited, coverUrl 等)
 
 // ===== 读取/写入工具 =====
 
@@ -118,7 +117,7 @@ export async function refreshPlaylistsFromCloud(): Promise<MusicPlaylist[]> {
   for (const p of local) merged.set(p.id, p)
   for (const c of cloud) {
     const ex = merged.get(c.id)
-    if (!ex || !(ex as any).updatedAt || new Date(c.updatedAt) > new Date((ex as any).updatedAt || 0)) {
+    if (!ex || !ex.updatedAt || new Date(c.updatedAt) > new Date(ex.updatedAt || 0)) {
       merged.set(c.id, c)
     }
   }
@@ -281,9 +280,18 @@ export function groupByArtist(tracks: ExtendedTrack[]): ArtistGroup[] {
     .sort((a, b) => a.artist.localeCompare(b.artist, 'zh-CN'))
 }
 
+/** 单曲的扩展元数据（随云同步一起上传） */
+export interface ExtendedTrackMeta {
+  favorited?: boolean
+  coverUrl?: string
+  year?: number
+  genre?: string
+  albumArtist?: string
+}
+
 /** 同步收集扩展元数据到 localStorage (供云同步使用) */
-export function exportExtendedMeta(tracks: ExtendedTrack[]): Record<string, any> {
-  const meta: Record<string, any> = {}
+export function exportExtendedMeta(tracks: ExtendedTrack[]): Record<string, ExtendedTrackMeta> {
+  const meta: Record<string, ExtendedTrackMeta> = {}
   for (const t of tracks) {
     meta[t.id] = {
       favorited: t.favorited,

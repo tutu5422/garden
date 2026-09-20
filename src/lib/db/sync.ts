@@ -38,7 +38,7 @@ export async function syncToCloud(): Promise<{ notes: number; categories: number
       title: cat.name,
       description: cat.description || '',
       // categories 表与 collections 不同步，这里只推 collections
-    } as any)
+    })
     // categories 暂无 /api/sync 处理，跳过
     void ok
   }
@@ -49,15 +49,16 @@ export async function syncToCloud(): Promise<{ notes: number; categories: number
 
   // 同步笔记/资源
   for (const r of localResources) {
-    const isNote = (r.metadata as any)?.is_note === true
+    const meta = r.metadata
+    const isNote = meta?.is_note === true
     const table = isNote ? 'notes' : 'resources'
     const ok = await push(table, {
       id: r.id,
       title: r.title,
       description: r.description,
-      content: (r.metadata as any)?.content || '',
-      type: (r.metadata as any)?.type || r.resource_type,
-      tags: (r.metadata as any)?.tags || [],
+      content: meta?.content || '',
+      type: meta?.type || r.resource_type,
+      tags: meta?.tags || [],
       resource_type: r.resource_type,
       url: r.url,
       cover_image_url: r.cover_image_url,

@@ -73,10 +73,17 @@ async function runWithConcurrency<T, R>(
 async function renderCoverBlob(arrayBuffer: ArrayBuffer): Promise<Blob | null> {
   try {
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
-    const pdfjsVersion = (pdfjsLib as unknown as { version?: string }).version || '6.0.227'
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`
+    // worker 与运行时资源都走本站自托管（public/pdfjs/，tools/copy-pdfjs.mjs 从 node_modules 同步）：
+    // 原先用 unpkg 的 `//unpkg.com/pdfjs-dist@${version}/...`，国内不稳、且版本字符串漂移时会 404
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/build/pdf.worker.min.mjs'
 
-    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise
+    const pdf = await pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+      wasmUrl: '/pdfjs/wasm/',
+      cMapUrl: '/pdfjs/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: '/pdfjs/standard_fonts/',
+    }).promise
     if (pdf.numPages === 0) return null
     const page = await pdf.getPage(1)
     const viewport = page.getViewport({ scale: 1.0 })
@@ -103,7 +110,8 @@ export default function ImportDialog({ open, onClose, onImported }: ImportDialog
   const [targetCategoryId, setTargetCategoryId] = useState<string>('')
   const [categories, setCategories] = useState<Category[]>([])
   const [results, setResults] = useState<ImportResult[]>([])
-  const [importing, setImporting] = useState(false)
+  // 只保留 setter：importing 的"是否进行中"由 step 状态表达，这个布尔值没有读取方
+  const [, setImporting] = useState(false)
   const [progress, setProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)

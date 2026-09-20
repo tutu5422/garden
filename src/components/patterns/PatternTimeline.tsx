@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Calendar, ChevronRight } from 'lucide-react'
 
-interface TimelineNote {
+export interface TimelineNote {
   id: string
   title: string
   content?: string

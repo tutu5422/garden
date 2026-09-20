@@ -96,6 +96,7 @@ function EditForm() {
   const [initialPatternIds, setInitialPatternIds] = useState<string[]>([])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 挂载时读 localStorage 初始化表单（SSR 无 localStorage）
     try { setCollections(JSON.parse(localStorage.getItem('garden_collections') || '[]')) } catch {}
     if (noteId) {
       try {
@@ -208,7 +209,7 @@ function EditForm() {
             body: JSON.stringify({ table: 'notes', action: 'upsert', data: note }),
           })
           if (!syncRes.ok) cloudSyncFailed = true
-        } catch (e) {
+        } catch {
           cloudSyncFailed = true
         }
       } else {
@@ -244,7 +245,7 @@ function EditForm() {
               body: JSON.stringify({ table: 'notes', action: 'upsert', data: syncedNote }),
             })
             if (!syncRes.ok) cloudSyncFailed = true
-          } catch (e) {
+          } catch {
             cloudSyncFailed = true
           }
         }
@@ -361,6 +362,7 @@ function EditForm() {
               {/* 已有图片（编辑模式） */}
               {existingImages.map((img, i) => (
                 <div key={`e-${i}`} className="relative group rounded-lg overflow-hidden border-2 border-[var(--skin-border)] aspect-square">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突 */}
                   <img src={img.thumb} alt="" className="w-full h-full object-cover" />
                   <button onClick={() => removeExistingImage(i)}
                     className="absolute top-1 right-1 size-5 rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -371,6 +373,7 @@ function EditForm() {
               {/* 新增图片预览 */}
               {imagePreviews.map((preview, i) => (
                 <div key={`n-${i}`} className="relative group rounded-lg overflow-hidden border-2 border-[var(--skin-primary)] aspect-square">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突 */}
                   <img src={preview} alt="" className="w-full h-full object-cover" />
                   <button onClick={() => removeNewImage(i)}
                     className="absolute top-1 right-1 size-5 rounded-full bg-red-500 text-white flex items-center justify-center">

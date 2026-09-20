@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useMusic } from '@/lib/music/MusicContext';
+import type { LocalCollection } from '@/lib/db/local-store';
 import {
   BookOpen, Calendar, Layers, FileText, Settings,
-  ArrowUpRight, Music, Clock, Sparkles, ChevronDown, Grid3x3,
-  Disc3, MicVocal, Library,
+  ArrowUpRight, Music, Sparkles, ChevronDown, Grid3x3,
+  Disc3, MicVocal,
 } from "lucide-react";
 
 // ===== 封面地图（首页快速展示用） =====
@@ -86,39 +87,37 @@ export default function Home() {
   const [stats, setStats] = useState({ notes: 0, collections: 0, files: 0, timeline: 0 });
   const [featuredNote, setFeaturedNote] = useState<NoteItem | null>(null);
   const [recentMemos, setRecentMemos] = useState<TimelineMemo[]>([]);
-  const [collectionPreviews, setCollectionPreviews] = useState<{id:string;title:string;count:number}[]>([]);
-  const [recentNotes, setRecentNotes] = useState<NoteItem[]>([]);
+  const [, setCollectionPreviews] = useState<{id:string;title:string;count:number}[]>([]);
+  const [, setRecentNotes] = useState<NoteItem[]>([]);
   const [patternCount, setPatternCount] = useState(0)
   const [inProgressPatterns, setInProgressPatterns] = useState<Resource[]>([])
   const [wishlistPatterns, setWishlistPatterns] = useState<Resource[]>([])
   const [patternsLoaded, setPatternsLoaded] = useState(false)
   const musicCtx = useMusic()
-  const [musicStats, setMusicStats] = useState({ tracks: 0, albums: 0, artists: 0 })
   const [homeCoverMap, setHomeCoverMap] = useState<CoverMap>({})
-  const [featuredAlbums, setFeaturedAlbums] = useState<{ album: string; artist: string; coverUrl?: string }[]>([])
 
-  // Compute music stats from context
-  useEffect(() => {
-    if (!musicCtx?.playlist) return
-    const tracks = musicCtx.playlist
+  // 曲库统计：纯派生（useMemo 代替 effect+state，少一轮级联渲染）
+  const musicStats = useMemo(() => {
+    const tracks = musicCtx?.playlist || []
     const albumSet = new Set<string>()
     const artistSet = new Set<string>()
     for (const t of tracks) {
       if (t.album) albumSet.add(t.album)
       if (t.artist) artistSet.add(t.artist)
     }
-    setMusicStats({ tracks: tracks.length, albums: albumSet.size, artists: artistSet.size })
+    return { tracks: tracks.length, albums: albumSet.size, artists: artistSet.size }
   }, [musicCtx?.playlist])
 
   // Load cover map
   useEffect(() => { loadHomeCoverMap().then(setHomeCoverMap) }, [])
 
-  // Pick featured albums (ones with covers)
-  useEffect(() => {
-    if (!musicCtx?.playlist || Object.keys(homeCoverMap).length === 0) return
+  // Pick featured albums (ones with covers)：纯派生
+  const featuredAlbums = useMemo(() => {
+    const playlist = musicCtx?.playlist
+    if (!playlist || Object.keys(homeCoverMap).length === 0) return []
     const seen = new Set<string>()
     const result: { album: string; artist: string; coverUrl?: string }[] = []
-    for (const t of musicCtx.playlist) {
+    for (const t of playlist) {
       if (!t.album || seen.has(t.album)) continue
       seen.add(t.album)
       const key = `${t.artist || ''}|${t.album}`
@@ -129,11 +128,12 @@ export default function Home() {
         if (result.length >= 6) break
       }
     }
-    setFeaturedAlbums(result)
+    return result
   }, [musicCtx?.playlist, homeCoverMap])
 
   useEffect(() => {
     const h = new Date().getHours();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 问候语按客户端当前时间计算；SSR 与客户端时区不同，只能在挂载后算，否则 hydration 不一致
     setGreeting(h < 6 ? "夜安" : h < 9 ? "晨安" : h < 12 ? "早安" : h < 14 ? "午安" : h < 18 ? "午后好" : "晚安");
 
     const now = new Date();
@@ -142,7 +142,7 @@ export default function Home() {
     try {
       const notes: NoteItem[] = JSON.parse(localStorage.getItem("minitu_notes") || "[]");
       const timeline: TimelineMemo[] = JSON.parse(localStorage.getItem("minitu_timeline") || "[]");
-      const collections = JSON.parse(localStorage.getItem("garden_collections") || "[]");
+      const collections: LocalCollection[] = JSON.parse(localStorage.getItem("garden_collections") || "[]");
       const files = JSON.parse(localStorage.getItem("minitu_files") || "[]");
 
       setStats({
@@ -161,7 +161,7 @@ export default function Home() {
       }))].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
       setRecentMemos(allRecent);
 
-      setCollectionPreviews(collections.slice(0, 4).map((c: any) => ({
+      setCollectionPreviews(collections.slice(0, 4).map((c) => ({
         id: c.id,
         title: c.title,
         count: notes.filter((n: NoteItem) => n.collectionId === c.id).length,
@@ -239,6 +239,7 @@ export default function Home() {
                 style={{ background: `linear-gradient(135deg, ${C.burgundy}, ${C.crimson})` }}>
                 {featuredNote.imageThumb && (
                   <>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突 */}
                     <img src={featuredNote.imageThumb} alt=""
                       className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-45 transition-all duration-700 group-hover:scale-105"
                     />
@@ -382,6 +383,7 @@ export default function Home() {
                       {/* 封面 */}
                       <div className="aspect-[3/4] relative overflow-hidden" style={{ background: 'var(--skin-muted)' }}>
                         {p.cover_image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突
                           <img
                             src={p.cover_image_url}
                             alt={p.title}
@@ -567,6 +569,7 @@ export default function Home() {
                         className="shrink-0 group/cover">
                         <div className="size-12 sm:size-14 rounded-xl overflow-hidden ring-1 ring-white/10 shadow-md transition-all duration-300 group-hover/cover:ring-white/30 group-hover/cover:scale-105 group-hover/cover:shadow-lg">
                           {a.coverUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突
                             <img src={a.coverUrl} alt={a.album} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-[10px] font-black"

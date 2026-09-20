@@ -10,6 +10,7 @@ import {
 import { syncPostSchema, type MusicPlaylistUpsertData } from '@/lib/sync-schema';
 import { SYNC_PAGE_LIMIT, NOTE_DESCRIPTION_MAX_LENGTH } from '@/lib/constants/config';
 import { errMsg } from '@/lib/api-error';
+import { sanitizeMusicTracks } from '@/lib/music-tracks';
 import { signStorageDeep, stripStorageSigsDeep } from '@/lib/storage-sign';
 import type {
   ResourceRow,
@@ -318,7 +319,7 @@ export async function POST(req: NextRequest) {
           resource_type: 'article',
           user_id: LOCAL_USER_ID,
           status: 'active',
-          metadata: { tracks: data.tracks || [], updated_at: new Date().toISOString() },
+          metadata: { tracks: sanitizeMusicTracks<MusicTrack>(data.tracks).tracks, updated_at: new Date().toISOString() },
           created_at: data.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -518,7 +519,7 @@ export async function POST(req: NextRequest) {
           status: 'active',
           metadata: {
             music_playlist: true,
-            tracks: playlistData.tracks || [],
+            tracks: sanitizeMusicTracks<MusicTrack>(playlistData.tracks).tracks,
             updated_at: new Date().toISOString(),
           },
           created_at: playlistData.created_at || new Date().toISOString(),

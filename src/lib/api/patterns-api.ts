@@ -21,7 +21,7 @@ export interface PatternFilters {
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 
 /** 通用数据库请求——调用 /api/db 代理路由 */
-async function dbRequest(table: string, action: 'fetch' | 'upsert' | 'delete', data?: unknown, options?: { owned?: boolean }): Promise<any> {
+async function dbRequest<T = unknown>(table: string, action: 'fetch' | 'upsert' | 'delete', data?: unknown, options?: { owned?: boolean }): Promise<T> {
   const res = await fetch('/api/db', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -46,7 +46,7 @@ export async function getPatternCount(): Promise<number> {
   params.set('metadata->>is_pattern', 'eq.true')
   params.set('limit', '10000')
   const data = await dbRequest(`resources?${params.toString()}`, 'fetch', { method: 'GET' })
-  return (data as any[] || []).length
+  return (data as unknown[] || []).length
 }
 
 /** 获取最近导入的 N 个图解（首页展示用） */
@@ -282,6 +282,22 @@ export interface PatternNoteLink {
   note?: Record<string, unknown>
 }
 
+/** pattern_notes 关联行的形状（该表主键是 (pattern_id, note_id) 复合键，无 id 列） */
+type PatternNoteRow = {
+  pattern_id: string
+  note_id: string
+  created_at: string
+}
+
+/** 笔记详情行（resources 表，用 type 别名以便赋值给 Record<string, unknown>） */
+type NoteRow = {
+  id: string
+  title?: string
+  description?: string | null
+  created_at?: string
+  metadata?: Record<string, unknown> | null
+}
+
 export async function linkPatternNote(patternId: string, noteId: string): Promise<void> {
   // 走 /api/sync 路由：pattern_notes 上有 UNIQUE(pattern_id, note_id) 约束，
   // /api/sync 使用 PostgREST 的 `Prefer: resolution=merge-duplicates` +
@@ -321,11 +337,11 @@ export async function getNotesForPattern(patternId: string): Promise<PatternNote
     'fetch',
     { method: 'GET' },
   )
-  const linkRows = (linkData as any[]) || []
+  const linkRows = (linkData as PatternNoteRow[]) || []
   if (linkRows.length === 0) return []
 
   // 2. 再查 resources 获取笔记详情
-  const noteIds = linkRows.map((l: any) => l.note_id).filter(Boolean)
+  const noteIds = linkRows.map((l) => l.note_id).filter(Boolean)
   if (noteIds.length === 0) return []
 
   const notesData = await dbRequest(
@@ -333,11 +349,11 @@ export async function getNotesForPattern(patternId: string): Promise<PatternNote
     'fetch',
     { method: 'GET' },
   )
-  const notes = (notesData as any[]) || []
-  const noteMap = new Map(notes.map((n: any) => [n.id, n]))
+  const notes = (notesData as NoteRow[]) || []
+  const noteMap = new Map(notes.map((n) => [n.id, n]))
 
   // 3. 组装回 PatternNoteLink 格式，并将 description 映射为 content（PatternTimeline 需要）
-  return linkRows.map((link: any) => {
+  return linkRows.map((link) => {
     const note = noteMap.get(link.note_id)
     return {
       id: `${link.pattern_id}_${link.note_id}`,

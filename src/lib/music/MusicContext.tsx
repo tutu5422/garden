@@ -227,7 +227,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [lyricsVersion, setLyricsVersion] = useState(0)
   const shuffleOrderRef = useRef<number[]>([])
   const seekTargetRef = useRef<number | null>(null)     // 刷新恢复：seek 目标
- const seekToRef = useRef<number | null>(null)    // 用户拖拽 seek 目标
   const shouldAutoPlayRef = useRef(false)                // 刷新恢复：是否需要自动播放
   const hasRestoredRef = useRef(false)                   // 防止覆盖已恢复的状态
   const loadTrackSeqRef = useRef(0)                      // 防竞态：切歌序列号
@@ -293,6 +292,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
 
   // 初始化：拉取云端 + 恢复播放状态（仅首次）
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 首次挂载拉云端曲库并恢复上次播放位置（外部存储订阅）
     mergeCloudTracks().then(allTracks => {
       if (hasRestoredRef.current || allTracks.length === 0) return
       hasRestoredRef.current = true
@@ -317,7 +317,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   // 初始化 Audio（绑定事件，模块级 Audio 已创建）
   useEffect(() => {
     const audio = getAudio()
-    audio.volume = volume
     const onError = () => { toast.error('无法播放此音频'); setPlaying(false) }
     const onTimeUpdate = () => { setCurrentTime(audio.currentTime || 0) }
     const onDurationChange = () => { setDuration(audio.duration || 0) }
@@ -580,7 +579,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     handleShuffleNextRef.current = handleShuffleNext
   }, [handleNext, handleShuffleNext])
 
-  const next = useCallback(() => { loopMode === 'shuffle' ? handleShuffleNext() : handleNext() }, [loopMode, handleNext, handleShuffleNext])
+  const next = useCallback(() => { if (loopMode === 'shuffle') { handleShuffleNext() } else { handleNext() } }, [loopMode, handleNext, handleShuffleNext])
 
   const prev = useCallback(() => {
     if (playlist.length === 0) return
@@ -635,7 +634,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       } catch { /* MediaMetadata 不可用 */ }
     })()
     return () => { cancelled = true }
-  }, [currentTrack?.id, playing])
+  }, [currentTrack, playing])
 
   const cycleLoopMode = useCallback(() => {
     const modes: LoopMode[] = ['all', 'one', 'shuffle', 'none']

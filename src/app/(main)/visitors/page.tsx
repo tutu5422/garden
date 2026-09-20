@@ -1,19 +1,23 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getVisits, clearVisits, detectSuspicious, getStats, type SuspiciousActivity, type VisitStats } from '@/lib/visitor'
+import { getVisits, clearVisits, detectSuspicious, getStats, type SuspiciousActivity, type Visit, type VisitStats } from '@/lib/visitor'
 import { Trash2, Eye, Clock, Monitor, Shield, AlertTriangle, BarChart3, Smartphone, RefreshCw } from 'lucide-react'
 
 export default function VisitorsPage() {
-  const [visits, setVisits] = useState<any[]>([])
+  const [visits, setVisits] = useState<Visit[]>([])
   const [suspicious, setSuspicious] = useState<SuspiciousActivity[]>([])
   const [stats, setStats] = useState<VisitStats | null>(null)
   const [tab, setTab] = useState<'overview' | 'list' | 'suspicious'>('overview')
 
   useEffect(() => {
-    setVisits(getVisits().reverse())
-    setSuspicious(detectSuspicious())
-    setStats(getStats())
+    // 访问记录只存在于浏览器 localStorage，服务端渲染阶段读不到；
+    // 放到微任务里更新 state，避免在 effect 提交阶段同步 setState 触发级联渲染
+    void Promise.resolve().then(() => {
+      setVisits(getVisits().reverse())
+      setSuspicious(detectSuspicious())
+      setStats(getStats())
+    })
   }, [])
 
   const refresh = () => {

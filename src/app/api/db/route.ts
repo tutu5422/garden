@@ -3,6 +3,7 @@ import { dbFetch, dbUpsert, dbUpsertOwned, LOCAL_USER_ID } from '@/lib/vps-db';
 import { configMissingResponse, getPass, isAuth } from '@/lib/auth';
 import { errMsg } from '@/lib/api-error';
 import { signStorageDeep, stripStorageSigsDeep } from '@/lib/storage-sign';
+import { sanitizeMusicTracksDeep } from '@/lib/music-tracks';
 
 /**
  * 通用数据库代理 API
@@ -95,9 +96,12 @@ export async function POST(req: NextRequest) {
 
       case 'upsert':
         // 客户端可能把带读签名的 URL 回写 → 入库前去掉签名（否则签名过期后变死链）
-        result = isOwned
-          ? await dbUpsertOwned(baseTable, stripStorageSigsDeep(data || {}))
-          : await dbUpsert(baseTable, stripStorageSigsDeep(data || {}));
+        // 曲库数据额外过一层净化：标题剥离「歌手 - 」前缀 + storagePath 补齐 music/ 前缀 + 同曲去重，
+        // 防止客户端把「僵尸条目（路径缺前缀、磁盘无文件）」和重复歌曲推回云端。
+        {
+          const clean = sanitizeMusicTracksDeep(stripStorageSigsDeep(data || {}));
+          result = isOwned ? await dbUpsertOwned(baseTable, clean) : await dbUpsert(baseTable, clean);
+        }
         break;
 
       case 'delete': {

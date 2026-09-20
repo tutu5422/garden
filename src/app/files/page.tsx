@@ -3,7 +3,7 @@
 import { errMsg } from '@/lib/api-error';
 ;
 import { useState, useRef, useEffect } from "react";
-import { Upload, File, Trash2, Download, FileText, Music, Image, Archive, Film, Search, X, ChevronDown } from "lucide-react";
+import { Upload, File, Trash2, Download, FileText, Music, Image as ImageIcon, Archive, Film, Search, X, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { resolveStorageUrl, signStorageUrlClient } from "@/lib/storage-url";
 import { MAX_FILE_SIZE } from "@/lib/constants/config";
@@ -18,16 +18,19 @@ declare global {
 
 const MAX_SIZE = MAX_FILE_SIZE;
 
+/** /api/sync 返回的云端文件元数据（合并去重只需要 id / createdAt） */
+type CloudFileRow = { id: string; createdAt: string };
+
 /** Pull file metadata from cloud and merge into localStorage */
 async function pullFilesFromCloud(): Promise<void> {
   try {
     const res = await fetch('/api/sync', { method: 'GET' });
     if (!res.ok) return;
     const data = await res.json();
-    const cloudFiles = data.files || [];
+    const cloudFiles = (data.files || []) as CloudFileRow[]
     if (!cloudFiles.length) return;
     // 合并前过滤掉墓碑中的 id，防止云端残留数据复活
-    const filteredCloudFiles = cloudFiles.filter((f: any) => !isTombstoned('files', f.id));
+    const filteredCloudFiles = cloudFiles.filter((f) => !isTombstoned('files', f.id));
     if (!filteredCloudFiles.length) return;
     const localStr = localStorage.getItem('minitu_files');
     const local = localStr ? JSON.parse(localStr) : [];
@@ -127,9 +130,12 @@ export default function Files() {
 
   useEffect(() => {
     // Show localStorage data immediately
-    try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
-    setCustomCats(loadCats());
-    setLoaded(true);
+    // 本地数据读取放到微任务里，避免在 effect 提交阶段同步 setState 触发级联渲染
+    void Promise.resolve().then(() => {
+      try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
+      setCustomCats(loadCats());
+      setLoaded(true);
+    });
     // Then sync from cloud in background
     pullFilesFromCloud().then(() => {
       try { setFiles(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); } catch {}
@@ -393,7 +399,7 @@ export default function Files() {
               <div className="size-10 rounded flex items-center justify-center shrink-0" style={{ background: 'var(--skin-muted)' }}>
                 {extGroupKey === "audio" ? <Music className="size-5" style={{ color: 'var(--skin-primary)' }} />
                  : extGroupKey === "video" ? <Film className="size-5" style={{ color: 'var(--skin-accent)' }} />
-                 : extGroupKey === "image" ? <Image className="size-5" style={{ color: 'var(--skin-accent)' }} />
+                 : extGroupKey === "image" ? <ImageIcon className="size-5" style={{ color: 'var(--skin-accent)' }} />
                  : extGroupKey === "archive" ? <Archive className="size-5" style={{ color: 'var(--skin-text-secondary)' }} />
                  : <FileText className="size-5" style={{ color: 'var(--skin-text-secondary)' }} />}
               </div>

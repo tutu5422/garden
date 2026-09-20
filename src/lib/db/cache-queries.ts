@@ -74,18 +74,21 @@ export async function syncCollectionsFromCloud(): Promise<void> {
     const res = await fetch('/api/sync', { method: 'GET' })
     if (!res.ok) return
     const data = await res.json()
-    const cloudCols = data.collections || []
+    const cloudCols = (data.collections || []) as CloudCollection[]
     if (!cloudCols.length) return
 
     // 合并前过滤掉墓碑中的 id，防止云端残留数据复活
-    const filteredCloudCols = cloudCols.filter((c: any) => !isTombstoned('collections', c.id))
+    const filteredCloudCols = cloudCols.filter(c => !isTombstoned('collections', c.id))
 
     // Merge: cloud wins on newer updatedAt
-    const merged = new Map<string, any>()
+    type MergedCollection = CloudCollection & { updatedAt?: string }
+    const merged = new Map<string, MergedCollection>()
     for (const c of localCols) merged.set(c.id, { ...c })
     for (const c of filteredCloudCols) {
       const existing = merged.get(c.id)
-      if (!existing || !(existing as any).updatedAt || new Date(c.updatedAt) > new Date((existing as any).updatedAt || 0)) {
+      const cloudUpdated = c.updatedAt ? new Date(c.updatedAt).getTime() : NaN
+      const existingUpdated = existing?.updatedAt ? new Date(existing.updatedAt).getTime() : 0
+      if (!existing || !existing.updatedAt || cloudUpdated > existingUpdated) {
         merged.set(c.id, {
           id: c.id,
           title: c.title,

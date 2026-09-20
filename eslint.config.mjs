@@ -15,6 +15,9 @@ const eslintConfig = defineConfig([
     // 本项目根目录混入过 Python venv（akshare 等），里面的 JS 不是我们的代码
     ".venv/**",
     "venv/**",
+    // public/pdfjs 是 postinstall（tools/copy-pdfjs.mjs）从 pdfjs-dist 拷进来的第三方构建产物，
+    // 已在 .gitignore 中；压缩/未压缩的两个 .mjs 会贡献 3000+ 条无关告警
+    "public/pdfjs/**",
   ]),
   {
     rules: {

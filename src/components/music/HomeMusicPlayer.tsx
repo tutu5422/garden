@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useMusic, type LoopMode } from "@/lib/music/MusicContext";
 import { Play, Pause, SkipBack, SkipForward, Music, ListMusic, Repeat, Repeat1, Shuffle, Heart, type LucideIcon } from "lucide-react";
 import { toggleFavorite, getFavoritedIds } from '@/lib/music/music-store'
-import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 const loopIcons: Record<LoopMode, LucideIcon> = { none: Repeat, all: Repeat, one: Repeat1, shuffle: Shuffle };

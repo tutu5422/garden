@@ -25,7 +25,11 @@ export default function CategoriesPage() {
   }
 
 
-  useEffect(() => { loadCategories() }, [])
+  useEffect(() => {
+    // 分类来自浏览器本地库，只能在挂载后读取（渲染期读取会与 SSR 输出不一致）；
+    // 放到微任务里更新 state，避免在 effect 提交阶段同步 setState 触发级联渲染
+    void Promise.resolve().then(() => loadCategories())
+  }, [])
 
   const refresh = () => loadCategories()
 

@@ -10,7 +10,7 @@ export async function GET(req: Request) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0">
 <title>PDF 查看器</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- pdf.js 由 public/pdfjs/ 自托管（tools/copy-pdfjs.mjs 从 node_modules/pdfjs-dist 同步，版本与 package.json 一致），不再依赖 cdnjs -->
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body { height:100%; }
@@ -64,8 +64,9 @@ canvas { box-shadow:0 2px 12px rgba(0,0,0,.15); border-radius:4px; }
   <a id="fallbackLink" href="#" target="_blank" rel="noopener noreferrer"><button id="openBtn">打开图解</button></a>
 </div>
 <div id="canvasWrap" style="display:none"><canvas id="pdfCanvas"></canvas></div>
-<script>
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+<script type="module">
+import * as pdfjsLib from '/pdfjs/build/pdf.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/build/pdf.worker.min.mjs';
 const pdfUrl = '${pdfUrl.replace(/'/g, "\\'")}';
 const hasPdf = Boolean(pdfUrl);
 if (!hasPdf) {
@@ -79,7 +80,14 @@ const ctx = canvas.getContext('2d');
 let pdfDoc = null, pageNum = 1, scale = 1.2;
 async function loadPdf() {
   try {
-    pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+    pdfDoc = await pdfjsLib.getDocument({
+      url: pdfUrl,
+      // 自托管运行时资源：wasm（JBIG2/JPEG2000/ICC）、CJK 字符映射、标准字体，缺一个都可能让特定 PDF 打不开
+      wasmUrl: '/pdfjs/wasm/',
+      cMapUrl: '/pdfjs/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: '/pdfjs/standard_fonts/'
+    }).promise;
     document.getElementById('loading').style.display = 'none';
     document.getElementById('canvasWrap').style.display = 'flex';
     document.getElementById('pageInfo').textContent = '1 / ' + pdfDoc.numPages;
@@ -124,9 +132,9 @@ if (hasPdf) loadPdf();
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'X-Frame-Options': 'SAMEORIGIN',
-      // 显式 CSP：PDF viewer 仅依赖 cdnjs 加载 pdf.js，不需要 unpkg / unsafe-eval。
-      // 覆盖 next.config.ts 中针对全站的更宽松 CSP，避免移动端浏览器安全警告。
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; worker-src 'self' https://cdnjs.cloudflare.com blob:; frame-src 'self'",
+      // 显式 CSP：pdf.js 与全部运行时资源（worker/wasm/cmaps/字体）都由本站 /pdfjs/ 提供，
+      // 不需要 cdnjs/unpkg，也不需要 unsafe-eval。覆盖 next.config.ts 中针对全站的更宽松 CSP。
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; worker-src 'self' blob:; frame-src 'self'",
     },
   })
 }

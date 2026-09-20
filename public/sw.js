@@ -2,7 +2,7 @@
 const CACHE_NAME = 'garden-v2'
 const STATIC_EXTS = ['.js', '.css', '.png', '.jpg', '.svg', '.ico', '.woff2', '.woff']
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting()
 })
 

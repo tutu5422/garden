@@ -73,6 +73,7 @@ export async function vpsDbUpsert(
     if (checkResult.ok && Array.isArray(checkResult.body) && checkResult.body.length > 0) {
       // 存在 → PATCH
       const { id: _id, ...patchData } = data;
+      void _id; // 目的只是把 id 从 patch body 里剔掉，值本身不用
       const patchResult = await vpsDbFetch(`${table}?id=eq.${id}`, {
         method: 'PATCH',
         body: JSON.stringify(patchData),
@@ -125,6 +126,7 @@ export async function dbUpsertOwned(
     if (check.ok && Array.isArray(check.body) && check.body.length > 0) {
       // 记录存在且属于用户 → PATCH
       const { id: _id, user_id: _uid, ...patchData } = data;
+      void _id; void _uid; // 目的只是把 id / user_id 从 patch body 里剔掉，值本身不用
       const patchResult = await vpsDbFetch(
         `${table}?id=eq.${id}&user_id=eq.${LOCAL_USER_ID}`,
         {

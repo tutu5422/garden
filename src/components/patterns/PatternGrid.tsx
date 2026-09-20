@@ -57,8 +57,12 @@ export default function PatternGrid({
   const shownPatterns = patterns.slice(0, visibleCount)
   const hasMore = patterns.length > shownPatterns.length
 
-  // 过滤/搜索/分类变化 → 回到首屏
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [patterns])
+  // 过滤/搜索/分类变化 → 回到首屏（渲染期变更检测，等价于原来的 effect 且少一轮渲染）
+  const [prevPatterns, setPrevPatterns] = useState(patterns)
+  if (prevPatterns !== patterns) {
+    setPrevPatterns(patterns)
+    setVisibleCount(PAGE_SIZE)
+  }
 
   // 滚到「加载更多」附近就自动续上（rootMargin 提前 600px 触发，滚动无感）
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useCallback } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, Plus, X, Layers, FileText, ExternalLink, BookOpen, ImageIcon, Film, Wrench, Pencil, Check, type LucideIcon } from 'lucide-react'
 import { getLocalCollections, updateLocalCollection, type LocalCollection } from '@/lib/db/local-store'
@@ -26,7 +26,7 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
   const [editTitle, setEditTitle] = useState('')
   const [editDesc, setEditDesc] = useState('')
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     const cols = getLocalCollections()
     const col = cols.find(c => c.id === id) || null
     setCollection(col)
@@ -37,9 +37,13 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
     const mine = notes.filter(n => n.collectionId === id)
     setCollectionNotes(mine)
     setAllNotes(notes.filter(n => n.collectionId !== id))
-  }
+  }, [id])
 
-  useEffect(() => { loadData() }, [id])
+  useEffect(() => {
+    // 合集/笔记来自浏览器本地库，只能在挂载后读取（渲染期读取会与 SSR 输出不一致）；
+    // 放到微任务里更新 state，避免在 effect 提交阶段同步 setState 触发级联渲染
+    void Promise.resolve().then(() => loadData())
+  }, [loadData])
 
   const startEdit = () => {
     setEditTitle(collection?.title || '')
@@ -58,8 +62,8 @@ export default function CollectionDetailPage({ params }: { params: Promise<{ id:
       )
       localStorage.setItem('minitu_notes', JSON.stringify(notes))
       // 同步 garden_collections
-      const cols = JSON.parse(localStorage.getItem('garden_collections') || '[]')
-      const updated = cols.map((c: any) =>
+      const cols: LocalCollection[] = JSON.parse(localStorage.getItem('garden_collections') || '[]')
+      const updated = cols.map((c) =>
         c.id === id ? { ...c, title: editTitle.trim() } : c
       )
       localStorage.setItem('garden_collections', JSON.stringify(updated))

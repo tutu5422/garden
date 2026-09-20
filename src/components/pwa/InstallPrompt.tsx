@@ -3,10 +3,15 @@
 import { useEffect, useState } from 'react'
 import { Download, X } from 'lucide-react'
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 export default function InstallPrompt() {
   const [show, setShow] = useState(false)
-  const [deferred, setDeferred] = useState<any>(null)
-  const [dismissed, setDismissed] = useState(false)
+  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
+  const [, setDismissed] = useState(false)
 
   useEffect(() => {
     // 检查是否已安装
@@ -19,7 +24,7 @@ export default function InstallPrompt() {
 
     const handler = (e: Event) => {
       e.preventDefault()
-      setDeferred(e)
+      setDeferred(e as BeforeInstallPromptEvent)
       setShow(true)
     }
 

@@ -32,6 +32,7 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
   const lyricsVersion = ctx?.lyricsVersion ?? 0
   const updateTrackLyrics = ctx?.updateTrackLyrics
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- mounted 标志：让首帧在服务端/客户端保持一致（hydration 安全）
   useEffect(() => { setMounted(true) }, [])
 
   // 将纯文本歌词转为均匀分布的伪 LRC 行
@@ -56,6 +57,7 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
   useEffect(() => {
     if (!mounted) return
     if (!track || !playing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 切歌/暂停时把歌词相关多字段一次性归零
       setDisplayText('')
       setHasLyrics(false)
       setLrcLines([])
@@ -133,11 +135,13 @@ export default function LyricsMarquee({ className }: LyricsMarqueeProps) {
         })
         }
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- effect 以 track?.id 为键：makePseudoLrc 每次渲染都是新函数（闭包 songDuration），加入依赖会导致 effect 每次渲染重跑造成无限循环；displayText/track 仅用于「歌词是否已加载」的短路判断
   }, [track?.id, playing, mounted, lyricsVersion])
 
   // 真实 LRC — 按音频时间同步
   useEffect(() => {
     if (!playing || lrcLines.length === 0 || selfSynced) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 按 <audio> 当前播放时间同步高亮行：外部时钟驱动，渲染期拿不到
     setCurrentLineIdx(findCurrentLine(lrcLines, currentTime))
   }, [currentTime, playing, lrcLines, selfSynced])
 

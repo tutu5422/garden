@@ -6,6 +6,9 @@ import { getLocalCollections, createLocalCollection, deleteLocalCollection, upda
 import CollectionCard from '@/components/collections/CollectionCard'
 import { toast } from 'sonner'
 
+/** minitu_notes 里的本地笔记：合集重命名只需要 collectionId / collectionName */
+type LocalNote = { collectionId?: string; collectionName?: string; [key: string]: unknown }
+
 /** Pull collections from cloud via /api/sync and merge into localStorage */
 async function pullCollectionsFromCloud() {
   try {
@@ -44,10 +47,10 @@ export default function CollectionsPage() {
     const cols = getLocalCollections()
     setCollections(cols)
     try {
-      const notes: any[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
+      const notes: LocalNote[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
       const counts: Record<string, number> = {}
       cols.forEach(c => {
-        counts[c.id] = notes.filter((n: any) => n.collectionId === c.id).length
+        counts[c.id] = notes.filter((n) => n.collectionId === c.id).length
       })
       setNoteCounts(counts)
     } catch {}
@@ -56,7 +59,8 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     // Show localStorage data immediately, then sync from cloud in background
-    refresh()
+    // 本地数据读取放到微任务里，避免在 effect 提交阶段同步 setState 触发级联渲染
+    void Promise.resolve().then(() => refresh())
     pullCollectionsFromCloud().then(() => refresh())
     // Also re-read if CloudSyncProvider finishes later
     const handler = () => refresh()
@@ -94,8 +98,8 @@ export default function CollectionsPage() {
     }
     updateLocalCollection(editingId, { title: editTitle.trim(), description: editDesc.trim() })
     try {
-      const notes: any[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
-      const updated = notes.map((n: any) => n.collectionId === editingId ? { ...n, collectionName: editTitle.trim() } : n)
+      const notes: LocalNote[] = JSON.parse(localStorage.getItem('minitu_notes') || '[]')
+      const updated = notes.map((n) => n.collectionId === editingId ? { ...n, collectionName: editTitle.trim() } : n)
       localStorage.setItem('minitu_notes', JSON.stringify(updated))
     } catch {}
     toast.success('合集已更新')

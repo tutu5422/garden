@@ -49,6 +49,7 @@ export default function ResourcesContent() {
       else { setResources(DEMO); setCount(DEMO.length) }
       setLoading(false)
     }).catch(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 该 effect 只在 searchParams 变化时重跑；把 deletedIds 加进依赖会在「删光资源」后立刻触发 DEMO 兜底分支，属行为变更，故保留挂载时快照
   }, [searchParams])
 
   useEffect(() => {
@@ -74,6 +75,7 @@ export default function ResourcesContent() {
 
   // 日期在客户端初始化，避免 SSR hydration 不一致
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 日期在客户端初始化，避免 SSR hydration 不一致
     setToday(new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }))
   }, [])
 
@@ -136,7 +138,7 @@ export default function ResourcesContent() {
                 >
                   {resources.map(r => (
                     <div key={r.id} style={{ breakInside: 'avoid', marginBottom: '0.75rem' }}>
-                      <div onClick={() => { const next = new Set(selected); next.has(r.id) ? next.delete(r.id) : next.add(r.id); setSelected(next) }} className="cursor-pointer relative">
+                      <div onClick={() => { const next = new Set(selected); if (next.has(r.id)) { next.delete(r.id) } else { next.add(r.id) } setSelected(next) }} className="cursor-pointer relative">
                         <div className="absolute top-2 left-2 z-10 size-5 rounded border-2 flex items-center justify-center"
                           style={{ borderColor: selected.has(r.id) ? 'var(--skin-primary)' : 'rgba(255,255,255,0.6)', background: selected.has(r.id) ? 'var(--skin-primary)' : 'transparent' }}>
                           {selected.has(r.id) && <span className="text-white text-xs">✓</span>}

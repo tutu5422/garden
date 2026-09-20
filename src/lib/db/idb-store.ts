@@ -35,7 +35,7 @@ export async function saveBlob(id: string, dataUrl: string): Promise<void> {
 export async function getBlob(id: string): Promise<string | null> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       const req = store.get(id);

@@ -2,7 +2,7 @@
 
 import { errMsg } from '@/lib/api-error';
 import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react'
-import { useMusic, type Track } from '@/lib/music/MusicContext'
+import { useMusic } from '@/lib/music/MusicContext'
 import {
   getPlaylists, createPlaylist, deletePlaylist, updatePlaylist,
   addTracksToPlaylist, removeTrackFromPlaylist,
@@ -24,8 +24,6 @@ import { parseFilename } from '@/lib/music/lyrics-store'
    Helpers
    ======================================================================== */
 
-const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'aac', 'ogg', 'wma', 'm4a'])
-
 type View = 'all' | 'albums' | 'artists' | 'playlists' | 'favorites'
 type SortMode = 'default' | 'title' | 'artist' | 'added' | 'year'
 
@@ -33,12 +31,6 @@ function fmtTime(s: number) {
   if (!isFinite(s) || s < 0) return '0:00'
   const m = Math.floor(s / 60), sec = Math.floor(s % 60)
   return `${m}:${sec.toString().padStart(2, '0')}`
-}
-
-function fmtDate(iso?: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
 // ---- Cover map ----
@@ -80,6 +72,7 @@ function AlbumArt({ album, size = 'md', coverUrl }: { album: string; size?: 'sm'
   const h = album.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
   const sz = { sm: 'size-10', md: 'size-14', lg: 'size-20 sm:size-28' }
   const tx = { sm: 'text-[8px]', md: 'text-xs', lg: 'text-base' }
+  // eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突
   if (coverUrl) return <div className={cn(sz[size], 'rounded-2xl overflow-hidden shrink-0 shadow-lg')}><img src={coverUrl} alt={album} className="w-full h-full object-cover" /></div>
   const ch = album.split('').filter(c => /\w/.test(c)).slice(0, 2).join('') || '♪'
   return <div className={cn(sz[size], 'rounded-2xl shrink-0 shadow-lg flex items-center justify-center font-black')} style={{ background: `linear-gradient(135deg, hsl(${h},70%,75%), hsl(${(h+50)%360},60%,85%))`, color: `hsl(${h},50%,25%)` }}><span className={cn(tx[size], 'select-none')}>{ch}</span></div>
@@ -204,22 +197,29 @@ export default function MusicPage() {
 
   // Load data — 同时从云端拉取歌单合并（歌单只推不拉的修复），
   // 并主动重拉云端曲目（解决长会话/切页导航后看不到新数据）
+  // 依赖取 ctx.reload（useCallback，身份稳定）而非整个 ctx 对象：
+  // ctx 每次 provider 状态变化都会重建，直接依赖会导致 reload→setPlaylist→重跑 的循环
+  const reload = ctx?.reload
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 挂载首帧就要显示本地歌单/收藏：refresh() 同步读 localStorage（浏览器 API，渲染期不可用）
     refresh(); loadCoverMap().then(setCoverMap)
     refreshPlaylistsFromCloud().then(list => { setPlaylists(list); refresh() })
-    ctx?.reload()
-  }, [refresh])
+    reload?.()
+  }, [refresh, reload])
 
   // Snapshot the full library on mount so it's not affected by queue changes
+  // 渲染期变更检测（React 官方推荐的「派生 state」写法），比 effect 少一轮渲染
   const [fullLibrary, setFullLibrary] = useState<ExtendedTrack[]>([])
-  useEffect(() => {
-    if (ctx?.playlist && ctx.playlist.length > 0 && fullLibrary.length === 0) {
-      setFullLibrary(ctx.playlist as ExtendedTrack[])
-    }
-  }, [ctx?.playlist])
+  const ctxPlaylist = ctx?.playlist as ExtendedTrack[] | undefined
+  if (fullLibrary.length === 0 && ctxPlaylist && ctxPlaylist.length > 0) {
+    setFullLibrary(ctxPlaylist)
+  }
 
   // allTracks = full library (for display), not the current queue
-  const allTracks = fullLibrary.length > 0 ? fullLibrary : (ctx?.playlist || []) as ExtendedTrack[]
+  const allTracks = useMemo(
+    () => fullLibrary.length > 0 ? fullLibrary : (ctx?.playlist || []) as ExtendedTrack[],
+    [fullLibrary, ctx?.playlist],
+  )
 
   // Filter + sort
   const filtered = useMemo(() => {
@@ -353,6 +353,7 @@ export default function MusicPage() {
             className="group text-left rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 border border-[var(--skin-border)]" style={{ background: 'var(--skin-surface)' }}>
             <div className="aspect-square relative overflow-hidden">
               {a.coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突
                 <img src={a.coverUrl} alt={a.album} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center font-black text-lg sm:text-xl" style={{ background: `linear-gradient(135deg, hsl(${h},70%,75%), hsl(${(h+50)%360},60%,85%))`, color: `hsl(${h},50%,25%)` }}>
@@ -600,6 +601,7 @@ export default function MusicPage() {
                 const h = album.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
                 const ch = album.split('').filter(c => /\w/.test(c)).slice(0, 2).join('') || '♪'
                 return coverUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- 图片为网盘签名 URL（按小时轮换），next/image 的 URL 缓存与优化会与签名冲突
                   <img src={coverUrl} alt={album} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center font-black text-2xl" style={{ background: `linear-gradient(135deg, hsl(${h},70%,75%), hsl(${(h+50)%360},60%,85%))`, color: `hsl(${h},50%,25%)` }}>{ch}</div>

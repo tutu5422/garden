@@ -17,7 +17,7 @@ export default function WishlistPage() {
       if (localRaw) {
         let all: Resource[] = JSON.parse(localRaw)
         all = all.filter(
-          (r) => (r.metadata as any)?.is_pattern && (r.metadata as any)?.patternStatus === 'wishlist',
+          (r) => r.metadata?.is_pattern && r.metadata?.patternStatus === 'wishlist',
         )
         all.sort(
           (a, b) =>
@@ -34,17 +34,18 @@ export default function WishlistPage() {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 挂载即加载心愿单；loader 内同步 setLoading(true) 以出首屏骨架
     loadWishlist()
   }, [loadWishlist])
 
-  const handleWishlist = async (id: string, _currentStatus: string) => {
+  const handleWishlist = async (id: string) => {
     // 从心愿单移除
     const localRaw = localStorage.getItem('garden_resources')
     if (localRaw) {
       const all: Resource[] = JSON.parse(localRaw)
       const idx = all.findIndex((r) => r.id === id)
       if (idx !== -1) {
-        const meta = (all[idx].metadata || {}) as any
+        const meta: Record<string, unknown> = all[idx].metadata || {}
         meta.patternStatus = 'not-started'
         meta.patternLastUsedAt = new Date().toISOString()
         all[idx].metadata = meta
