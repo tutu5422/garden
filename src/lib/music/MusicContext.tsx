@@ -271,12 +271,15 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       add(t)
     }
     let allTracks = Array.from(merged.values())
-    setPlaylist(allTracks)
 
     // ---- 幽灵清理：本地独有 + 文件确实取不到（404）的条目 ----
     // 场景：某台设备的本地列表留着云端已删的旧条目（旧 id 与云端不同），刷新只是把并集
     // 写回本地，于是永远挂在列表末尾（实测 #204「Sound Of Silence」/ #205「未命名-fc73bd3e」，
     // 云端与磁盘都已没有）。只清「云端没有」的本地条目、只认 404、只写本地，绝不推云端。
+    //
+    // ⚠️ 必须在**首次 setPlaylist 之前**完成：音乐页会用第一次拿到的 ctx.playlist 做快照
+    // （`fullLibrary`，见 src/app/music/page.tsx），先带幽灵渲染再异步删，页面会一直留着它们
+    // —— 本地存储干净了、DOM 还挂着。本地独有条目为 0 时这里不发任何请求，无额外开销。
     if (cloudTracks.length > 0) {
       try {
         const { tracks: pruned, removed } = await pruneGhostTracks(
@@ -286,7 +289,6 @@ export function MusicProvider({ children }: { children: ReactNode }) {
           console.info('[music] 已清理 %d 条本地失效曲目：%s', removed.length,
             removed.map(t => t.title || t.id).join('、'))
           toast.info(`已清理 ${removed.length} 条本地失效曲目`)
-          setPlaylist(allTracks)
         }
       } catch { /* 清理失败不影响正常列表 */ }
     }
