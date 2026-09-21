@@ -7,8 +7,11 @@
  *
  * 设计要点：
  *  1) 只签 `/storage/` 下的路径；外部 URL 原样返回，避免误伤外链。
- *  2) 签名走**小时桶**：exp = 当前整点 + ttl。同一小时内同一路径签名完全一致，
- *     浏览器 / next/image / Service Worker 的缓存不会每次都 miss；过期后自然作废。
+ *  2) 签名走**天桶**：exp = 当天 0 点 + ttl。同一天内同一路径签名完全一致，
+ *     浏览器 / next/image / Service Worker 的缓存（静态资源 max-age=86400）整天有效；
+ *     过期后自然作废。
+ *     ⚠️ 桶粒度必须 ≥ 静态资源的 max-age：小时桶曾让缓存头形同虚设 —— 整点一过
+ *     所有 URL 换脸，封面/音频/PDF 全部重新回源下载（弱网下最明显）。
  *  3) 签的是**解码后的路径**（nginx 的 `$uri` 是解码后的），但 URL 里输出编码形式 ——
  *     含中文/空格的路径两边都对得上。
  *  4) 没配 secret 时原样返回（本地开发/降级），不抛错。
@@ -56,7 +59,9 @@ export function signStorageReadUrl(ref: string | null | undefined, ttlSec: numbe
   }
 
   const uri = `/storage/${decoded}`;
-  const exp = Math.floor(Date.now() / 1000 / 3600) * 3600 + ttlSec;
+  // 天桶（86400s）：与静态资源 Cache-Control 的 max-age=86400 对齐，同一天内 URL 恒定。
+  // 注意：这里只决定签名何时"变脸"，不决定有效期 —— 有效期始终是 桶起点 + ttlSec。
+  const exp = Math.floor(Date.now() / 1000 / 86400) * 86400 + ttlSec;
   const s = crypto
     .createHash('md5')
     .update(`${SECRET}${uri}${exp}`)
