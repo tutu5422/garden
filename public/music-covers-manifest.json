@@ -730,5 +730,407 @@
     "album": "美周郎 (摇滚版)",
     "coverUrl": "https://storage.minitu.online/storage/music/covers/Liu夏/美周郎%20(摇滚版).jpg",
     "status": "done"
+  },
+  {
+    "artist": "红碎片",
+    "album": "惊鸿一面",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E7%BA%A2%E7%A2%8E%E7%89%87/%E6%83%8A%E9%B8%BF%E4%B8%80%E9%9D%A2.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "尹昔眠",
+    "album": "三拜红尘凉 - Single",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%B0%B9%E6%98%94%E7%9C%A0/%E4%B8%89%E6%8B%9C%E7%BA%A2%E5%B0%98%E5%87%89---Single.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "奇衡三",
+    "album": "青丝（刘邦进行曲）",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%A5%87%E8%A1%A1%E4%B8%89/%E9%9D%92%E4%B8%9D%EF%BC%88%E5%88%98%E9%82%A6%E8%BF%9B%E8%A1%8C%E6%9B%B2%EF%BC%89.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "王洁实",
+    "album": "红楼梦 电视连续剧歌曲集.原声带",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E7%8E%8B%E6%B4%81%E5%AE%9E/%E7%BA%A2%E6%A5%BC%E6%A2%A6-%E7%94%B5%E8%A7%86%E8%BF%9E%E7%BB%AD%E5%89%A7%E6%AD%8C%E6%9B%B2%E9%9B%86.%E5%8E%9F%E5%A3%B0%E5%B8%A6.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "烟兒",
+    "album": "惊鸿一面",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E7%83%9F%E5%85%92/%E6%83%8A%E9%B8%BF%E4%B8%80%E9%9D%A2.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "泽国同学",
+    "album": "折风渡夜",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E6%B3%BD%E5%9B%BD%E5%90%8C%E5%AD%A6/%E6%8A%98%E9%A3%8E%E6%B8%A1%E5%A4%9C.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "王清清",
+    "album": "美周郎",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E7%8E%8B%E6%B8%85%E6%B8%85/%E7%BE%8E%E5%91%A8%E9%83%8E.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Justin Garner",
+    "album": "We Only Have Forever",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Justin-Garner/We-Only-Have-Forever.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Maria Arredondo",
+    "album": "For A Moment (Christmas Editio",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Maria-Arredondo/For-A-Moment-%28Christmas-Editio.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "尘ah.",
+    "album": "青衣",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%B0%98ah./%E9%9D%92%E8%A1%A3.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Thomas Bergersen",
+    "album": "Battlecry Anthology",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Thomas-Bergersen/Battlecry-Anthology.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Mars毒药",
+    "album": "旧梦一场",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Mars%E6%AF%92%E8%8D%AF/%E6%97%A7%E6%A2%A6%E4%B8%80%E5%9C%BA.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "张云雷",
+    "album": "探清水河",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%BC%A0%E4%BA%91%E9%9B%B7/%E6%8E%A2%E6%B8%85%E6%B0%B4%E6%B2%B3.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "指尖笑",
+    "album": "惊鸿醉",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E6%8C%87%E5%B0%96%E7%AC%91/%E6%83%8A%E9%B8%BF%E9%86%89.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Mr.燤iss",
+    "album": "先生小姐",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Mr.%E7%87%A4iss/%E5%85%88%E7%94%9F%E5%B0%8F%E5%A7%90.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "叶矛",
+    "album": "红楼梦 电视连续剧歌曲集.原声带",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%8F%B6%E7%9F%9B/%E7%BA%A2%E6%A5%BC%E6%A2%A6-%E7%94%B5%E8%A7%86%E8%BF%9E%E7%BB%AD%E5%89%A7%E6%AD%8C%E6%9B%B2%E9%9B%86.%E5%8E%9F%E5%A3%B0%E5%B8%A6.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "HENRY",
+    "album": "HENRY Songs",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/HENRY/HENRY-Songs.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "蒋雪儿Snow.J",
+    "album": "落了白",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E8%92%8B%E9%9B%AA%E5%84%BFSnow.J/%E8%90%BD%E4%BA%86%E7%99%BD.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "BLASK、RRRR",
+    "album": "",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/BLASK%E3%80%81RRRR/unknown.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "陈雪燃",
+    "album": "镇魂 影视原声大碟",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E9%99%88%E9%9B%AA%E7%87%83/%E9%95%87%E9%AD%82-%E5%BD%B1%E8%A7%86%E5%8E%9F%E5%A3%B0%E5%A4%A7%E7%A2%9F.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "漂泊阿楠",
+    "album": "看山边的风雪",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E6%BC%82%E6%B3%8A%E9%98%BF%E6%A5%A0/%E7%9C%8B%E5%B1%B1%E8%BE%B9%E7%9A%84%E9%A3%8E%E9%9B%AA.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "怪阿姨",
+    "album": "羡慕风羡慕雨",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E6%80%AA%E9%98%BF%E5%A7%A8/%E7%BE%A1%E6%85%95%E9%A3%8E%E7%BE%A1%E6%85%95%E9%9B%A8.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "苓知月",
+    "album": "最真的梦",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E8%8B%93%E7%9F%A5%E6%9C%88/%E6%9C%80%E7%9C%9F%E7%9A%84%E6%A2%A6.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "ZORA",
+    "album": "Baby军工小曲",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/ZORA/Baby%E5%86%9B%E5%B7%A5%E5%B0%8F%E6%9B%B2.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Juanes",
+    "album": "This Is the Sound of Juanes",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Juanes/This-Is-the-Sound-of-Juanes.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "王杰",
+    "album": "2014 Live In Beijing 王者归来",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E7%8E%8B%E6%9D%B0/2014-Live-In-Beijing-%E7%8E%8B%E8%80%85%E5%BD%92%E6%9D%A5.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "毛不易",
+    "album": "小王",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E6%AF%9B%E4%B8%8D%E6%98%93/%E5%B0%8F%E7%8E%8B.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "风雪又一年",
+    "album": "土坡上的狗尾草",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E9%A3%8E%E9%9B%AA%E5%8F%88%E4%B8%80%E5%B9%B4/%E5%9C%9F%E5%9D%A1%E4%B8%8A%E7%9A%84%E7%8B%97%E5%B0%BE%E8%8D%89.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "林志炫",
+    "album": "春生",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E6%9E%97%E5%BF%97%E7%82%AB/%E6%98%A5%E7%94%9F.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "张云雷",
+    "album": "陶笛档案馆 北京小曲北京味儿 李丹书",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%BC%A0%E4%BA%91%E9%9B%B7/%E9%99%B6%E7%AC%9B%E6%A1%A3%E6%A1%88%E9%A6%86-%E5%8C%97%E4%BA%AC%E5%B0%8F%E6%9B%B2%E5%8C%97%E4%BA%AC%E5%91%B3%E5%84%BF-%E6%9D%8E%E4%B8%B9%E4%B9%A6.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Edz造梦赫兹",
+    "album": "一生所爱",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Edz%E9%80%A0%E6%A2%A6%E8%B5%AB%E5%85%B9/%E4%B8%80%E7%94%9F%E6%89%80%E7%88%B1.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "樱桃",
+    "album": "秒针",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E6%A8%B1%E6%A1%83/%E7%A7%92%E9%92%88.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "星明",
+    "album": "世界是黑白的",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E6%98%9F%E6%98%8E/%E4%B8%96%E7%95%8C%E6%98%AF%E9%BB%91%E7%99%BD%E7%9A%84.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "黄霑 / 徐克 / 罗大佑",
+    "album": "天下大乱花木兰之杨佩佩大战金庸戏剧主题曲全记录",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E9%BB%84%E9%9C%91-%E5%BE%90%E5%85%8B-%E7%BD%97%E5%A4%A7%E4%BD%91/%E5%A4%A9%E4%B8%8B%E5%A4%A7%E4%B9%B1%E8%8A%B1%E6%9C%A8%E5%85%B0%E4%B9%8B%E6%9D%A8%E4%BD%A9%E4%BD%A9%E5%A4%A7%E6%88%98%E9%87%91%E5%BA%B8%E6%88%8F%E5%89%A7%E4%B8%BB%E9%A2%98%E6%9B%B2%E5%85%A8%E8%AE%B0%E5%BD%95.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "陈力",
+    "album": "红楼梦 电视连续剧歌曲集.原声带",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E9%99%88%E5%8A%9B/%E7%BA%A2%E6%A5%BC%E6%A2%A6-%E7%94%B5%E8%A7%86%E8%BF%9E%E7%BB%AD%E5%89%A7%E6%AD%8C%E6%9B%B2%E9%9B%86.%E5%8E%9F%E5%A3%B0%E5%B8%A6.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "胡夏, 郁可唯",
+    "album": "《知否知否应是绿肥红瘦》电视剧原声带",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E8%83%A1%E5%A4%8F%2C-%E9%83%81%E5%8F%AF%E5%94%AF/%E3%80%8A%E7%9F%A5%E5%90%A6%E7%9F%A5%E5%90%A6%E5%BA%94%E6%98%AF%E7%BB%BF%E8%82%A5%E7%BA%A2%E7%98%A6%E3%80%8B%E7%94%B5%E8%A7%86%E5%89%A7%E5%8E%9F%E5%A3%B0%E5%B8%A6.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Bunny易安",
+    "album": "不问ciaga",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Bunny%E6%98%93%E5%AE%89/%E4%B8%8D%E9%97%AEciaga.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "DJ",
+    "album": "抖音热门专辑（DJ版）",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/DJ/%E6%8A%96%E9%9F%B3%E7%83%AD%E9%97%A8%E4%B8%93%E8%BE%91%EF%BC%88DJ%E7%89%88%EF%BC%89.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Part Six",
+    "album": "What's That Sound",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Part-Six/What%27s-That-Sound.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "DJ阿布",
+    "album": "问DJ",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/DJ%E9%98%BF%E5%B8%83/%E9%97%AEDJ.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "等什么君",
+    "album": "春庭雪 - single",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E7%AD%89%E4%BB%80%E4%B9%88%E5%90%9B/%E6%98%A5%E5%BA%AD%E9%9B%AA---single.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "好妹妹",
+    "album": "春生",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%A5%BD%E5%A6%B9%E5%A6%B9/%E6%98%A5%E7%94%9F.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Misic涂",
+    "album": "凡人修仙传",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Misic%E6%B6%82/%E5%87%A1%E4%BA%BA%E4%BF%AE%E4%BB%99%E4%BC%A0.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Sanna Nielsen",
+    "album": "Melodifestivalen 10 舝 P Turn 2002-2011",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Sanna-Nielsen/Melodifestivalen-10-%E8%88%9D-P-Turn-2002-2011.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "郁可唯、金晨",
+    "album": "天赐的声音第七季 第6期",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E9%83%81%E5%8F%AF%E5%94%AF%E3%80%81%E9%87%91%E6%99%A8/%E5%A4%A9%E8%B5%90%E7%9A%84%E5%A3%B0%E9%9F%B3%E7%AC%AC%E4%B8%83%E5%AD%A3-%E7%AC%AC6%E6%9C%9F.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "唐伯虎Annie",
+    "album": "弱水三千",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%94%90%E4%BC%AF%E8%99%8EAnnie/%E5%BC%B1%E6%B0%B4%E4%B8%89%E5%8D%83.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "窝窝",
+    "album": "月亮照山川",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E7%AA%9D%E7%AA%9D/%E6%9C%88%E4%BA%AE%E7%85%A7%E5%B1%B1%E5%B7%9D.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Beyond",
+    "album": "Beyond - 25th Anniversary",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Beyond/Beyond---25th-Anniversary.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "唐伯虎Annie",
+    "album": "落",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%94%90%E4%BC%AF%E8%99%8EAnnie/%E8%90%BD.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Rileigh Grey",
+    "album": "Hello，goodbye remix",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Rileigh-Grey/Hello%EF%BC%8Cgoodbye-remix.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Liu夏",
+    "album": "美周郎",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Liu%E5%A4%8F/%E7%BE%8E%E5%91%A8%E9%83%8E.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "小炎同学",
+    "album": "天下的乌鸦一般黑",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%B0%8F%E7%82%8E%E5%90%8C%E5%AD%A6/%E5%A4%A9%E4%B8%8B%E7%9A%84%E4%B9%8C%E9%B8%A6%E4%B8%80%E8%88%AC%E9%BB%91.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "人面兽心",
+    "album": "Gimme_Reset",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E4%BA%BA%E9%9D%A2%E5%85%BD%E5%BF%83/Gimme_Reset.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "杨树人",
+    "album": "不再悲伤",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E6%9D%A8%E6%A0%91%E4%BA%BA/%E4%B8%8D%E5%86%8D%E6%82%B2%E4%BC%A4.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "小沈阳",
+    "album": "东北民谣 (Live)",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%B0%8F%E6%B2%88%E9%98%B3/%E4%B8%9C%E5%8C%97%E6%B0%91%E8%B0%A3-%28Live%29.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "草蜢",
+    "album": "失戀陣線聯盟",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E8%8D%89%E8%9C%A2/%E5%A4%B1%E6%88%80%E9%99%A3%E7%B7%9A%E8%81%AF%E7%9B%9F.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Erik Gr鰊wall",
+    "album": "Higher",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Erik-Gr%E9%B0%8Awall/Higher.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "王洁实",
+    "album": "87版电视连续剧 红楼梦 原声大碟",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E7%8E%8B%E6%B4%81%E5%AE%9E/87%E7%89%88%E7%94%B5%E8%A7%86%E8%BF%9E%E7%BB%AD%E5%89%A7-%E7%BA%A2%E6%A5%BC%E6%A2%A6-%E5%8E%9F%E5%A3%B0%E5%A4%A7%E7%A2%9F.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Y//2//K",
+    "album": "What is Love?",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Y2K/What-is-Love.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "陈力",
+    "album": "红楼梦87原版电视剧主题歌曲",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E9%99%88%E5%8A%9B/%E7%BA%A2%E6%A5%BC%E6%A2%A687%E5%8E%9F%E7%89%88%E7%94%B5%E8%A7%86%E5%89%A7%E4%B8%BB%E9%A2%98%E6%AD%8C%E6%9B%B2.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "尹昔眠",
+    "album": "西楼别序 - Single",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%B0%B9%E6%98%94%E7%9C%A0/%E8%A5%BF%E6%A5%BC%E5%88%AB%E5%BA%8F---Single.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Damn5Z, 王睿卓",
+    "album": "重生之我在异乡为异客",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Damn5Z%2C-%E7%8E%8B%E7%9D%BF%E5%8D%93/%E9%87%8D%E7%94%9F%E4%B9%8B%E6%88%91%E5%9C%A8%E5%BC%82%E4%B9%A1%E4%B8%BA%E5%BC%82%E5%AE%A2.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "Thegiornalisti, Tommaso Paradiso",
+    "album": "Completamente Sold Out",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/Thegiornalisti%2C-Tommaso-Paradiso/Completamente-Sold-Out.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "群星",
+    "album": "酒廊情思",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E7%BE%A4%E6%98%9F/%E9%85%92%E5%BB%8A%E6%83%85%E6%80%9D.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "傲寒同学",
+    "album": "春不晚",
+    "coverUrl": "https://storage.minitu.online/storage/music/covers/%E5%82%B2%E5%AF%92%E5%90%8C%E5%AD%A6/%E6%98%A5%E4%B8%8D%E6%99%9A.jpg",
+    "status": "done"
+  },
+  {
+    "artist": "乧掃業",
+    "album": "屏뙛",
+    "coverUrl": "",
+    "status": "not_found"
+  },
+  {
+    "artist": "Timmy Trumpet & Savage",
+    "album": "Collide",
+    "coverUrl": "",
+    "status": "not_found"
   }
 ]
