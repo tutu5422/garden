@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { resolveAudioUrl } from './audio-cache'
+import { pruneGhostTracks } from './ghost-cleanup'
 
 // ========== 类型 ==========
 
@@ -269,9 +270,28 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       if (merged.has(t.id)) continue
       add(t)
     }
-    const allTracks = Array.from(merged.values())
+    let allTracks = Array.from(merged.values())
+    setPlaylist(allTracks)
 
-    // Rewrite if cloud had data
+    // ---- 幽灵清理：本地独有 + 文件确实取不到（404）的条目 ----
+    // 场景：某台设备的本地列表留着云端已删的旧条目（旧 id 与云端不同），刷新只是把并集
+    // 写回本地，于是永远挂在列表末尾（实测 #204「Sound Of Silence」/ #205「未命名-fc73bd3e」，
+    // 云端与磁盘都已没有）。只清「云端没有」的本地条目、只认 404、只写本地，绝不推云端。
+    if (cloudTracks.length > 0) {
+      try {
+        const { tracks: pruned, removed } = await pruneGhostTracks(
+          allTracks, new Set(cloudTracks.map(t => t.id)), cloudTracks.length)
+        if (removed.length > 0) {
+          allTracks = pruned
+          console.info('[music] 已清理 %d 条本地失效曲目：%s', removed.length,
+            removed.map(t => t.title || t.id).join('、'))
+          toast.info(`已清理 ${removed.length} 条本地失效曲目`)
+          setPlaylist(allTracks)
+        }
+      } catch { /* 清理失败不影响正常列表 */ }
+    }
+
+    // Rewrite if cloud had data（只写本地，写的是清理后的结果）
     if (cloudTracks.length > 0) {
       try {
         const clean = allTracks.map(t => ({
